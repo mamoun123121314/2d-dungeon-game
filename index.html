@@ -1002,6 +1002,37 @@ body.is-phone #startScreen .phoneStart{display:flex;}
   #comboHud { bottom: 176px; width: 104px; right: 8px; }
   .cX { font-size: 22px; }
 }
+</style>/* ---------------- loot reveal card ---------------- */
+#lootReveal { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%) scale(.86);
+  min-width: 268px; max-width: 380px; padding: 18px 24px 16px; text-align: center;
+  border-radius: 12px; pointer-events: none; opacity: 0; z-index: 6;
+  background: radial-gradient(120% 140% at 50% 0%, rgba(28,20,38,.97), rgba(8,6,12,.97));
+  border: 1px solid var(--rc, #8fb8ff);
+  box-shadow: 0 0 0 1px rgba(0,0,0,.7), 0 18px 60px rgba(0,0,0,.75),
+              0 0 60px var(--glow, rgba(140,180,255,.28));
+  transition: opacity .22s ease, transform .32s cubic-bezier(.16,1.2,.3,1); }
+#lootReveal.show { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+#lootReveal.r2 { --rc: #5b8dff; --glow: rgba(91,141,255,.34); }
+#lootReveal.r3 { --rc: #b05cff; --glow: rgba(176,92,255,.38); }
+#lootReveal.r4 { --rc: #ffb347; --glow: rgba(255,179,71,.48); }
+.rvTier { font-family: var(--mono, monospace); font-size: 9px; letter-spacing: .34em;
+  text-transform: uppercase; color: var(--rc); opacity: .9; margin-bottom: 7px; }
+.rvName { font-family: var(--serif, Georgia, serif); font-size: 21px; line-height: 1.2;
+  letter-spacing: .01em; text-shadow: 0 0 22px currentColor; margin-bottom: 6px; }
+.rvElement { font-family: var(--mono, monospace); font-size: 10px; letter-spacing: .14em;
+  text-transform: uppercase; margin-bottom: 8px; opacity: .92; }
+.rvStats { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap;
+  font-family: var(--mono, monospace); font-size: 10px; color: #8d95a8; margin-bottom: 10px; }
+.rvStats b { color: #dfe4ee; }
+.rvDelta { display: inline-block; font-family: var(--mono, monospace); font-size: 10.5px;
+  letter-spacing: .14em; text-transform: uppercase; padding: 4px 12px; border-radius: 999px;
+  border: 1px solid rgba(255,255,255,.16); color: #9aa4b6; }
+.rvDelta.up { color: #8fe0a8; border-color: rgba(143,224,168,.5); background: rgba(143,224,168,.1); }
+.rvDelta.down { color: #e08585; border-color: rgba(224,133,133,.45); background: rgba(224,133,133,.08); }
+@media (max-width: 760px) {
+  #lootReveal { min-width: 210px; max-width: 78vw; padding: 13px 16px; }
+  .rvName { font-size: 16px; }
+}
 </style></style>
 </head>
 <body>
@@ -1079,6 +1110,7 @@ body.is-phone #startScreen .phoneStart{display:flex;}
   <div id="comboHud" class="hidden"><span class="cX" id="comboX">x1</span><span class="cLabel">COMBO</span>
     <div class="cTrack"><div class="cFill" id="comboFill"></div></div></div>
 <div id="saveToast" aria-hidden="true"><span class="svDot"></span>SAVED</div>
+<div id="lootReveal"></div>
   <div id="toastLog"></div>
   <div id="hintBar"></div>
 
@@ -1745,6 +1777,25 @@ const Sound = (() => {
       g.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.5);
       o.connect(g); g.connect(sfxOut); o.start(t0); o.stop(t0 + 0.52);
       noise(t0 + 0.05, 0.4, 0.028, { type: 'bandpass', f: 1800, q: 4 });
+    },
+    reveal() {
+      if (!ctx) return; const t0 = t();
+      /* shimmer up into a struck bell — the "you got something" sting */
+      [659.25, 880, 1108.7].forEach((f, i) => {
+        const o = ctx.createOscillator(); const g = ctx.createGain();
+        o.type = 'triangle'; o.frequency.setValueAtTime(f, t0 + i * 0.055);
+        g.gain.setValueAtTime(0.0001, t0 + i * 0.055);
+        g.gain.exponentialRampToValueAtTime(0.10, t0 + i * 0.055 + 0.015);
+        g.gain.exponentialRampToValueAtTime(0.0001, t0 + i * 0.055 + 0.30);
+        o.connect(g); g.connect(sfxOut); o.start(t0 + i * 0.055); o.stop(t0 + i * 0.055 + 0.32);
+      });
+      const o = ctx.createOscillator(); const g = ctx.createGain();
+      o.type = 'sine'; o.frequency.setValueAtTime(1318.5, t0 + 0.18);
+      g.gain.setValueAtTime(0.0001, t0 + 0.18);
+      g.gain.exponentialRampToValueAtTime(0.085, t0 + 0.2);
+      g.gain.exponentialRampToValueAtTime(0.0001, t0 + 1.5);
+      o.connect(g); g.connect(sfxOut); o.start(t0 + 0.18); o.stop(t0 + 1.55);
+      noise(t0 + 0.16, 0.5, 0.028, { type: 'highpass', f: 6000 });
     },
     comboUp() {
       if (!ctx) return; const t0 = t();
@@ -4754,7 +4805,9 @@ const Save = {
 
       /* rebuild the floor from the saved seed, then drop the player back in */
       const floorN = clamp(Number(snap.floor) || 1, 1, 9999);
+      Game.loadingSave = true;
       buildFloor(floorN, false, snap.seed);
+      Game.loadingSave = false;
       if (snap.endlessBundle && Array.isArray(snap.endlessBundle.list)) {
         Game.endlessBundle.list = snap.endlessBundle.list.filter(k => !!AFFIXES[k]).slice(0, 4);
         Game.endlessBundle.floor = floorN;
@@ -5090,6 +5143,8 @@ function buildFloor(n, first = false, seed) {
   updateHud(true);
   refreshShopIfOpen();
   Save.recordFloor(n);
+  /* a loaded floor must not pay its milestone a second time */
+  if (!first && !Game.loadingSave) checkMilestone(n);
   /* the seed is captured here so the floor can be rebuilt on load */
   Game.lastFloorSeed = d.seed;
 }
@@ -5341,6 +5396,52 @@ function applyAffixesToEnemy(e, aff) {
   if (aff.explodeOnDeath) e.explodeOnDeath = true;
   if (aff.goldMult && aff.goldMult !== 1) e.goldMult = (e.goldMult || 1) * aff.goldMult;
 }
+/* ---------- elite modifiers ----------
+   Elites roll one "champion" trait that changes how you must fight them, and
+   the trait is named over their head so the read is instant. Each carries a
+   guaranteed better drop, which is what makes an elite worth the detour. */
+const ELITE_TRAITS = {
+  swift:   { name: 'Swift',   colour: '#7fd4ff', desc: 'moves and strikes faster',
+             apply(e) { e.speed *= 1.35; e.def = Object.assign({}, e.def, { cooldown: e.def.cooldown * 0.72 }); } },
+  shielded:{ name: 'Shielded', colour: '#8fb8ff', desc: 'armoured hide',
+             apply(e) { e.defense = Math.round(e.defense * 2.0 + 4); } },
+  vampiric:{ name: 'Leeching', colour: '#ff5b6e', desc: 'heals from its hits',
+             apply(e) { e.lifesteal = 0.18; } },
+  volatile:{ name: 'Volatile', colour: '#ff8a4c', desc: 'bursts on death',
+             apply(e) { e.explodeOnDeath = true; } },
+  giant:   { name: 'Giant',   colour: '#c8a070', desc: 'huge and heavy',
+             apply(e) { e.radius *= 1.35; e.maxHp = Math.round(e.maxHp * 1.5); e.hp = e.maxHp; e.speed *= 0.82; } },
+  summons: { name: 'Beckoner', colour: '#b06aff', desc: 'calls reinforcements',
+             apply(e) { e.summoner = true; } }
+};
+const ELITE_TRAIT_KEYS = Object.keys(ELITE_TRAITS);
+function applyEliteTrait(e, forced) {
+  if (!e) return;
+  const key = forced || pick(ELITE_TRAIT_KEYS);
+  const trait = ELITE_TRAITS[key];
+  if (!trait) return;
+  e.eliteTrait = key;
+  trait.apply(e);
+}
+/* Beckoner elites periodically spit out a weak crawler — handled in updateEnemy
+   through this helper so the AI file stays readable. */
+function eliteSummonTick(e, dt, dd) {
+  if (!e.summoner || !e.alive) return;
+  if (e.summonT === undefined) e.summonT = 6;   /* first call: a wind-up delay */
+  e.summonT -= dt;
+  if (e.summonT > 0 || dd > 420) return;
+  e.summonT = 7.5;
+  const live = Game.enemies.filter(z => z.alive && z.summoned).length;
+  if (live >= 6) return;
+  const a = rand(TAU);
+  const spot = findFreeSpot(e.x + Math.cos(a) * 46, e.y + Math.sin(a) * 46, 14);
+  const add = new Enemy('crawler', spot.x, spot.y, Game.floor, { hpMult: 0.7 });
+  add.summoned = true; add.aggro = true; add.state = 'chase';
+  Game.enemies.push(add);
+  FX.ring(spot.x, spot.y, 34, 'rgba(176,106,255,0.6)', 0.45, 3);
+  Sound.play('summon', 0.45);
+}
+
 /* ---------- enemy spawning ---------- */
 function spawnEnemies(d) {
   const pool = d.theme.enemies;
@@ -5357,6 +5458,14 @@ function spawnEnemies(d) {
       if (!d.isWalkable(spot.tx, spot.ty)) continue;
       const typeKey = pick(pool);
       const e = new Enemy(typeKey, spot.x, spot.y, d.floor);
+      /* from floor 3 a few spawns are champions — the loot is worth the risk */
+      if (d.floor >= 3 && !e.isElite && chance(0.055 + Math.min(0.10, d.floor * 0.006))) {
+        e.isElite = true;
+        e.maxHp = Math.round(e.maxHp * 1.5);
+        e.hp = e.maxHp;
+        e.xpValue = Math.round(e.xpValue * 1.9);
+        applyEliteTrait(e);
+      }
       applyAffixesToEnemy(e, aff);
       e.homeRoom = room;
       roster.push(e);
@@ -5379,6 +5488,7 @@ function spawnEnemies(d) {
     e.hp = e.maxHp;
     e.xpValue = Math.round(e.xpValue * 1.8);
     e.homeRoom = room;
+    applyEliteTrait(e);
     applyAffixesToEnemy(e, aff);
     Game.enemies.push(e);
   }
@@ -5387,6 +5497,7 @@ function spawnEnemies(d) {
     const e = new Enemy('guardian', (d.vaultDoor.x + 0.5) * TILE, (d.vaultDoor.y + 0.5) * TILE, d.floor, { hpMult: 0.75 + d.floor * 0.1 });
     e.homeRoom = d.vaultRoom || d.vault;
     e.guardsVault = true;
+    applyEliteTrait(e);
     applyAffixesToEnemy(e, Game.endlessBundle || null);
     /* nudge off the door tile so it can chase rather than stand inside it */
     const spot2 = findFreeSpot(e.x, e.y, e.radius * 0.85);
@@ -6292,6 +6403,7 @@ function updateEnemy(e, dt) {
   }
   if (dd > t.aggro * 2.1) e.aggro = false;
 
+  eliteSummonTick(e, dt, dd);
   /* elemental status effects */
   tickStatus(e, dt);
   if (!e.alive) return;
@@ -6555,6 +6667,59 @@ function updateDrops(dt) {
     }
   }
 }
+/* ---- loot reveal ----------------------------------------------------------
+   Rare and better gear gets a two-second card that names it, shows its power
+   and tells you whether it beats what you're wearing. This is the payoff loop:
+   the drop is the reward, but the *announcement* is what makes people open one
+   more chest. Common junk stays quiet so the card keeps its meaning. */
+const REVEAL_TIERS = { 2: 'RARE FIND', 3: 'EPIC FIND', 4: 'LEGENDARY' };
+function revealLoot(item) {
+  if (!item || item.rarity < 2) return;
+  const el = $('lootReveal');
+  if (!el) return;
+  const p = Game.player;
+  const equipped = p.equipment[item.slot];
+  const delta = itemScore(item) - itemScore(equipped);
+  const tier = REVEAL_TIERS[item.rarity] || 'FIND';
+  const col = RARITY_COLOR[item.rarity];
+  const elName = item.element && ELEMENTS[item.element] ? ELEMENTS[item.element] : null;
+  el.innerHTML =
+    '<div class="rvTier" style="--c:' + col + '">' + tier + '</div>'
+    + '<div class="rvName" style="color:' + col + '">' + escapeHtml(item.name) + '</div>'
+    + (elName ? '<div class="rvElement" style="color:' + elName.colour + '">'
+        + elName.icon + ' ' + elName.name + ' attuned</div>' : '')
+    + '<div class="rvStats">' + (statLines(item).slice(0, 3).map(l =>
+        '<span>' + l.label + ' <b>+' + l.value + (l.suffix || '') + '</b></span>').join('') || '<span>No bonuses</span>')
+    + '</div>'
+    + (equipped
+        ? '<div class="rvDelta ' + (delta > 0 ? 'up' : delta < 0 ? 'down' : '') + '">'
+          + (delta > 0 ? '▲ Upgrade +' + Math.round(delta) : delta < 0 ? '▼ Downgrade ' + Math.round(delta) : '≈ Sidegrade')
+          + '</div>'
+        : '<div class="rvDelta up">▲ Empty slot</div>');
+  el.className = 'show r' + item.rarity + (item.element && ELEMENTS[item.element] ? ' el-' + item.element : '');
+  clearTimeout(Game.revealTimer);
+  Game.revealTimer = setTimeout(() => { el.className = ''; }, 2600);
+  Sound.play('reveal', item.rarity >= 3 ? 1 : 0.7);
+  if (item.rarity >= 4) { Game.cam.shake = 6; Game.cam.shakeT = 0.3; FX.screenSparkle(); }
+}
+
+/* ---- milestone rewards ---------------------------------------------------
+   Every five floors the dungeon pays out: a potion, a key and a chunk of gold.
+   A visible milestone bar means there is always another one coming up. */
+function checkMilestone(floorN) {
+  if (floorN < 5 || floorN % 5 !== 0) return;
+  const p = Game.player;
+  const gold = 80 + floorN * 22;
+  p.gold += gold; p.totalGold += gold; Game.runStats.gold += gold;
+  p.potions++;
+  p.keys++;
+  toast('Milestone — floor ' + floorN + '! +' + fmt(gold) + 'g, a potion and a key.', 'gold');
+  FX.ring(p.x, p.y, 160, 'rgba(255,216,138,0.75)', 1.0, 5);
+  FX.screenSparkle();
+  Sound.play('bounty');
+  updateHud();
+}
+
 function pickupDrop(d, index) {
   const p = Game.player;
   Game.drops.splice(index, 1);
@@ -6585,6 +6750,7 @@ function pickupDrop(d, index) {
       FX.text(d.x, d.y - 18, item.name, { color: RARITY_COLOR[item.rarity], size: 12, life: 1.4, slow: true });
       Sound.play('gold', 0.4);
       if (item.rarity >= 2) toast('★ ' + item.name + ' (' + RARITIES[item.rarity].name + ')', 'loot');
+      revealLoot(item);
       refreshInventoryUI();
     } else {
       /* inventory full: convert to gold */
@@ -8072,7 +8238,10 @@ function drawEnemy(ctx, e, cam, t) {
       ctx.textAlign = 'center';
       ctx.fillStyle = e.isBoss ? '#ff6b8a' : '#ffb347';
       ctx.strokeStyle = 'rgba(0,0,0,.8)'; ctx.lineWidth = 2.4;
-      const label = e.def.name.toUpperCase();
+      /* champion traits get their own coloured label so the read is instant */
+      const trait = e.eliteTrait && ELITE_TRAITS[e.eliteTrait];
+      const label = (trait ? trait.name + ' ' : '') + e.def.name.toUpperCase();
+      if (trait) ctx.fillStyle = trait.colour;
       ctx.strokeText(label, x, by - 6);
       ctx.fillText(label, x, by - 6);
       ctx.restore();
