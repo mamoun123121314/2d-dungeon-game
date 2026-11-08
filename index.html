@@ -613,6 +613,20 @@ canvas{display:block;}
   color:#d9b56b;text-transform:uppercase;margin-bottom:5px;
 }
 .feature p{font-size:9.5px;line-height:1.55;color:#8d8198;}
+.sysChips{
+  display:flex;gap:7px;justify-content:center;flex-wrap:wrap;
+  margin:0 auto 16px;max-width:640px;
+}
+.sysChips span{
+  font-family:var(--font-mono);font-size:8.5px;letter-spacing:.14em;text-transform:uppercase;
+  color:#c8ab74;padding:4px 10px;border-radius:999px;
+  border:1px solid rgba(217,181,107,.26);
+  background:linear-gradient(160deg,rgba(60,46,28,.4),rgba(14,11,20,.4));
+  box-shadow:0 0 12px rgba(217,181,107,.07);
+}
+@media (max-width:820px){
+  .sysChips span{font-size:7.5px;padding:3px 7px;letter-spacing:.1em;}
+}
 .startMeta{
   display:flex;gap:24px;justify-content:center;align-items:center;flex-wrap:wrap;
   font-family:var(--font-mono);font-size:9px;color:#786c86;margin-top:16px;letter-spacing:.06em;
@@ -771,6 +785,7 @@ body.is-phone .startTitle{font-size:clamp(30px,11vw,54px);}
 body.is-phone .startControls{display:none;}
 body.is-phone .startBody{font-size:12px;}
 
+
 /* phone start-screen tips — base rule first so the phone rule wins */
 #startScreen .phoneStart{display:none;flex-direction:column;gap:9px;
   align-items:center;margin-top:6px;}
@@ -848,7 +863,7 @@ body.is-phone #startScreen .phoneStart{display:flex;}
   .skillBody { grid-template-columns: 1fr; }
   .skillPanel { width: 96vw; }
 }
-</style>/* ---------------- merchant haggling ---------------- */
+/* ---------------- merchant haggling ---------------- */
 .shopHaggle { display: flex; align-items: center; gap: 10px; margin: 8px 0 6px; flex-wrap: wrap; }
 .shopRerollBtn { font-family: var(--mono, monospace); font-size: 11.5px; letter-spacing: .1em;
   text-transform: uppercase; padding: 7px 13px; border-radius: 7px; cursor: pointer;
@@ -866,7 +881,7 @@ body.is-phone #startScreen .phoneStart{display:flex;}
   letter-spacing: .1em; padding: 1px 5px; border-radius: 4px; margin-left: 6px;
   background: rgba(143,224,168,.16); color: #8fe0a8; border: 1px solid rgba(143,224,168,.35);
   vertical-align: middle; }
-</style>/* ---------------- boss health bar ---------------- */
+/* ---------------- boss health bar ---------------- */
 #bossBar { position: absolute; top: 18px; left: 50%; transform: translateX(-50%);
   width: min(560px, 54vw); pointer-events: none; text-align: center;
   opacity: 0; transition: opacity .35s ease; }
@@ -892,7 +907,7 @@ body.is-phone #startScreen .phoneStart{display:flex;}
   #bossBar { width: min(360px, 74vw); top: 10px; }
   .bossName { font-size: 11.5px; letter-spacing: .12em; }
 }
-</style>/* ---------------- endless affix chips ---------------- */
+/* ---------------- endless affix chips ---------------- */
 #affixBar { position: absolute; bottom: 96px; left: 50%; transform: translateX(-50%);
   display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; max-width: min(620px, 62vw);
   pointer-events: none; z-index: 3; }
@@ -909,7 +924,7 @@ body.is-phone #startScreen .phoneStart{display:flex;}
   #affixBar { bottom: 150px; max-width: 88vw; }
   .affixChip { font-size: 8.5px; padding: 2px 6px; }
 }
-</style>/* ---------------- elemental item styling ---------------- */
+/* ---------------- elemental item styling ---------------- */
 .ttElement { display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
   font-family: var(--mono, monospace); font-size: 10px; letter-spacing: .11em;
   text-transform: uppercase; margin: 7px 0 2px; padding: 5px 8px; border-radius: 6px;
@@ -917,7 +932,7 @@ body.is-phone #startScreen .phoneStart{display:flex;}
 .ttElement .ttElIcon { font-size: 13px; }
 .ttElement .ttElPct { display: block; width: 100%; font-size: 9px; letter-spacing: .06em;
   opacity: .72; text-transform: none; margin-top: 1px; }
-</style>/* ---------------- save / continue UI ---------------- */
+/* ---------------- save / continue UI ---------------- */
 .startBtnRow { display: flex; gap: 10px; justify-content: center; align-items: stretch;
   flex-wrap: wrap; margin: 4px 0 10px; }
 .startBtnRow .bigBtn { margin: 0; min-width: 190px; }
@@ -956,7 +971,7 @@ body.is-phone #startScreen .phoneStart{display:flex;}
   .startBtnRow .bigBtn { min-width: 150px; font-size: 12px; }
   .bestRecord { font-size: 9px; gap: 12px; }
 }
-</style>/* ---------------- bounties ---------------- */
+/* ---------------- bounties ---------------- */
 #bountyHud { position: absolute; right: 14px; top: 232px; width: 206px;
   display: flex; flex-direction: column; gap: 7px; pointer-events: none; z-index: 3;
   transition: opacity .3s; }
@@ -1002,7 +1017,7 @@ body.is-phone #startScreen .phoneStart{display:flex;}
   #comboHud { bottom: 176px; width: 104px; right: 8px; }
   .cX { font-size: 22px; }
 }
-</style>/* ---------------- loot reveal card ---------------- */
+/* ---------------- loot reveal card ---------------- */
 #lootReveal { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%) scale(.86);
   min-width: 268px; max-width: 380px; padding: 18px 24px 16px; text-align: center;
   border-radius: 12px; pointer-events: none; opacity: 0; z-index: 6;
@@ -1033,7 +1048,34 @@ body.is-phone #startScreen .phoneStart{display:flex;}
   #lootReveal { min-width: 210px; max-width: 78vw; padding: 13px 16px; }
   .rvName { font-size: 16px; }
 }
-</style></style>
+/* ---- phone HUD placement ---------------------------------------------------
+   The touch rail is z-index 58 and sits above #hud (z-index 10), so anything
+   pinned to the top of the screen must clear it or it hides behind the bars.
+   The touch buttons own the bottom-right corner (right 20-176, bottom 14-238),
+   so the combo and bounty panels are folded into the safe band under the rail
+   instead of landing on top of them. Keyed off body.is-phone rather than a
+   width query: a landscape phone is 844px wide, so max-width:760px never fires.
+   -------------------------------------------------------------------------- */
+body.is-phone #bossBar{top:66px;width:min(340px,58vw);}
+body.is-phone .bossName{font-size:10.5px;letter-spacing:.1em;margin-bottom:3px;}
+body.is-phone .bossTrack{height:11px;}
+body.is-phone .bossPhase{font-size:8.5px;margin-top:2px;}
+
+body.is-phone #comboHud{top:66px;right:10px;bottom:auto;width:92px;}
+body.is-phone .cX{font-size:23px;}
+body.is-phone .cLabel{font-size:7px;letter-spacing:.2em;}
+body.is-phone .cTrack{margin-top:3px;}
+
+body.is-phone #bountyHud{display:flex;top:66px;left:10px;right:auto;width:126px;gap:4px;}
+body.is-phone .bountyHead{font-size:8px;letter-spacing:.14em;}
+body.is-phone .bountyRow{padding:4px 6px;border-radius:5px;}
+body.is-phone .bName{font-size:7.5px;letter-spacing:.06em;}
+body.is-phone .bNum{font-size:7.5px;}
+body.is-phone .bReward{font-size:7px;}
+
+body.is-phone #affixBar{bottom:6px;max-width:44vw;gap:4px;}
+body.is-phone .affixChip{font-size:7.5px;padding:2px 6px;}
+</style>
 </head>
 <body>
 <!-- ============================ GAME CANVAS ============================ -->
@@ -1400,16 +1442,21 @@ body.is-phone #startScreen .phoneStart{display:flex;}
     <div class="featureRow">
       <div class="feature">
         <h4>Living Dungeons</h4>
-        <p>Every floor is carved by a fresh BSP algorithm — vaults, pillars, lava veins and frost-slicked halls, stitched together with crookit hallways.</p>
+        <p>Eleven room themes, from flooded vaults to ember halls. Champions carry six elite traits — swift, shielded, leeching, volatile, giant, beckoning — and every fifth floor ends in a boss with a three-move arsenal.</p>
       </div>
       <div class="feature">
-        <h4>Loot Without End</h4>
-        <p>Rarity-tiered gear rolls its own names, prefixes and suffixes. Equip six slots, sell the rest to the Quartermaster you meet below.</p>
+        <h4>Elemental Power</h4>
+        <p>Fire burns, frost slows, venom rots and shock chains. Twenty-one talent ranks across nine branches let you bend the build your way, one point every third level.</p>
       </div>
       <div class="feature">
-        <h4>Synthesised Sound</h4>
-        <p>Every swing, scream and chime is an oscillator stack conjured live in your browser. No audio files, no libraries, no mercy.</p>
+        <h4>The Descent</h4>
+        <p>Kill fast to chain a combo up to ×8. Clear bounties, haggle with the Quartermaster, and past floor ten the dungeon starts stacking affixes against you.</p>
       </div>
+    </div>
+
+    <div class="sysChips">
+      <span>Boss phases</span><span>Endless affixes</span><span>Bounties</span>
+      <span>Autosave</span><span>Reactive score</span><span>Continue anytime</span>
     </div>
 
     <div class="phoneStart">
