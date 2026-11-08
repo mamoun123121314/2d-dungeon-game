@@ -892,6 +892,23 @@ body.is-phone #startScreen .phoneStart{display:flex;}
   #bossBar { width: min(360px, 74vw); top: 10px; }
   .bossName { font-size: 11.5px; letter-spacing: .12em; }
 }
+</style>/* ---------------- endless affix chips ---------------- */
+#affixBar { position: absolute; bottom: 96px; left: 50%; transform: translateX(-50%);
+  display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; max-width: min(620px, 62vw);
+  pointer-events: none; z-index: 3; }
+#affixBar.hidden { display: none; }
+.affixChip { display: inline-flex; align-items: center; gap: 5px;
+  font-family: var(--mono, monospace); font-size: 10px; letter-spacing: .12em;
+  text-transform: uppercase; padding: 3px 9px; border-radius: 999px;
+  color: var(--c, #ddd); background: rgba(8,6,12,.72);
+  border: 1px solid color-mix(in srgb, var(--c, #ddd) 42%, transparent);
+  box-shadow: 0 0 12px color-mix(in srgb, var(--c, #ddd) 22%, transparent);
+  text-shadow: 0 1px 2px #000; backdrop-filter: blur(3px); }
+.affixChip i { font-style: normal; font-size: 11px; filter: saturate(1.3); }
+@media (max-width: 760px) {
+  #affixBar { bottom: 150px; max-width: 88vw; }
+  .affixChip { font-size: 8.5px; padding: 2px 6px; }
+}
 </style></style>
 </head>
 <body>
@@ -964,6 +981,7 @@ body.is-phone #startScreen .phoneStart{display:flex;}
     <div class="currencyRow"><span class="curIcon potion">P</span><span id="potionText">0</span><span class="label">POTIONS</span></div>
   </div>
 
+  <div id="affixBar" class="hidden"></div>
   <div id="toastLog"></div>
   <div id="hintBar"></div>
 
@@ -1611,6 +1629,17 @@ const Sound = (() => {
       o.connect(g); g.connect(sfxOut); o.start(t0); o.stop(t0 + 0.52);
       noise(t0 + 0.05, 0.4, 0.028, { type: 'bandpass', f: 1800, q: 4 });
     },
+    boom() {
+      if (!ctx) return; const t0 = t();
+      const o = ctx.createOscillator(); const g = ctx.createGain();
+      o.type = 'sine'; o.frequency.setValueAtTime(150, t0);
+      o.frequency.exponentialRampToValueAtTime(42, t0 + 0.38);
+      g.gain.setValueAtTime(0.0001, t0);
+      g.gain.exponentialRampToValueAtTime(0.24, t0 + 0.01);
+      g.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.5);
+      o.connect(g); g.connect(sfxOut); o.start(t0); o.stop(t0 + 0.52);
+      noise(t0, 0.34, 0.20, { type: 'lowpass', f: 1900, sweep: 220 });
+    },
     bossSlam() {
       if (!ctx) return; const t0 = t();
       /* sub drop + splintering rock */
@@ -1838,6 +1867,57 @@ const Sound = (() => {
       g.gain.exponentialRampToValueAtTime(0.22, t0 + 0.02);
       g.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.26);
       o.connect(g); g.connect(musicGain); o.start(t0); o.stop(t0 + 0.28);
+    }
+    /* ---------------- reactive combat layer ----------------
+       When three or more enemies are aggro and near, the pad gains a pulse:
+       a low taiko thump on the beat, a rising string ostinato and a bowed
+       tension line. Everything fades in over the first bar so the shift is
+       felt rather than heard as a switch. */
+    const intensity = (typeof Game !== 'undefined' && Game.combatIntensity) || 0;
+    if (intensity > 0.01) {
+      const beat = musicStep % 4;
+      /* war drum: two hits per bar at full intensity, one when warming up */
+      if (beat === 0 || (beat === 2 && intensity > 0.55)) {
+        const o = ctx.createOscillator(); const g = ctx.createGain();
+        o.type = 'sine';
+        o.frequency.setValueAtTime(96, t0);
+        o.frequency.exponentialRampToValueAtTime(46, t0 + 0.16);
+        g.gain.setValueAtTime(0.0001, t0);
+        g.gain.exponentialRampToValueAtTime(0.19 * intensity, t0 + 0.006);
+        g.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.20);
+        o.connect(g); g.connect(musicGain); o.start(t0); o.stop(t0 + 0.22);
+        /* skin slap */
+        noise(t0, 0.055, 0.055 * intensity, { type: 'bandpass', f: 1500, q: 1.1 });
+      }
+      /* ostinato: eighth-note staccato on the minor third/fifth */
+      if (intensity > 0.4) {
+        const step = musicStep % 8;
+        const pattern = [0, 3, 7, 3, 0, 10, 7, 3];
+        const semi = pattern[step];
+        const f = root * Math.pow(2, (semi + 12) / 12);
+        const o = ctx.createOscillator(); const g = ctx.createGain();
+        const fl = ctx.createBiquadFilter(); fl.type = 'lowpass';
+        fl.frequency.setValueAtTime(1500 * intensity, t0);
+        o.type = 'sawtooth'; o.frequency.setValueAtTime(f, t0);
+        g.gain.setValueAtTime(0.0001, t0);
+        g.gain.exponentialRampToValueAtTime(0.045 * intensity, t0 + 0.012);
+        g.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.30);
+        o.connect(fl); fl.connect(g); g.connect(musicGain);
+        o.start(t0); o.stop(t0 + 0.32);
+      }
+      /* tension line: a slow minor-second rub at peak intensity */
+      if (intensity > 0.82 && musicStep % 16 === 0) {
+        [root * 2, root * 2 * Math.pow(2, 1 / 12)].forEach(f => {
+          const o = ctx.createOscillator(); const g = ctx.createGain();
+          o.type = 'sawtooth'; o.frequency.setValueAtTime(f, t0);
+          const fl = ctx.createBiquadFilter(); fl.type = 'lowpass'; fl.frequency.value = 900;
+          g.gain.setValueAtTime(0.0001, t0);
+          g.gain.linearRampToValueAtTime(0.035, t0 + 1.6);
+          g.gain.linearRampToValueAtTime(0.0001, t0 + 3.4);
+          o.connect(fl); fl.connect(g); g.connect(musicGain);
+          o.start(t0); o.stop(t0 + 3.5);
+        });
+      }
     }
     musicStep = (musicStep + 1) % 64;
   }
@@ -4429,6 +4509,7 @@ function startRun() {
   Game.shopRerolls = 2;
   Game.shopRerollCost = 20;
   Game.endlessAffixes = [];
+  Game.combatIntensity = 0;
   buildFloor(1, true);
   showBanner('Floor 1', THEMES[0].name, THEMES[0].sub);
   toast('You awaken at the mouth of the dungeon. Descend.', 'good');
@@ -4461,9 +4542,12 @@ function buildFloor(n, first = false) {
   Game.cam.x = p.x - Game.W / 2;
   Game.cam.y = p.y - Game.H / 2;
   clampCamera();
+  /* endless affixes are rolled per floor, before spawning uses them */
+  Game.endlessBundle = rollEndlessAffixes(n);
   spawnProps(d);
   spawnEnemies(d);
   spawnMerchantStock(n);
+  renderAffixHud();
   Sound.setAmbient(d.theme.key === 'lava' ? 0.7 : d.theme.key === 'ice' ? 0.45 : 0.3);
   $('ambientTint').style.background = d.theme.tint;
   $('ambientTint').style.opacity = '1';
@@ -4471,7 +4555,9 @@ function buildFloor(n, first = false) {
   $('floorLabel').textContent = 'FLOOR ' + n;
   if (!first) {
     toast('You enter the ' + d.theme.name + ' — Floor ' + n, 'loot');
-    showBanner('Floor ' + n, d.theme.name, d.theme.sub);
+    const affixLine = affixSummary(Game.endlessBundle);
+    showBanner('Floor ' + n, d.theme.name, affixLine ? affixLine : d.theme.sub);
+    if (affixLine) toast('Affixes: ' + affixLine, 'danger');
   }
   revealAround(p.x, p.y, 6.5);
   updateHud(true);
@@ -4704,12 +4790,34 @@ function findFreeSpot(x, y, radius) {
   return { x, y };
 }
 
+/* Stamp an endless affix bundle onto a freshly built enemy. Called before the
+   monster is pushed into the roster so nothing observes a half-buffed stat. */
+function applyAffixesToEnemy(e, aff) {
+  if (!aff || !aff.list || !aff.list.length) return;
+  if (aff.enemyHp && aff.enemyHp !== 1) {
+    e.maxHp = Math.max(1, Math.round(e.maxHp * aff.enemyHp));
+    e.hp = e.maxHp;
+  }
+  if (aff.enemyArmor && aff.enemyArmor !== 1) e.defense = Math.round(e.defense * aff.enemyArmor);
+  if (aff.enemySpeed && aff.enemySpeed !== 1) e.speed *= aff.enemySpeed;
+  if (aff.enemyCooldown && aff.enemyCooldown !== 1) {
+    e.affixCooldown = aff.enemyCooldown;
+    e.def = Object.assign({}, e.def, {
+      cooldown: e.def.cooldown * aff.enemyCooldown,
+      windup: e.def.windup * Math.max(0.6, aff.enemyCooldown)
+    });
+  }
+  if (aff.enemyLifesteal) e.lifesteal = aff.enemyLifesteal;
+  if (aff.explodeOnDeath) e.explodeOnDeath = true;
+  if (aff.goldMult && aff.goldMult !== 1) e.goldMult = (e.goldMult || 1) * aff.goldMult;
+}
 /* ---------- enemy spawning ---------- */
 function spawnEnemies(d) {
   const pool = d.theme.enemies;
   const rooms = d.rooms.filter(r => r !== d.startRoom);
   /* density scales with depth but never floods the level */
-  const maxEnemies = clamp(Math.round(6 + d.floor * 1.9), 6, 30);
+  const aff = Game.endlessBundle || {};
+  const maxEnemies = clamp(Math.round((6 + d.floor * 1.9) * (aff.enemyMult || 1)), 6, 60);
   const roster = [];
   for (const room of rooms) {
     const isGuardian = room === d.guardianRoom;
@@ -4719,6 +4827,7 @@ function spawnEnemies(d) {
       if (!d.isWalkable(spot.tx, spot.ty)) continue;
       const typeKey = pick(pool);
       const e = new Enemy(typeKey, spot.x, spot.y, d.floor);
+      applyAffixesToEnemy(e, aff);
       e.homeRoom = room;
       roster.push(e);
     }
@@ -4727,11 +4836,28 @@ function spawnEnemies(d) {
   Game.enemies = roster
     .filter(e => dist2(e.x, e.y, Game.player.x, Game.player.y) > 150 * 150)
     .slice(0, maxEnemies);
+  /* endless "Championed"/"Brittle" affixes seed extra elites */
+  const extra = (aff.extraElites || 0);
+  for (let i = 0; i < extra; i++) {
+    const room = pick(rooms.length ? rooms : d.rooms);
+    const spot = d.randomRoomFloor(room, 150, { x: Game.player.x, y: Game.player.y });
+    if (!d.isWalkable(spot.tx, spot.ty)) continue;
+    const typeKey = pick(pool);
+    const e = new Enemy(typeKey, spot.x, spot.y, d.floor, { hpMult: 1.6 });
+    e.isElite = true;
+    e.maxHp = Math.round(e.maxHp * 1.35);
+    e.hp = e.maxHp;
+    e.xpValue = Math.round(e.xpValue * 1.8);
+    e.homeRoom = room;
+    applyAffixesToEnemy(e, aff);
+    Game.enemies.push(e);
+  }
   /* the elite guardian of the vault */
   if (d.vaultDoor && d.floor >= 2) {
     const e = new Enemy('guardian', (d.vaultDoor.x + 0.5) * TILE, (d.vaultDoor.y + 0.5) * TILE, d.floor, { hpMult: 0.75 + d.floor * 0.1 });
     e.homeRoom = d.vaultRoom || d.vault;
     e.guardsVault = true;
+    applyAffixesToEnemy(e, Game.endlessBundle || null);
     /* nudge off the door tile so it can chase rather than stand inside it */
     const spot2 = findFreeSpot(e.x, e.y, e.radius * 0.85);
     e.x = spot2.x; e.y = spot2.y;
@@ -4744,6 +4870,7 @@ function spawnEnemies(d) {
     const boss = new Enemy('boss', spot.x, spot.y, d.floor, { hpMult: 1 + Math.max(0, d.floor - MAX_FLOOR) * 0.55 });
     boss.isBoss = true;
     boss.homeRoom = room;
+    applyAffixesToEnemy(boss, Game.endlessBundle || null);
     Game.enemies.push(boss);
   }
   /* never leave a monster embedded in masonry */
@@ -4755,13 +4882,74 @@ function spawnEnemies(d) {
   }
 }
 
+/* ============================== ENDLESS MODIFIERS ======================== */
+/* Once the Warden falls the descent continues, and every floor below the
+   victory line rolls one or more affixes. Affixes are deliberately legible:
+   each one changes exactly one rule the player can feel, and the HUD shows
+   the full list so nothing is ever a mystery. */
+const AFFIXES = {
+  horde:      { name: 'Horde',        icon: '⚔', colour: '#ff8a4c', desc: '+60% enemies',            apply: f => { f.enemyMult = (f.enemyMult || 1) * 1.6; } },
+  frenzy:     { name: 'Frenzy',       icon: '⚡', colour: '#ffd24d', desc: 'Enemies attack 30% faster', apply: f => { f.enemySpeed = (f.enemySpeed || 1) * 1.12; f.enemyCooldown = (f.enemyCooldown || 1) * 0.7; } },
+  armored:    { name: 'Armoured',     icon: '🛡', colour: '#8fb8ff', desc: 'Enemies +70% armour',      apply: f => { f.enemyArmor = (f.enemyArmor || 1) * 1.7; } },
+  vampiric:   { name: 'Vampiric',     icon: '🩸', colour: '#ff5b6e', desc: 'Enemies heal on hit',      apply: f => { f.enemyLifesteal = (f.enemyLifesteal || 0) + 0.12; } },
+  volatile:   { name: 'Volatile',     icon: '💥', colour: '#ff7a2a', desc: 'Slain foes explode',       apply: f => { f.explodeOnDeath = true; } },
+  wealthy:    { name: 'Wealthy',      icon: '⛁', colour: '#ffd166', desc: '+80% gold from kills',     apply: f => { f.goldMult = (f.goldMult || 1) * 1.8; } },
+  fertile:    { name: 'Fertile',      icon: '✦', colour: '#8fe0a8', desc: '+50% loot drops',          apply: f => { f.lootMult = (f.lootMult || 1) * 1.5; } },
+  swift:      { name: 'Swift',        icon: '➤', colour: '#7fd4ff', desc: 'Enemies move 25% faster',  apply: f => { f.enemySpeed = (f.enemySpeed || 1) * 1.25; } },
+  dark:       { name: 'Guttering',    icon: '◐', colour: '#b48cff', desc: 'Your torch burns dimmer',   apply: f => { f.lightMult = (f.lightMult || 1) * 0.76; } },
+  brittle:    { name: 'Brittle',      icon: '🩶', colour: '#c0c8d8', desc: 'Enemies −25% health, +1 elite', apply: f => { f.enemyHp = (f.enemyHp || 1) * 0.75; f.extraElites = (f.extraElites || 0) + 1; } },
+  elite:      { name: 'Championed',   icon: '★', colour: '#ffb347', desc: '+2 elite monsters',        apply: f => { f.extraElites = (f.extraElites || 0) + 2; } },
+  thrifty:    { name: 'Thrifty',      icon: '◈', colour: '#8fb8ff', desc: 'Merchant stock costs less', apply: f => { f.shopDiscount = (f.shopDiscount || 1) * 0.75; } }
+};
+const AFFIX_KEYS = Object.keys(AFFIXES);
+/* Build the modifier bundle for a floor. Floors 11-12 get one affix, and every
+   third floor past that adds another, capped so runs stay legible. */
+function rollEndlessAffixes(floorN) {
+  const bundle = { list: [], floor: floorN, enemyMult: 1, enemySpeed: 1, enemyCooldown: 1,
+                   enemyArmor: 1, enemyHp: 1, enemyLifesteal: 0, goldMult: 1, lootMult: 1,
+                   lightMult: 1, shopDiscount: 1, explodeOnDeath: false, extraElites: 0 };
+  if (floorN <= MAX_FLOOR) return bundle;
+  const depth = floorN - MAX_FLOOR;
+  const count = clamp(1 + Math.floor((depth - 1) / 3), 1, 4);
+  const pool = AFFIX_KEYS.slice();
+  for (let i = 0; i < count && pool.length; i++) {
+    const k = pool.splice(Math.floor(Math.random() * pool.length), 1)[0];
+    bundle.list.push(k);
+    AFFIXES[k].apply(bundle);
+  }
+  return bundle;
+}
+/* Convert the bundle into a readable banner + toast line. */
+function affixSummary(bundle) {
+  if (!bundle || !bundle.list.length) return '';
+  return bundle.list.map(k => AFFIXES[k].name).join(' · ');
+}
+/* Multiplier for the hero light radius, floored so dark floors stay playable. */
+function heroLightMult() {
+  const b = Game.endlessBundle;
+  const m = (b && b.lightMult) || 1;
+  return clamp(m, 0.78, 1);
+}
+function renderAffixHud() {
+  const el = $('affixBar');
+  if (!el) return;
+  const b = Game.endlessBundle;
+  if (!b || !b.list || !b.list.length) { el.classList.add('hidden'); el.innerHTML = ''; return; }
+  el.classList.remove('hidden');
+  el.innerHTML = b.list.map(k => {
+    const a = AFFIXES[k];
+    return '<span class="affixChip" style="--c:' + a.colour + '" title="' + escapeHtml(a.desc) + '">'
+         + '<i>' + a.icon + '</i>' + escapeHtml(a.name) + '</span>';
+  }).join('');
+}
+
 /* ---------- merchant stock ---------- */
 function spawnMerchantStock(floorN) {
   Game.shopStock = [];
   const n = 4 + Math.min(4, Math.floor(floorN / 3));
   for (let i = 0; i < n; i++) {
     const it = rollItem(floorN, { luck: 3 });
-    it.basePrice = Math.round(it.value * rand(1.5, 2.1));
+    it.basePrice = Math.round(it.value * rand(1.5, 2.1) * ((Game.endlessBundle && Game.endlessBundle.shopDiscount) || 1));
     it.price = merchantPrice(it.basePrice, it);
     Game.shopStock.push(it);
   }
@@ -5030,9 +5218,10 @@ const Combat = {
     const xp = e.xpValue;
     const leveled = p.gainXp(xp);
     FX.text(e.x, e.y - e.radius - 20, '+' + xp + ' XP', { color: '#ffd76e', size: 12, life: 1.1 });
-    const gold = Math.round(randInt(e.goldRange[0], e.goldRange[1]) * (1 + p.goldFind / 100));
+    const gold = Math.round(randInt(e.goldRange[0], e.goldRange[1]) * (1 + p.goldFind / 100) * (e.goldMult || 1));
     /* drops */
-    const dropChance = e.isBoss ? 1 : e.isElite ? 0.9 : 0.22;
+    const lootMult = (Game.endlessBundle && Game.endlessBundle.lootMult) || 1;
+    const dropChance = Math.min(1, (e.isBoss ? 1 : e.isElite ? 0.9 : 0.22) * lootMult);
     const itemCount = e.isBoss ? 3 : (Math.random() < dropChance ? 1 : 0);
     for (let di = 0; di < itemCount; di++) {
       const forced = e.isBoss && di === 0 ? RARITIES[3] : e.isBoss ? RARITIES[2] : null;
@@ -5045,6 +5234,25 @@ const Combat = {
     if (chance(0.05) && Game.dungeon.needsKey) Game.drops.push({ kind: 'key', x: e.x, y: e.y, vx: rand(40, -40), vy: rand(40, -40), life: 40, bob: rand(TAU) });
     FX.blood(e.x, e.y, rand(TAU), 24, '#7d1c26');
     FX.shatter(e.x, e.y, 10, e.type === 'imp' ? ['#ff8a3c', '#ffd166', '#c4451f'] : ['#cfd6c4', '#9aa38c', '#e6e9dd']);
+    /* volatile affix: the corpse detonates */
+    if (e.explodeOnDeath) {
+      const radius = 92;
+      for (const z of Game.enemies) {
+        if (z === e || !z.alive) continue;
+        if (dist(z.x, z.y, e.x, e.y) < radius) {
+          z.hp -= Math.round(e.maxHp * 0.16 + 6);
+          if (z.hp <= 0 && z.alive) { z.die(); Combat.onEnemyDeath(z); }
+        }
+      }
+      if (dist(p.x, p.y, e.x, e.y) < radius && p.dodging <= 0 && p.invuln <= 0) {
+        Combat.damagePlayer(Math.round(8 + e.maxHp * 0.06), e);
+      }
+      FX.ring(e.x, e.y, radius, 'rgba(255,140,60,0.7)', 0.5, 6);
+      FX.ember(e.x, e.y, 26, '#ff9a3c');
+      FX.shatter(e.x, e.y, 14, ['#ffcf8a', '#ff7a2a', '#8a3a12']);
+      Game.cam.shake = Math.max(Game.cam.shake, 8); Game.cam.shakeT = 0.3;
+      Sound.play('boom', 0.8);
+    }
     if (e.isElite || e.isBoss) {
       FX.lootBurst(e.x, e.y, e.isBoss ? '#ff4d6d' : '#ffa93c', 40);
       Game.cam.shake = e.isBoss ? 18 : 8; Game.cam.shakeT = 0.45;
@@ -5479,7 +5687,11 @@ function updateEnemy(e, dt) {
       const reach = t.attackRange + 26;
       const dAngle = Math.abs(((angleTo(e.x, e.y, p.x, p.y) - strikeAngle + Math.PI * 3) % TAU) - Math.PI);
       if (dist(p.x, p.y, e.x, e.y) < reach && dAngle < 1.15) {
-        Combat.damagePlayer(t.damage + Game.floor * 1.0, e);
+        const dealt = Combat.damagePlayer(t.damage + Game.floor * 1.0, e);
+        if (e.lifesteal && dealt > 0 && e.alive) {
+          e.hp = Math.min(e.maxHp, e.hp + dealt * e.lifesteal);
+          FX.text(e.x, e.y - e.radius - 16, '+' + Math.round(dealt * e.lifesteal), { color: '#ff7a8c', size: 10, life: 0.6 });
+        }
       }
       FX.spark(e.x + Math.cos(strikeAngle) * 26, e.y + Math.sin(strikeAngle) * 26, { count: 5, angle: strikeAngle, speed: 130, color: '#ffcd8a' });
       if (e.type !== 'crawler') Sound.play('swing', 0.4);
@@ -7667,6 +7879,8 @@ const Lights = {
   list: [],
 
   /** Collect every active light for this frame. */
+  /* the Guttering endless affix dims the hero torch — clamped so the game
+     never becomes unplayably dark (0.78 radius is the tested floor) */
   gather(cam) {
     const d = Game.dungeon, p = Game.player;
     const out = this.list;
@@ -7680,13 +7894,13 @@ const Lights = {
       x: p.x, y: p.y,
       /* generous primary pool: the player must be able to read the room they
          are fighting in, and the vignette adds the claustrophobia budget */
-      r: Math.min(Game.W, Game.H) * 0.78 * flick,
+      r: Math.min(Game.W, Game.H) * 0.78 * flick * heroLightMult(),
       intensity: 1, colour: d.theme.torchColor, hero: true,
       falloff: 1.7
     });
     /* a tight bright core so the player is always readable */
     out.push({
-      x: p.x, y: p.y, r: 150 * flick, intensity: 0.62,
+      x: p.x, y: p.y, r: 150 * flick * heroLightMult(), intensity: 0.62,
       colour: '#fff2d0', hero: true, falloff: 2.2
     });
 
@@ -9160,7 +9374,10 @@ function setupInput() {
       Game.paused = false;
       Game.player.hp = Game.player.maxHp;
       Game.player.mana = Game.player.maxMana;
+      const sum = affixSummary(Game.endlessBundle);
       toast('The endless depths unfold. How far can you go?', 'gold');
+      if (sum) toast('Floor ' + Game.floor + ' affixes: ' + sum, 'danger');
+      showBanner('Endless Depths', 'Floor ' + Game.floor, sum || 'The dungeon goes on');
       Sound.startMusic();
       setTimeout(() => $('transition').classList.remove('black'), 80);
     }, 480);
@@ -9617,6 +9834,21 @@ function update(dt) {
     updateCamera(dt);
     /* ambient combat flag */
     Game.inCombat = Game.enemies.some(e => e.alive && e.aggro && dist2(e.x, e.y, Game.player.x, Game.player.y) < 400 * 400);
+    /* reactive soundtrack intensity: rises toward 1 as 3+ enemies press in,
+       falls back slowly out of combat so the pad eases rather than snaps */
+    const near = Game.enemies.filter(e => e.alive && e.aggro &&
+      dist2(e.x, e.y, Game.player.x, Game.player.y) < 520 * 520);
+    let heat = 0;
+    if (near.length >= 3) {
+      heat = clamp(0.45 + (near.length - 3) * 0.16, 0.45, 1);
+      /* a boss on screen keeps the layer pinned even between adds */
+      if (near.some(e => e.isBoss)) heat = 1;
+    } else if (near.length === 2) heat = 0.28;
+    else if (near.length === 1) heat = 0.12;
+    const curHeat = Game.combatIntensity || 0;
+    const heatRate = heat > curHeat ? 1.6 : 0.42;  /* engage fast, relax slowly */
+    Game.combatIntensity = clamp(curHeat + (heat - curHeat) * Math.min(1, heatRate * dt), 0, 1);
+    if (Game.combatIntensity < 0.005) Game.combatIntensity = 0;
     /* near-stairs flag for descend() */
     const d = Game.dungeon;
     Game.nearStairs = dist(Game.player.x, Game.player.y, (d.stairs.x + 0.5) * TILE, (d.stairs.y + 0.5) * TILE) < 52;
