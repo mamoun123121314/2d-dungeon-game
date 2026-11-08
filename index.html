@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <meta name="theme-color" content="#09070d">
 <meta name="description" content="Dungeon Rogue — a complete procedural 2D action-RPG in a single HTML file. No images, no libraries: every tile, sprite and sound is generated in the browser.">
 <meta property="og:type" content="website">
@@ -661,6 +661,149 @@ canvas{display:block;}
   .shopList{max-height:30vh;}
   .startControls{flex-direction:column;align-items:center;}
 }
+
+/* ============================================================
+   PHONE MODE — virtual stick, touch actions, compact HUD.
+   Driven entirely off body.is-phone, set by Phone.detect() at boot,
+   so a desktop window can never grow thumbsticks by accident.
+   ============================================================ */
+#touchLayer{position:fixed;inset:0;z-index:60;display:none;pointer-events:none;
+  touch-action:none;-webkit-user-select:none;user-select:none;}
+body.is-phone #touchLayer{display:block;}
+
+#stickZone{position:absolute;left:0;bottom:0;width:46%;height:62%;pointer-events:auto;touch-action:none;}
+#stickBase,#stickKnob{position:absolute;border-radius:50%;pointer-events:none;
+  transform:translate(-50%,-50%);opacity:0;transition:opacity .16s ease;}
+#stickBase{width:132px;height:132px;
+  background:radial-gradient(circle at 50% 45%,rgba(58,48,76,.5),rgba(16,12,24,.62));
+  border:1.5px solid rgba(217,181,107,.36);
+  box-shadow:0 0 24px rgba(0,0,0,.55),inset 0 1px 0 rgba(255,255,255,.08);}
+#stickKnob{width:60px;height:60px;
+  background:radial-gradient(circle at 42% 36%,#f3e0b8,#c9a86a 62%,#8a6f3d);
+  border:1px solid rgba(255,243,214,.7);
+  box-shadow:0 3px 14px rgba(0,0,0,.65),0 0 18px rgba(232,196,122,.28);}
+body.stick-active #stickBase,body.stick-active #stickKnob{opacity:1;}
+
+#touchActions{position:absolute;inset:0;pointer-events:none;touch-action:none;}
+.tBtn{position:absolute;width:58px;height:58px;border-radius:50%;
+  pointer-events:auto;
+  background:linear-gradient(160deg,rgba(45,37,58,.94),rgba(14,11,20,.96));
+  border:1.5px solid rgba(217,181,107,.4);
+  box-shadow:0 5px 18px rgba(0,0,0,.66),inset 0 1px 0 rgba(255,255,255,.1);
+  color:#e8dcc4;font-family:var(--font-ui);font-size:10px;letter-spacing:.06em;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:1px;padding:0;touch-action:none;-webkit-tap-highlight-color:transparent;
+  transition:transform .09s ease,box-shadow .12s,border-color .12s;}
+.tBtn canvas{width:30px;height:30px;opacity:.95;}
+.tBtn .tLbl{font-size:8px;opacity:.72;text-transform:uppercase;letter-spacing:.08em;}
+.tBtn:active,.tBtn.press{transform:scale(.9);border-color:#f3d99a;
+  box-shadow:0 0 22px rgba(232,196,122,.5),inset 0 0 14px rgba(232,196,122,.22);}
+.tBtn.big{width:88px;height:88px;}
+.tBtn.big canvas{width:44px;height:44px;}
+/* right column: primary thumb */
+#tAttack{right:20px;bottom:14px;}
+#tMagic{right:20px;bottom:116px;}
+#tPack{right:24px;bottom:188px;width:50px;height:50px;}
+#tPack canvas{width:26px;height:26px;}
+/* left column: staggered into the gaps */
+#tSlam{right:118px;bottom:52px;}
+#tPotion{right:118px;bottom:124px;}
+.tBtn .cdSweep{position:absolute;inset:0;border-radius:50%;pointer-events:none;
+  background:conic-gradient(rgba(8,6,12,.72) var(--cd,0deg),transparent 0);}
+
+#phoneRail{position:fixed;top:0;left:0;right:0;z-index:58;display:none;
+  padding:8px 10px 6px;pointer-events:none;
+  background:linear-gradient(180deg,rgba(7,6,11,.92),rgba(7,6,11,0));}
+body.is-phone #phoneRail{display:block;}
+#phoneRail .pRow{display:flex;align-items:center;gap:7px;}
+#phoneRail .pBar{position:relative;flex:1;height:11px;border-radius:3px;overflow:hidden;
+  background:rgba(0,0,0,.62);border:1px solid rgba(217,181,107,.2);}
+#phoneRail .pBar i{position:absolute;inset:0 auto 0 0;display:block;border-radius:2px;
+  transition:width .18s ease;}
+#phoneRail .pBar.hp i{background:linear-gradient(90deg,#8f1f1f,#e0554d 60%,#ff8a72);}
+#phoneRail .pBar.mp i{background:linear-gradient(90deg,#1d3f7a,#3f7dd6 60%,#79b6ff);}
+#phoneRail .pBar em{position:absolute;inset:0;font-style:normal;font-family:var(--font-mono);
+  font-size:8px;line-height:11px;text-align:center;color:#f6ead2;text-shadow:0 1px 2px #000;letter-spacing:.04em;}
+#phoneRail .pLvl{font-family:var(--font-mono);font-size:9px;color:var(--gold-bright);
+  min-width:30px;text-align:center;text-shadow:0 1px 3px #000;}
+#phoneRail .pFloor{font-family:var(--font-mono);font-size:9px;color:#c9bda6;
+  text-shadow:0 1px 3px #000;white-space:nowrap;}
+#phoneRail .pCur{display:flex;gap:8px;font-family:var(--font-mono);font-size:9px;
+  color:#d8b978;text-shadow:0 1px 3px #000;margin-top:3px;justify-content:flex-end;}
+#phoneRail .pCur b{color:#f3e0b8;font-weight:600;}
+
+#rotateNudge{position:fixed;inset:0;z-index:200;display:none;
+  background:rgba(6,5,10,.97);color:#e8dcc4;font-family:var(--font-ui);
+  flex-direction:column;align-items:center;justify-content:center;gap:16px;text-align:center;padding:32px;}
+#rotateNudge.show{display:flex;}
+#rotateNudge .rotIcon{width:76px;height:76px;border:2px solid var(--gold);
+  border-radius:14px;position:relative;animation:rot 2.4s ease-in-out infinite;}
+@keyframes rot{0%,40%{transform:rotate(0)}60%,100%{transform:rotate(90deg)}}
+#rotateNudge h3{font-size:17px;letter-spacing:.1em;text-transform:uppercase;color:var(--gold-bright);margin:0;}
+#rotateNudge p{font-size:13px;color:#a99d88;margin:0;max-width:280px;line-height:1.5;}
+
+body.is-phone #minimapPanel,
+body.is-phone #playerHud,
+body.is-phone #hotbar,
+body.is-phone #currencyBar,
+body.is-phone #toastLog{display:none;}
+body.is-phone #hintBar{bottom:auto;top:52px;left:50%;transform:translateX(-50%);
+  width:auto;max-width:calc(100% - 24px);font-size:11px;padding:5px 12px;}
+body.is-phone #banner{bottom:auto;top:38%;}
+body.is-phone .bannerTitle{font-size:clamp(22px,8vw,38px);}
+body.is-phone .bannerSub{font-size:11px;}
+body.is-phone #inventoryOverlay .invPanel,
+body.is-phone #shopOverlay .shopPanel{width:100%;max-height:100%;height:100%;
+  border-radius:0;border-left:none;border-right:none;}
+body.is-phone #pauseOverlay .pausePanel,
+body.is-phone #deathOverlay .deathPanel,
+body.is-phone #victoryOverlay .victoryPanel{width:calc(100% - 16px);max-height:calc(100% - 16px);overflow-y:auto;}
+body.is-phone #startScreen .startWrap{width:calc(100% - 20px);padding:20px 16px;}
+body.is-phone .invBody{flex-direction:column;overflow-y:auto;}
+body.is-phone .invLeft{width:100%;border-right:none;border-bottom:1px solid rgba(217,181,107,.14);}
+body.is-phone .dollWrap{height:170px;}
+body.is-phone .invGrid{grid-template-columns:repeat(auto-fill,minmax(48px,1fr));gap:7px;padding:12px;}
+body.is-phone .shopBody{grid-template-columns:1fr;overflow-y:auto;}
+body.is-phone .shopList{max-height:26vh;}
+body.is-phone .tooltip{max-width:min(300px,calc(100vw - 24px));}
+body.is-phone .startTitle{font-size:clamp(30px,11vw,54px);}
+body.is-phone .startControls{display:none;}
+body.is-phone .startBody{font-size:12px;}
+
+/* phone start-screen tips — base rule first so the phone rule wins */
+#startScreen .phoneStart{display:none;flex-direction:column;gap:9px;
+  align-items:center;margin-top:6px;}
+#startScreen .phoneStart .pTip{display:flex;align-items:center;gap:8px;
+  font-size:11.5px;color:#a99d88;font-family:var(--font-ui);}
+#startScreen .phoneStart .pTip b{color:var(--gold-bright);font-weight:600;}
+body.is-phone #startScreen .phoneStart{display:flex;}
+
+/* tappable interaction prompt on touch */
+#hintBar.tappable{pointer-events:auto;cursor:pointer;
+  background:linear-gradient(160deg,rgba(45,37,58,.95),rgba(14,11,20,.97));
+  border:1.5px solid rgba(217,181,107,.45);border-radius:8px;
+  padding:9px 20px;font-size:12px;color:#e8dcc4;
+  box-shadow:0 5px 18px rgba(0,0,0,.6),inset 0 1px 0 rgba(255,255,255,.09);
+  transition:transform .1s ease,border-color .12s;-webkit-tap-highlight-color:transparent;}
+#hintBar.tappable b{color:var(--gold-bright);letter-spacing:.12em;}
+#hintBar.tappable:active{transform:scale(.95);border-color:#f3d99a;}
+
+@media (max-height:430px){
+  body.is-phone .tBtn{width:52px;height:52px;}
+  body.is-phone .tBtn.big{width:78px;height:78px;}
+  body.is-phone .tBtn canvas{width:26px;height:26px;}
+  body.is-phone .tBtn.big canvas{width:38px;height:38px;}
+  body.is-phone #tAttack{right:16px;bottom:12px;}
+  body.is-phone #tMagic{right:16px;bottom:104px;}
+  body.is-phone #tSlam{right:104px;bottom:44px;}
+  body.is-phone #tPotion{right:104px;bottom:110px;}
+  body.is-phone #tPack{right:20px;bottom:170px;width:46px;height:46px;}
+  body.is-phone #tPack canvas{width:24px;height:24px;}
+  body.is-phone #stickBase{width:104px;height:104px;}
+  body.is-phone #stickKnob{width:48px;height:48px;}
+  body.is-phone #phoneRail{padding:5px 8px 4px;}
+  body.is-phone #hintBar{top:40px;font-size:10px;}
+}
 </style>
 </head>
 <body>
@@ -774,6 +917,56 @@ canvas{display:block;}
     <div class="levelWord">LEVEL UP</div>
     <div class="levelSub" id="levelupSub">LEVEL 2</div>
   </div>
+</div>
+
+<!-- ======================= PHONE MODE (touch) ======================= -->
+<div id="phoneRail" aria-hidden="true">
+  <div class="pRow">
+    <span class="pLvl" id="pLvl">LV 1</span>
+    <div class="pBar hp"><i id="pHpFill" style="width:100%"></i><em id="pHpText">100/100</em></div>
+    <span class="pFloor" id="pFloor">FLOOR 1</span>
+  </div>
+  <div class="pRow" style="margin-top:4px;">
+    <span class="pLvl" style="visibility:hidden">LV</span>
+    <div class="pBar mp"><i id="pMpFill" style="width:100%"></i><em id="pMpText">40/40</em></div>
+  </div>
+  <div class="pCur">
+    <span>G <b id="pGold">0</b></span>
+    <span>K <b id="pKeys">0</b></span>
+    <span>P <b id="pPotions">0</b></span>
+  </div>
+</div>
+
+<div id="touchLayer">
+  <div id="stickZone"><div id="stickBase"></div><div id="stickKnob"></div></div>
+  <div id="touchActions">
+    <button class="tBtn big" id="tAttack" data-action="attack" aria-label="Attack">
+      <canvas width="92" height="92"></canvas><span class="tLbl">Slash</span>
+      <span class="cdSweep"></span>
+    </button>
+    <button class="tBtn" id="tMagic" data-action="magic" aria-label="Magic missile">
+      <canvas width="92" height="92"></canvas><span class="tLbl">Missile</span>
+      <span class="cdSweep"></span>
+    </button>
+    <button class="tBtn" id="tSlam" data-action="slam" aria-label="Ground slam">
+      <canvas width="92" height="92"></canvas><span class="tLbl">Slam</span>
+      <span class="cdSweep"></span>
+    </button>
+    <button class="tBtn" id="tPotion" data-action="potion" aria-label="Drink potion">
+      <canvas width="92" height="92"></canvas><span class="tLbl">Potion</span>
+      <span class="cdSweep"></span>
+    </button>
+    <button class="tBtn" id="tPack" data-action="inventory" aria-label="Inventory">
+      <canvas width="92" height="92"></canvas><span class="tLbl">Pack</span>
+      <span class="cdSweep"></span>
+    </button>
+  </div>
+</div>
+
+<div id="rotateNudge">
+  <div class="rotIcon"></div>
+  <h3>Turn your phone</h3>
+  <p>Dungeon Rogue plays in landscape — rotate sideways, then tap to continue.</p>
 </div>
 
 <button class="soundBtn interactive" id="soundBtn" title="Toggle audio (M)">♪</button>
@@ -949,6 +1142,11 @@ canvas{display:block;}
       </div>
     </div>
 
+    <div class="phoneStart">
+      <div class="pTip"><b>Left thumb</b> — drag to move</div>
+      <div class="pTip"><b>Right thumb</b> — tap action buttons</div>
+      <div class="pTip"><b>Pack</b> — equip your loot</div>
+    </div>
     <div class="startControls">
       <div class="startControlGroup">
         <b>WASD / Arrows</b> — move<br>
@@ -1043,14 +1241,49 @@ function rgba(hex, a) {
   const n = parseInt(h.length === 3 ? h.split('').map(c => c + c).join('') : h, 16);
   return `rgba(${(n >> 16) & 255},${(n >> 8) & 255},${n & 255},${a})`;
 }
-function shade(hex, amt) {
-  /* amt -1..1 : darken/lighten */
-  const h = hex.replace('#', '');
-  const n = parseInt(h, 16);
-  let r = (n >> 16) & 255, g = (n >> 8) & 255, b = n & 255;
+function shade(colour, amt) {
+  /* Lighten (amt > 0) or darken (amt < 0) a colour. Accepts #rgb, #rrggbb,
+     rgb()/rgba() and hsl()/hsla() so callers can pass either a palette hex or
+     the output of a previous shade() call. */
+  if (typeof colour !== 'string' || !colour) return '#000000';
+  let r, g, b;
+  const str = colour.trim();
+  if (str[0] === '#') {
+    let h = str.slice(1);
+    if (h.length === 3) h = h[0] + h[0] + h[1] + h[1] + h[2] + h[2];
+    if (h.length === 8) h = h.slice(0, 6);
+    const n = parseInt(h, 16);
+    if (!isFinite(n)) return '#000000';
+    r = (n >> 16) & 255; g = (n >> 8) & 255; b = n & 255;
+  } else {
+    const m = str.match(/-?[\d.]+/g);
+    if (!m || m.length < 3) return '#000000';
+    if (str.startsWith('hsl')) {
+      /* rough hsl -> rgb */
+      const hh = parseFloat(m[0]) / 360, ss = parseFloat(m[1]) / 100, ll = parseFloat(m[2]) / 100;
+      const hue2rgb = (p, q, t) => {
+        if (t < 0) t += 1;
+        if (t > 1) t -= 1;
+        if (t < 1 / 6) return p + (q - p) * 6 * t;
+        if (t < 1 / 2) return q;
+        if (t < 2 / 3) return p + (q - p) * (2 / 3 - t) * 6;
+        return p;
+      };
+      let rr, gg, bb;
+      if (ss === 0) { rr = gg = bb = ll; }
+      else {
+        const q = ll < 0.5 ? ll * (1 + ss) : ll + ss - ll * ss;
+        const p2 = 2 * ll - q;
+        rr = hue2rgb(p2, q, hh + 1 / 3); gg = hue2rgb(p2, q, hh); bb = hue2rgb(p2, q, hh - 1 / 3);
+      }
+      r = rr * 255; g = gg * 255; b = bb * 255;
+    } else {
+      r = parseFloat(m[0]); g = parseFloat(m[1]); b = parseFloat(m[2]);
+    }
+  }
   if (amt >= 0) { r += (255 - r) * amt; g += (255 - g) * amt; b += (255 - b) * amt; }
   else { r *= 1 + amt; g *= 1 + amt; b *= 1 + amt; }
-  return `rgb(${r | 0},${g | 0},${b | 0})`;
+  return `rgb(${clamp(r, 0, 255) | 0},${clamp(g, 0, 255) | 0},${clamp(b, 0, 255) | 0})`;
 }
 function hsl(h, s, l, a = 1) { return `hsla(${h},${s}%,${l}%,${a})`; }
 function pointInRect(px, py, r) { return px >= r.x && px <= r.x + r.w && py >= r.y && py <= r.y + r.h; }
@@ -2096,7 +2329,7 @@ const THEMES = [
     sub: 'Cold flagstones and old iron',
     fog: 'rgba(6,8,16,0.94)', vignette: 'rgba(3,4,10,0.85)', tint: 'rgba(40,55,90,0.10)',
     wall: ['#3b4250', '#2b303c', '#4c5568'], wallDark: '#1b1f28', wallEdge: '#5d6779',
-    floor: ['#22262f', '#272c37', '#1d212a'], floorLine: 'rgba(0,0,0,0.28)',
+    floor: ['#22262f', '#272c37', '#1d212a'], floorLine: 'rgba(0,0,0,0.34)', floorDark: '#15181e',
     accent: '#6f8fbf', lava: '#d9622b', glow: 'rgba(110,150,210,0.10)',
     torchColor: '#ffb867', ambient: '#0a0e18',
     enemies: ['crawler', 'skeleton', 'orc', 'necro'], decor: 'moss'
@@ -2106,7 +2339,7 @@ const THEMES = [
     sub: 'Ash chokes the air',
     fog: 'rgba(14,5,3,0.94)', vignette: 'rgba(22,4,2,0.85)', tint: 'rgba(150,45,10,0.13)',
     wall: ['#4a2e26', '#33201b', '#5f3b2c'], wallDark: '#22120e', wallEdge: '#7d4a31',
-    floor: ['#2c1c17', '#33211b', '#25160f'], floorLine: 'rgba(0,0,0,0.32)',
+    floor: ['#2c1c17', '#33211b', '#25160f'], floorLine: 'rgba(0,0,0,0.38)', floorDark: '#170d0a',
     accent: '#ff7a34', lava: '#ff5a1e', glow: 'rgba(255,110,40,0.16)',
     torchColor: '#ff8a3c', ambient: '#180805',
     enemies: ['crawler', 'orc', 'imp', 'skeleton', 'necro'], decor: 'ash'
@@ -2116,7 +2349,7 @@ const THEMES = [
     sub: 'The frost bites to the bone',
     fog: 'rgba(5,12,20,0.94)', vignette: 'rgba(3,10,18,0.86)', tint: 'rgba(80,170,220,0.12)',
     wall: ['#3e5568', '#2b3d4d', '#587694'], wallDark: '#1a2833', wallEdge: '#7ea3c2',
-    floor: ['#22323d', '#283a47', '#1c2a34'], floorLine: 'rgba(180,225,255,0.09)',
+    floor: ['#22323d', '#283a47', '#1c2a34'], floorLine: 'rgba(180,225,255,0.11)', floorDark: '#131d26',
     accent: '#8fd8ff', lava: '#4aa6e0', glow: 'rgba(120,200,255,0.14)',
     torchColor: '#8fd0ff', ambient: '#050d16',
     enemies: ['ice', 'skeleton', 'crawler', 'necro', 'orc'], decor: 'ice'
@@ -2489,7 +2722,7 @@ const TileArt = (() => {
   function bake(theme) {
     if (cache[theme.key]) return cache[theme.key];
     const variants = 4;
-    const set = { floor: [], wall: [], lava: [], water: [], ice: [], rubble: [], door: [], stairs: [], pit: [], wallTop: [] };
+    const set = { floor: [], wall: [], lava: [], water: [], ice: [], rubble: [], door: [], stairs: [], pit: [], wallTop: [], wallFace: [] };
     const S = TILE;
     const rngBase = mulberry32(theme.key.length * 9767 + 17);
     for (let v = 0; v < variants; v++) {
@@ -2498,24 +2731,97 @@ const TileArt = (() => {
       {
         const c = Sprite.mk(S, S); const g = c.getContext('2d');
         const rnd = mulberry32(seed);
-        g.fillStyle = theme.floor[v % theme.floor.length];
+        /* irregular flagstones: each quadrant gets its own size and offset so
+           the floor never reads as a repeating 2x2 checker */
+        g.fillStyle = theme.floorDark || shade(theme.floor[0], -0.5);
         g.fillRect(0, 0, S, S);
-        /* stone slabs: 2x2 subtle blocks */
-        for (let by = 0; by < 2; by++) for (let bx = 0; bx < 2; bx++) {
-          const ox = bx * S / 2, oy = by * S / 2;
-          g.fillStyle = `rgba(255,255,255,${0.012 + rnd() * 0.02})`;
-          g.fillRect(ox + 1, oy + 1, S / 2 - 2, S / 2 - 2);
-          g.strokeStyle = theme.floorLine; g.lineWidth = 1;
-          g.strokeRect(ox + 0.5, oy + 0.5, S / 2, S / 2);
-          g.fillStyle = `rgba(0,0,0,${0.05 + rnd() * 0.08})`;
-          g.fillRect(ox + 1, oy + S / 2 - 3, S / 2 - 2, 2);
+        /* overall lift: the floor is what the torch actually illuminates */
+        g.fillStyle = shade(theme.floor[0], 0.16);
+        g.fillRect(0, 0, S, S);
+        const slabs = [
+          { x: 0.5, y: 0.5, w: S * 0.465, h: S * 0.44 },
+          { x: S * 0.53, y: 0.5, w: S * 0.445, h: S * 0.51 },
+          { x: 0.5, y: S * 0.50, w: S * 0.40, h: S * 0.475 },
+          { x: S * 0.44, y: S * 0.56, w: S * 0.545, h: S * 0.42 }
+        ];
+        for (let si = 0; si < slabs.length; si++) {
+          const sl = slabs[si];
+          const baseCol = shade(theme.floor[(si + v) % theme.floor.length], 0.20);
+          g.fillStyle = baseCol;
+          g.fillRect(sl.x, sl.y, sl.w, sl.h);
+          /* mottling inside the slab */
+          for (let m = 0; m < 5; m++) {
+            g.fillStyle = rnd() > 0.5
+              ? `rgba(255,255,255,${0.008 + rnd() * 0.018})`
+              : `rgba(0,0,0,${0.012 + rnd() * 0.03})`;
+            const mw = sl.w * (0.2 + rnd() * 0.5), mh = sl.h * (0.2 + rnd() * 0.5);
+            g.fillRect(sl.x + rnd() * (sl.w - mw), sl.y + rnd() * (sl.h - mh), mw, mh);
+          }
+          /* bevelled edge: light top-left, dark bottom-right */
+          g.strokeStyle = 'rgba(255,252,240,0.13)';
+          g.lineWidth = 1;
+          g.beginPath();
+          g.moveTo(sl.x + 0.5, sl.y + sl.h - 1.5);
+          g.lineTo(sl.x + 0.5, sl.y + 0.5);
+          g.lineTo(sl.x + sl.w - 1.5, sl.y + 0.5);
+          g.stroke();
+          g.strokeStyle = 'rgba(0,0,0,0.30)';
+          g.beginPath();
+          g.moveTo(sl.x + sl.w - 1.5, sl.y + 0.5);
+          g.lineTo(sl.x + sl.w - 1.5, sl.y + sl.h - 1.5);
+          g.lineTo(sl.x + 0.5, sl.y + sl.h - 1.5);
+          g.stroke();
         }
-        /* speckle grain */
-        for (let i = 0; i < 46; i++) {
+        /* mortar joints between the slabs */
+        g.strokeStyle = theme.floorLine;
+        g.lineWidth = 1.4;
+        g.beginPath();
+        g.moveTo(0, 0.5); g.lineTo(S, 0.5);
+        g.moveTo(S * 0.505, 0); g.lineTo(S * 0.505, S * 0.55);
+        g.moveTo(0, S * 0.47); g.lineTo(S * 0.44, S * 0.47);
+        g.moveTo(0.5, 0); g.lineTo(0.5, S);
+        g.stroke();
+        /* hairline cracks across a couple of slabs */
+        const crackCount = rnd() > 0.45 ? 1 : 2;
+        for (let ci = 0; ci < crackCount; ci++) {
+          g.strokeStyle = `rgba(0,0,0,${0.20 + rnd() * 0.16})`;
+          g.lineWidth = 0.8;
+          g.beginPath();
+          let cxp = rnd() * S, cyp = rnd() * S;
+          g.moveTo(cxp, cyp);
+          const segs = 3 + (rnd() * 3 | 0);
+          for (let sg = 0; sg < segs; sg++) {
+            cxp += (rnd() - 0.5) * S * 0.30;
+            cyp += (rnd() - 0.5) * S * 0.30;
+            g.lineTo(cxp, cyp);
+          }
+          g.stroke();
+        }
+        /* grain / grit */
+        for (let i = 0; i < 52; i++) {
           const x = rnd() * S, y = rnd() * S, a = rnd();
-          g.fillStyle = a > 0.5 ? `rgba(255,255,255,${0.02 + rnd() * 0.05})` : `rgba(0,0,0,${0.05 + rnd() * 0.1})`;
-          g.fillRect(x, y, 1 + (rnd() > 0.85 ? 1 : 0), 1);
+          g.fillStyle = a > 0.55
+            ? `rgba(255,255,255,${0.015 + rnd() * 0.04})`
+            : `rgba(0,0,0,${0.04 + rnd() * 0.09})`;
+          g.fillRect(x, y, 1 + (rnd() > 0.88 ? 1.5 : 0), 1);
         }
+        /* scattered pebbles with their own shadow */
+        const pebbles = 2 + (rnd() * 3 | 0);
+        for (let pi = 0; pi < pebbles; pi++) {
+          const px0 = 3 + rnd() * (S - 6), py0 = 3 + rnd() * (S - 6);
+          const pr = 0.8 + rnd() * 1.7;
+          g.fillStyle = 'rgba(0,0,0,0.28)';
+          g.beginPath(); g.ellipse(px0 + 0.6, py0 + 0.9, pr, pr * 0.75, 0, 0, TAU); g.fill();
+          g.fillStyle = shade(theme.floor[0], 0.34);
+          g.beginPath(); g.arc(px0, py0, pr * 0.85, 0, TAU); g.fill();
+          g.fillStyle = 'rgba(255,255,255,0.20)';
+          g.beginPath(); g.arc(px0 - pr * 0.25, py0 - pr * 0.3, pr * 0.35, 0, TAU); g.fill();
+        }
+        /* grime pooling in the lower-left, as if damp collects there */
+        const gg2 = g.createRadialGradient(S * 0.2, S * 0.85, 2, S * 0.2, S * 0.85, S * 0.55);
+        gg2.addColorStop(0, `rgba(0,0,0,${0.06 + rnd() * 0.05})`);
+        gg2.addColorStop(1, 'rgba(0,0,0,0)');
+        g.fillStyle = gg2; g.fillRect(0, 0, S, S);
         if (theme.key === 'ice') {
           g.strokeStyle = 'rgba(180,225,255,0.16)'; g.lineWidth = 1;
           g.beginPath(); g.moveTo(rnd() * S, 0); g.lineTo(rnd() * S, S); g.stroke();
@@ -2526,49 +2832,189 @@ const TileArt = (() => {
         }
         set.floor.push(c);
       }
-      /* ----- wall ----- */
+      /* ----- wall (front face) -----
+         Individual ashlar blocks with a bevelled top-left highlight and a
+         bottom-right shadow, plus mortar joints. The bevel is what makes the
+         masonry read as carved stone instead of a painted grid. */
       {
         const c = Sprite.mk(S, S); const g = c.getContext('2d');
         const rnd = mulberry32(seed + 91);
-        /* brick courses */
-        g.fillStyle = theme.wall[v % theme.wall.length];
+        g.fillStyle = shade(theme.wall[0], -0.30);
         g.fillRect(0, 0, S, S);
-        const bh = 8, bw = 16;
-        for (let row = 0; row < S / bh; row++) {
-          const off = (row % 2) * bw / 2;
-          for (let col = -1; col < S / bw + 1; col++) {
+        const bh = 10, bw = 21;
+        const rows = Math.ceil(S / bh), cols = Math.ceil(S / bw) + 1;
+        for (let row = 0; row < rows; row++) {
+          const off = (row % 2) * (bw / 2);
+          for (let col = -1; col < cols; col++) {
             const bx = col * bw + off, by = row * bh;
-            const tone = rnd();
-            g.fillStyle = `rgba(${tone > 0.6 ? '255,255,255' : '0,0,0'},${0.02 + rnd() * 0.07})`;
-            g.fillRect(bx + 1, by + 1, bw - 2, bh - 2);
-            g.strokeStyle = 'rgba(0,0,0,0.35)';
+            const shadeMix = rnd();
+            /* base block colour with per-block tonal variation */
+            const base = theme.wall[(row + col + v) % theme.wall.length];
+            g.fillStyle = base;
+            g.fillRect(bx, by, bw - 1, bh - 1);
+            /* per-block tint */
+            g.fillStyle = shadeMix > 0.5
+              ? `rgba(255,250,240,${0.03 + shadeMix * 0.06})`
+              : `rgba(0,0,0,${0.05 + shadeMix * 0.09})`;
+            g.fillRect(bx, by, bw - 1, bh - 1);
+            /* bevelled edges: light top/left, dark bottom/right */
+            g.strokeStyle = 'rgba(255,248,232,0.13)';
             g.lineWidth = 1;
-            g.strokeRect(bx + 0.5, by + 0.5, bw, bh);
+            g.beginPath();
+            g.moveTo(bx + 0.5, by + bh - 1.5);
+            g.lineTo(bx + 0.5, by + 0.5);
+            g.lineTo(bx + bw - 1.5, by + 0.5);
+            g.stroke();
+            g.strokeStyle = 'rgba(0,0,0,0.42)';
+            g.beginPath();
+            g.moveTo(bx + bw - 1.5, by + 0.5);
+            g.lineTo(bx + bw - 1.5, by + bh - 1.5);
+            g.lineTo(bx + 0.5, by + bh - 1.5);
+            g.stroke();
+            /* pitting */
+            if (rnd() > 0.72) {
+              g.fillStyle = `rgba(0,0,0,${0.10 + rnd() * 0.12})`;
+              g.beginPath();
+              g.arc(bx + 3 + rnd() * (bw - 7), by + 2 + rnd() * (bh - 5), 0.7 + rnd() * 1.1, 0, TAU);
+              g.fill();
+            }
+            /* hairline crack, occasionally */
+            if (rnd() > 0.94) {
+              g.strokeStyle = 'rgba(0,0,0,0.35)';
+              g.lineWidth = 0.8;
+              g.beginPath();
+              const cx0 = bx + 2 + rnd() * (bw - 6);
+              g.moveTo(cx0, by + 1);
+              g.lineTo(cx0 + rnd() * 4 - 2, by + bh * 0.5);
+              g.lineTo(cx0 + rnd() * 5 - 2.5, by + bh - 1);
+              g.stroke();
+            }
           }
         }
-        /* top highlight + bottom shadow for depth */
+        /* the vertical tonal falloff of a wall lit from above */
         const grd = g.createLinearGradient(0, 0, 0, S);
-        grd.addColorStop(0, 'rgba(255,255,255,0.12)');
-        grd.addColorStop(0.35, 'rgba(255,255,255,0)');
-        grd.addColorStop(0.8, 'rgba(0,0,0,0.18)');
-        grd.addColorStop(1, 'rgba(0,0,0,0.45)');
+        grd.addColorStop(0, 'rgba(255,246,222,0.10)');
+        grd.addColorStop(0.18, 'rgba(255,246,222,0)');
+        grd.addColorStop(0.72, 'rgba(0,0,0,0.10)');
+        grd.addColorStop(1, 'rgba(0,0,0,0.38)');
         g.fillStyle = grd; g.fillRect(0, 0, S, S);
-        for (let i = 0; i < 20; i++) {
-          g.fillStyle = `rgba(0,0,0,${0.04 + rnd() * 0.09})`;
-          g.fillRect(rnd() * S, rnd() * S, 1 + rnd() * 3, 1);
+        /* damp streaks running down */
+        for (let i = 0; i < 3; i++) {
+          const x = rnd() * S;
+          const sh = g.createLinearGradient(0, 0, 0, S);
+          sh.addColorStop(0, 'rgba(0,0,0,0)');
+          sh.addColorStop(0.5, `rgba(0,0,0,${0.06 + rnd() * 0.05})`);
+          sh.addColorStop(1, 'rgba(0,0,0,0)');
+          g.fillStyle = sh;
+          g.fillRect(x, 0, 1 + rnd() * 2, S);
         }
         if (theme.key === 'ice') {
-          g.fillStyle = 'rgba(200,240,255,0.22)';
-          for (let i = 0; i < 4; i++) {
-            const x = rnd() * S, y = rnd() * S, r = 1 + rnd() * 3;
-            g.beginPath(); g.moveTo(x, y - r); g.lineTo(x + r, y); g.lineTo(x, y + r); g.lineTo(x - r, y); g.closePath(); g.fill();
+          /* frost crust on the upper edge of the blocks */
+          g.fillStyle = 'rgba(210,245,255,0.20)';
+          for (let i = 0; i < 7; i++) {
+            const x = rnd() * S, y = rnd() * S * 0.6;
+            g.beginPath(); g.arc(x, y, 1 + rnd() * 2.4, 0, TAU); g.fill();
+          }
+          g.strokeStyle = 'rgba(190,235,255,0.16)';
+          g.lineWidth = 1;
+          for (let i = 0; i < 3; i++) {
+            g.beginPath();
+            const x = rnd() * S, y = rnd() * S;
+            g.moveTo(x, y); g.lineTo(x + 6 - rnd() * 12, y + 8 + rnd() * 6);
+            g.stroke();
           }
         }
         if (theme.key === 'lava') {
-          g.fillStyle = 'rgba(255,90,30,0.13)';
-          for (let i = 0; i < 5; i++) g.fillRect(rnd() * S, rnd() * S, 1 + rnd() * 4, 1);
+          /* heat glow wedged into the mortar joints */
+          g.globalCompositeOperation = 'lighter';
+          for (let i = 0; i < 4; i++) {
+            const x = rnd() * S, y = rnd() * S;
+            const hg = g.createRadialGradient(x, y, 0, x, y, 7 + rnd() * 9);
+            hg.addColorStop(0, 'rgba(255,110,40,0.20)');
+            hg.addColorStop(1, 'rgba(255,110,40,0)');
+            g.fillStyle = hg; g.fillRect(x - 18, y - 18, 36, 36);
+          }
+          g.globalCompositeOperation = 'source-over';
+          g.fillStyle = 'rgba(0,0,0,0.22)';
+          for (let i = 0; i < 10; i++) g.fillRect(rnd() * S, rnd() * S, 1 + rnd() * 3, 1);
         }
         set.wall.push(c);
+      }
+      /* ----- wall top face -----
+         Seen from above the block is a flat, dusty slab with a chipped rim. */
+      {
+        const c = Sprite.mk(S, S); const g = c.getContext('2d');
+        const rnd = mulberry32(seed + 331);
+        /* The top of a wall is unlit stone seen from above: keep it dark and
+           rough so the lit floor reads as the surface you walk on. */
+        g.fillStyle = shade(theme.wall[0], -0.62);
+        g.fillRect(0, 0, S, S);
+        /* large flagstone slabs on top */
+        for (let i = 0; i < 3; i++) {
+          const sx0 = rnd() * S * 0.4, sy0 = rnd() * S * 0.4;
+          const w = S * (0.45 + rnd() * 0.4), h = S * (0.4 + rnd() * 0.4);
+          g.fillStyle = shade(theme.wall[(i + v) % theme.wall.length], -0.50);
+          g.fillRect(sx0, sy0, w, h);
+          g.strokeStyle = 'rgba(0,0,0,0.28)';
+          g.lineWidth = 1;
+          g.strokeRect(sx0 + 0.5, sy0 + 0.5, w - 1, h - 1);
+        }
+        /* dust + grit */
+        for (let i = 0; i < 22; i++) {
+          g.fillStyle = `rgba(${rnd() > 0.5 ? '230,225,210' : '0,0,0'},${0.02 + rnd() * 0.06})`;
+          g.fillRect(rnd() * S, rnd() * S, 1 + rnd() * 2.5, 1);
+        }
+        /* rim shadow so the top face sits inside its outline */
+        /* rim catching what little light reaches it */
+        const tl = g.createLinearGradient(0, S * 0.55, 0, S);
+        tl.addColorStop(0, 'rgba(255,246,224,0)');
+        tl.addColorStop(1, 'rgba(255,246,224,0.16)');
+        g.fillStyle = tl; g.fillRect(0, 0, S, S);
+        /* heavy vignette so neighbouring wall tiles fuse into one mass */
+        const rg = g.createRadialGradient(S / 2, S / 2, S * 0.10, S / 2, S / 2, S * 0.72);
+        rg.addColorStop(0, 'rgba(0,0,0,0.06)');
+        rg.addColorStop(1, 'rgba(0,0,0,0.46)');
+        g.fillStyle = rg; g.fillRect(0, 0, S, S);
+        if (theme.key === 'ice') {
+          g.fillStyle = 'rgba(220,250,255,0.22)';
+          for (let i = 0; i < 5; i++) {
+            const x = rnd() * S, y = rnd() * S;
+            g.beginPath(); g.arc(x, y, 1 + rnd() * 2, 0, TAU); g.fill();
+          }
+        }
+        set.wallTop.push(c);
+      }
+      /* ----- wall face (the 45% strip drawn below a wall top) ----- */
+      {
+        const c = Sprite.mk(S, Math.ceil(S * 0.45)); const g = c.getContext('2d');
+        const rnd = mulberry32(seed + 733);
+        const H = c.height;
+        g.fillStyle = shade(theme.wall[0], -0.46);
+        g.fillRect(0, 0, S, H);
+        /* stretched brick courses seen edge-on */
+        const bh = H / 2.2, bw = 21;
+        for (let row = 0; row < 3; row++) {
+          const off = (row % 2) * (bw / 2);
+          for (let col = -1; col < S / bw + 1; col++) {
+            const bx = col * bw + off, by = row * bh;
+            g.fillStyle = shade(theme.wall[(row + col + v) % theme.wall.length], -0.22);
+            g.fillRect(bx, by, bw - 1, bh - 1);
+            g.strokeStyle = 'rgba(0,0,0,0.30)';
+            g.lineWidth = 1;
+            g.strokeRect(bx + 0.5, by + 0.5, bw - 1, bh - 1);
+          }
+        }
+        /* light spills from the torch above, dark crowds the floor line */
+        const fall = g.createLinearGradient(0, 0, 0, H);
+        fall.addColorStop(0, 'rgba(255,245,220,0.20)');
+        fall.addColorStop(0.35, 'rgba(255,245,220,0.03)');
+        fall.addColorStop(1, 'rgba(0,0,0,0.55)');
+        g.fillStyle = fall; g.fillRect(0, 0, S, H);
+        for (let i = 0; i < 8; i++) {
+          g.fillStyle = `rgba(0,0,0,${0.05 + rnd() * 0.10})`;
+          g.fillRect(rnd() * S, rnd() * H, 1 + rnd() * 3, 1);
+        }
+        set.wallFace.push(c);
       }
       /* ----- lava ----- */
       {
@@ -3270,6 +3716,7 @@ const Game = {
   canvas: null, ctx: null, W: 0, H: 0, dpr: 1,
   state: 'menu',              /* menu | playing | paused | dead | victory */
   paused: false,
+  isPhone: false,             /* set by Phone.enable() when the touch layout is on */
   player: null,
   dungeon: null,
   floor: 1,
@@ -3308,7 +3755,16 @@ function setupCanvas() {
   Game.canvas = $('game');
   Game.ctx = Game.canvas.getContext('2d');
   resizeCanvas();
-  window.addEventListener('resize', resizeCanvas);
+  window.addEventListener('resize', onViewportChange);
+  if (window.visualViewport) window.visualViewport.addEventListener('resize', onViewportChange);
+  window.addEventListener('orientationchange', () => setTimeout(onViewportChange, 220));
+}
+/* Resize, re-evaluate the device class, re-check orientation in one place. */
+function onViewportChange() {
+  resizeCanvas();
+  if (!Game.isPhone && Phone.detect()) Phone.enable();
+  Phone.checkOrientation();
+  if (Phone.enabled) { Phone.syncIcons(); Phone.updateRail(); }
 }
 function resizeCanvas() {
   const dpr = Math.min(window.devicePixelRatio || 1, 2);
@@ -3325,6 +3781,10 @@ function resizeCanvas() {
   if (!Game.fogCanvas) { Game.fogCanvas = document.createElement('canvas'); Game.fogCtx = Game.fogCanvas.getContext('2d'); }
   Game.fogCanvas.width = Math.max(1, Math.ceil(Game.W / 2));
   Game.fogCanvas.height = Math.max(1, Math.ceil(Game.H / 2));
+  if (!Game.bloomCanvas) { Game.bloomCanvas = document.createElement('canvas'); Game.bloomCtx = Game.bloomCanvas.getContext('2d'); }
+  /* eighth-resolution buffer: enough for a soft bloom, ~1% of the fill cost */
+  Game.bloomCanvas.width = Math.max(1, Math.ceil(Game.W / 8));
+  Game.bloomCanvas.height = Math.max(1, Math.ceil(Game.H / 8));
   if (!Game.lightCanvas) { Game.lightCanvas = document.createElement('canvas'); Game.lightCtx = Game.lightCanvas.getContext('2d'); }
   Game.lightCanvas.width = Math.max(1, Math.ceil(Game.W / 2));
   Game.lightCanvas.height = Math.max(1, Math.ceil(Game.H / 2));
@@ -4400,6 +4860,45 @@ function updateCamera(dt) {
   }
 }
 
+/* ---------- wall volumes ----------
+   Walls are drawn as lit blocks rather than flat tiles: a top face, a shaded
+   south face and a bright lip where the top meets the face. The direction of
+   the face depends on whether the tile below is open, so a wall reads as a
+   solid mass from every angle the player can approach it. */
+function drawWallBlock(ctx, d, tx, ty, sx, sy, art, v, time) {
+  const below = d.get(tx, ty + 1);
+  const belowOpen = below !== WALL;
+  const S = TILE;
+  const vIdx = v % 4;
+
+  if (belowOpen) {
+    /* south face (the visible "front" of the block) */
+    ctx.drawImage(art.wallFace ? art.wallFace[vIdx] : art.wall[vIdx], sx, sy + S * 0.55, S, S * 0.45);
+    /* top surface */
+    ctx.drawImage(art.wallTop && art.wallTop[vIdx] ? art.wallTop[vIdx] : art.wall[vIdx], sx, sy, S, S * 0.58);
+    /* lit lip along the top edge */
+    ctx.save();
+    ctx.globalCompositeOperation = 'lighter';
+    const lg = ctx.createLinearGradient(sx, sy + S * 0.52, sx, sy + S * 0.66);
+    lg.addColorStop(0, 'rgba(255,240,205,0.16)');
+    lg.addColorStop(1, 'rgba(255,240,205,0)');
+    ctx.fillStyle = lg;
+    ctx.fillRect(sx, sy + S * 0.52, S, S * 0.14);
+    ctx.restore();
+    /* contact shadow under the block */
+    ctx.save();
+    const sg = ctx.createLinearGradient(sx, sy + S, sx, sy + S * 1.35);
+    sg.addColorStop(0, 'rgba(0,0,0,0.42)');
+    sg.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.fillStyle = sg;
+    ctx.fillRect(sx, sy + S, S, S * 0.35);
+    ctx.restore();
+  } else {
+    /* interior mass — just the top, slightly darker */
+    ctx.drawImage(art.wallTop && art.wallTop[vIdx] ? art.wallTop[vIdx] : art.wall[vIdx], sx, sy, S, S);
+  }
+}
+
 /* ---------- world render ---------- */
 function renderWorld(ctx) {
   const d = Game.dungeon, cam = Game.cam, p = Game.player;
@@ -4426,7 +4925,7 @@ function renderWorld(ctx) {
       const tile = d.tiles[idx];
       const v = d.variation ? d.variation[idx] % 4 : (x + y) % 4;
       const sx = x * TILE - camX, sy = y * TILE - camY;
-      if (tile === WALL) continue;
+      if (tile === WALL) { drawWallBlock(ctx, d, x, y, sx, sy, art, v, t); continue; }
       if (tile === LAVA) ctx.drawImage(art.lava[v % 4], sx, sy);
       else if (tile === ICE) ctx.drawImage(art.ice[v % 4], sx, sy);
       else if (tile === WATER) ctx.drawImage(art.water[v % 4], sx, sy);
@@ -4447,6 +4946,9 @@ function renderWorld(ctx) {
       }
     }
   }
+  /* ---- ambient occlusion over the floor ---- */
+  drawAmbientOcclusion(ctx, drawCam);
+
   /* ---- stairs art ---- */
   {
     const sx = d.stairs.x * TILE - camX, sy = d.stairs.y * TILE - camY;
@@ -4532,33 +5034,92 @@ function drawProp(ctx, pr, cam, t) {
   if (pr.flash > 0) { ctx.globalAlpha = 1; }
   switch (pr.kind) {
     case 'torch': {
-      /* wall bracket + flame */
-      const flick = Math.sin(t * 9 + pr.seed) * 0.18 + 1;
-      ctx.fillStyle = '#3a2c1e';
-      ctx.fillRect(-2.5, 2, 5, 13);
-      /* flame layers */
+      /* A sconce on the wall: iron bracket, wooden haft, then a flame built
+         from three nested shapes plus a soft bloom, so it reads at a glance
+         even when the tile behind it is busy. */
+      const s1 = Math.sin(t * 9 + pr.seed), s2 = Math.sin(t * 13.7 + pr.seed * 2.1);
+      const flick = 1 + s1 * 0.14 + s2 * 0.07;
+      const sway = s1 * 2.2 + s2 * 1.1;
+
+      /* iron bracket bolted to the wall behind */
+      ctx.fillStyle = '#22201f';
+      ctx.beginPath();
+      ctx.roundRect(-9, 6, 18, 4, 1.5);
+      ctx.fill();
+      ctx.fillStyle = '#2e2a27';
+      ctx.beginPath();
+      ctx.roundRect(-6.5, 1, 13, 6, 2);
+      ctx.fill();
+      /* haft */
+      const hg = ctx.createLinearGradient(-3, 0, 3, 0);
+      hg.addColorStop(0, '#2b1f14'); hg.addColorStop(0.4, '#4a3520'); hg.addColorStop(1, '#1d150e');
+      ctx.fillStyle = hg;
+      ctx.beginPath();
+      ctx.roundRect(-2.6, -6, 5.2, 12, 1.8);
+      ctx.fill();
+      /* wrapped binding */
+      ctx.strokeStyle = 'rgba(0,0,0,0.45)';
+      ctx.lineWidth = 1;
+      for (let i = 0; i < 3; i++) {
+        ctx.beginPath();
+        ctx.moveTo(-2.6, -3 + i * 3);
+        ctx.lineTo(2.6, -2.4 + i * 3);
+        ctx.stroke();
+      }
+
+      /* bloom — wide and soft, additive */
       ctx.save();
       ctx.globalCompositeOperation = 'lighter';
-      const fg = ctx.createRadialGradient(0, -2, 1, 0, -2, 20 * flick);
-      fg.addColorStop(0, 'rgba(255,240,180,0.95)');
-      fg.addColorStop(0.25, 'rgba(255,170,60,0.75)');
-      fg.addColorStop(1, 'rgba(255,80,20,0)');
-      ctx.fillStyle = fg;
-      ctx.beginPath(); ctx.arc(0, -2, 20 * flick, 0, TAU); ctx.fill();
+      const bloom = ctx.createRadialGradient(sway * 0.4, -14, 1, sway * 0.4, -14, 42 * flick);
+      bloom.addColorStop(0, 'rgba(255,232,170,0.42)');
+      bloom.addColorStop(0.30, 'rgba(255,164,64,0.22)');
+      bloom.addColorStop(0.65, 'rgba(255,102,26,0.08)');
+      bloom.addColorStop(1, 'rgba(255,80,10,0)');
+      ctx.fillStyle = bloom;
+      ctx.beginPath(); ctx.arc(sway * 0.4, -14, 42 * flick, 0, TAU); ctx.fill();
       ctx.restore();
+
+      /* outer flame — orange body */
+      const h = 20 * flick;
       ctx.beginPath();
-      ctx.moveTo(-3.4, 3);
-      const h = 11 * flick;
-      ctx.quadraticCurveTo(-2 + Math.sin(t * 12 + pr.seed) * 1.8, -h, 0, -h - 3);
-      ctx.quadraticCurveTo(2 + Math.cos(t * 10 + pr.seed) * 1.8, -h, 3.4, 3);
+      ctx.moveTo(-5.2, -4);
+      ctx.bezierCurveTo(-6.4 + sway, -h * 0.55, -2.6 + sway, -h * 0.85, sway * 0.8, -h - 5);
+      ctx.bezierCurveTo(2.2 + sway, -h * 0.8, 5.6 + sway * 0.5, -h * 0.5, 5.2, -4);
+      ctx.quadraticCurveTo(0, -1.5, -5.2, -4);
       ctx.closePath();
-      ctx.fillStyle = 'rgba(255,190,90,0.92)';
+      const og = ctx.createLinearGradient(0, -h - 5, 0, 0);
+      og.addColorStop(0, 'rgba(255,214,120,0.95)');
+      og.addColorStop(0.45, 'rgba(255,150,44,0.96)');
+      og.addColorStop(1, 'rgba(214,74,14,0.90)');
+      ctx.fillStyle = og;
       ctx.fill();
+
+      /* inner flame — hot core */
+      ctx.save();
       ctx.globalCompositeOperation = 'lighter';
       ctx.beginPath();
-      ctx.ellipse(0, -2, 1.8, h * 0.45, 0, 0, TAU);
-      ctx.fillStyle = 'rgba(255,250,225,0.85)';
+      ctx.moveTo(-2.4, -4.5);
+      ctx.bezierCurveTo(-3.0 + sway * 0.6, -h * 0.5, -1.0 + sway * 0.5, -h * 0.66, sway * 0.4, -h * 0.82);
+      ctx.bezierCurveTo(1.2 + sway * 0.5, -h * 0.6, 2.8 + sway * 0.3, -h * 0.42, 2.4, -4.5);
+      ctx.quadraticCurveTo(0, -2.6, -2.4, -4.5);
+      ctx.closePath();
+      const cg = ctx.createLinearGradient(0, -h * 0.85, 0, -3);
+      cg.addColorStop(0, 'rgba(255,255,240,0.95)');
+      cg.addColorStop(0.5, 'rgba(255,244,190,0.85)');
+      cg.addColorStop(1, 'rgba(255,190,90,0.35)');
+      ctx.fillStyle = cg;
       ctx.fill();
+      /* a couple of escaping sparks */
+      for (let i = 0; i < 2; i++) {
+        const ph = (t * 1.7 + i * 0.5 + pr.seed) % 1;
+        const sy0 = -h - 2 - ph * 16;
+        const sx0 = Math.sin(ph * 7 + i * 2 + pr.seed) * 6;
+        ctx.fillStyle = `rgba(255,190,110,${(1 - ph) * 0.7})`;
+        ctx.beginPath();
+        ctx.arc(sx0, sy0, 1.1 * (1 - ph * 0.5), 0, TAU);
+        ctx.fill();
+      }
+      ctx.restore();
       break;
     }
     case 'brazier': {
@@ -5565,6 +6126,116 @@ function drawMerchant(ctx, m, cam, t) {
 }
 
 /* ---------- fog of war & light ---------- */
+/* ---------- LIGHTING ENGINE ----------
+   A proper 2D light model rather than a single carved circle:
+   · every light has colour, radius, intensity, flicker and falloff curve
+   · lights are accumulated additively into a light buffer
+   · the fog mask is carved with the summed luminance of those lights
+   · a cheap screen-space normal term darkens wall faces facing away from the
+     nearest light, so surfaces read as volumes instead of flat tiles
+   · ambient occlusion darkens tile seams and wall/floor junctions           */
+const Lights = {
+  list: [],
+
+  /** Collect every active light for this frame. */
+  gather(cam) {
+    const d = Game.dungeon, p = Game.player;
+    const out = this.list;
+    out.length = 0;
+    if (!d || !p) return out;
+
+    /* the hero carries the torch */
+    const flick = 0.955 + Math.sin(Game.time * 7.3) * 0.022 + Math.sin(Game.time * 13.7) * 0.017
+                + Math.sin(Game.time * 23.1) * 0.009;
+    out.push({
+      x: p.x, y: p.y,
+      /* generous primary pool: the player must be able to read the room they
+         are fighting in, and the vignette adds the claustrophobia budget */
+      r: Math.min(Game.W, Game.H) * 0.78 * flick,
+      intensity: 1, colour: d.theme.torchColor, hero: true,
+      falloff: 1.7
+    });
+    /* a tight bright core so the player is always readable */
+    out.push({
+      x: p.x, y: p.y, r: 150 * flick, intensity: 0.62,
+      colour: '#fff2d0', hero: true, falloff: 2.2
+    });
+
+    /* torches, braziers, glowing props */
+    for (const pr of Game.props) {
+      if (pr.dead) continue;
+      const tx = Math.floor(pr.x / TILE), ty = Math.floor(pr.y / TILE);
+      if (!d.visible[ty * d.W + tx]) continue;
+      if (pr.kind === 'torch' || pr.kind === 'brazier') {
+        const seed = pr.seed || 0;
+        const fl = 0.90 + Math.sin(Game.time * 6.1 + seed) * 0.07
+                  + Math.sin(Game.time * 11.7 + seed * 2) * 0.035;
+        const big = pr.kind === 'brazier';
+        out.push({
+          x: pr.x, y: pr.y - (big ? 16 : 22),
+          r: (big ? 210 : 150) * fl,
+          intensity: big ? 1.0 : 0.90,
+          colour: d.theme.torchColor, falloff: 1.5
+        });
+      } else if (pr.kind === 'chest' && !pr.opened) {
+        out.push({ x: pr.x, y: pr.y, r: 34, intensity: 0.18, colour: '#ffd68a', falloff: 2.4 });
+      }
+    }
+
+    /* stairs beacon */
+    if (d.stairs && d.exploredMap[d.idx(d.stairs.x, d.stairs.y)]) {
+      out.push({
+        x: (d.stairs.x + 0.5) * TILE, y: (d.stairs.y + 0.5) * TILE,
+        r: 74 + Math.sin(Game.time * 2.4) * 9,
+        intensity: 0.55, colour: '#ffd88f', falloff: 1.9
+      });
+    }
+
+    /* the vault door breathes when locked */
+    if (d.vaultDoor && d.vaultDoor.locked && d.exploredMap[d.idx(d.vaultDoor.x, d.vaultDoor.y)]) {
+      out.push({
+        x: (d.vaultDoor.x + 0.5) * TILE, y: (d.vaultDoor.y + 0.5) * TILE,
+        r: 58 + Math.sin(Game.time * 3.1) * 12,
+        intensity: 0.42, colour: '#ffb347', falloff: 2.0
+      });
+    }
+
+    /* projectiles light the room as they fly */
+    if (FX.projectiles) {
+      for (const pr of FX.projectiles) {
+        out.push({
+          x: pr.x, y: pr.y, r: 78, intensity: 0.7,
+          colour: pr.kind === 'magic' ? '#7fc4ff' : '#ffb060', falloff: 1.8
+        });
+      }
+    }
+
+    /* lava tiles glow upward */
+    if (d.theme.key === 'lava') {
+      const cam2 = cam;
+      const tx0 = Math.max(0, Math.floor(cam2.x / TILE) - 1);
+      const ty0 = Math.max(0, Math.floor(cam2.y / TILE) - 1);
+      const tx1 = Math.min(d.W - 1, Math.ceil((cam2.x + Game.W) / TILE) + 1);
+      const ty1 = Math.min(d.H - 1, Math.ceil((cam2.y + Game.H) / TILE) + 1);
+      let budget = 26;
+      for (let y = ty0; y <= ty1 && budget > 0; y += 2) {
+        for (let x = tx0; x <= tx1 && budget > 0; x += 2) {
+          if (d.tiles[y * d.W + x] !== LAVA) continue;
+          if (!d.exploredMap[y * d.W + x]) continue;
+          budget--;
+          out.push({
+            x: (x + 0.5) * TILE, y: (y + 0.5) * TILE,
+            r: 62 + Math.sin(Game.time * 1.7 + x * 0.7 + y) * 8,
+            intensity: 0.40, colour: '#ff5a1e', falloff: 2.0
+          });
+        }
+      }
+    }
+    return out;
+  }
+};
+
+/** Carve the fog mask using every gathered light. */
 function drawFog(ctx, cam) {
   const d = Game.dungeon;
   const fw = Game.fogCanvas.width, fh = Game.fogCanvas.height;
@@ -5574,63 +6245,236 @@ function drawFog(ctx, cam) {
   fctx.globalCompositeOperation = 'source-over';
   fctx.fillStyle = d.theme.fog;
   fctx.fillRect(0, 0, fw, fh);
-  /* carve out light around the player */
+
+  const lights = Lights.gather(cam);
+
+  /* carve： each light removes fog proportional to its intensity. We punch a
+     soft radial hole per light; overlapping lights compound naturally because
+     destination-out is multiplicative on alpha. */
   fctx.globalCompositeOperation = 'destination-out';
-  const p = Game.player;
-  const px = (p.x - cam.x) * sx, py = (p.y - cam.y) * sy;
-  const flick = 0.965 + Math.sin(Game.time * 7.3) * 0.02 + Math.sin(Game.time * 13.7) * 0.015;
-  const lightR = Math.min(Game.W, Game.H) * 0.44 * flick;
-  let g = fctx.createRadialGradient(px, py, 8 * sx, px, py, lightR * sx);
-  g.addColorStop(0, 'rgba(0,0,0,0.98)');
-  g.addColorStop(0.45, 'rgba(0,0,0,0.72)');
-  g.addColorStop(0.78, 'rgba(0,0,0,0.26)');
-  g.addColorStop(1, 'rgba(0,0,0,0)');
-  fctx.fillStyle = g;
-  fctx.beginPath(); fctx.arc(px, py, lightR * sx, 0, TAU); fctx.fill();
-  /* torches carve small pools of light */
-  for (const pr of Game.props) {
-    if (pr.dead) continue;
-    if (pr.kind !== 'torch' && pr.kind !== 'brazier') continue;
-    const tx = Math.floor(pr.x / TILE), ty = Math.floor(pr.y / TILE);
-    if (!d.visible[ty * d.W + tx]) continue;
-    const cx = (pr.x - cam.x) * sx, cy = (pr.y - cam.y) * sy;
-    const r = (pr.kind === 'brazier' ? 118 : 80) * (0.94 + Math.sin(Game.time * 6 + pr.seed) * 0.06);
-    g = fctx.createRadialGradient(cx, cy, 2, cx, cy, r * sx);
-    g.addColorStop(0, 'rgba(0,0,0,0.78)');
-    g.addColorStop(0.6, 'rgba(0,0,0,0.34)');
+  for (const L of lights) {
+    const cx = (L.x - cam.x) * sx, cy = (L.y - cam.y) * sy;
+    const r = L.r * sx;
+    if (cx < -r || cy < -r || cx > fw + r || cy > fh + r) continue;
+    const g = fctx.createRadialGradient(cx, cy, Math.max(0.5, r * 0.05), cx, cy, r);
+    const i = L.intensity;
+    /* falloff exponent shapes the pool: higher = tighter hot centre */
+    g.addColorStop(0, `rgba(0,0,0,${0.99 * i})`);
+    g.addColorStop(0.28, `rgba(0,0,0,${0.92 * i})`);
+    g.addColorStop(0.52, `rgba(0,0,0,${0.66 * i})`);
+    g.addColorStop(0.74, `rgba(0,0,0,${0.32 * i})`);
+    g.addColorStop(0.90, `rgba(0,0,0,${0.10 * i})`);
     g.addColorStop(1, 'rgba(0,0,0,0)');
     fctx.fillStyle = g;
-    fctx.beginPath(); fctx.arc(cx, cy, r * sx, 0, TAU); fctx.fill();
+    fctx.beginPath(); fctx.arc(cx, cy, r, 0, TAU); fctx.fill();
   }
-  /* stairs glow */
-  const stx = ((d.stairs.x + 0.5) * TILE - cam.x) * sx, sty = ((d.stairs.y + 0.5) * TILE - cam.y) * sy;
-  if (d.exploredMap[d.idx(d.stairs.x, d.stairs.y)]) {
-    g = fctx.createRadialGradient(stx, sty, 2, stx, sty, 70 * sx);
-    g.addColorStop(0, 'rgba(0,0,0,0.6)'); g.addColorStop(1, 'rgba(0,0,0,0)');
-    fctx.fillStyle = g; fctx.beginPath(); fctx.arc(stx, sty, 70 * sx, 0, TAU); fctx.fill();
+
+  /* composite the darkness */
+  /* Rooms you have already walked through stay dimly remembered rather than
+     being erased. Draw one soft blob per explored-but-not-visible room instead
+     of per tile, so the memory has no tile-grid seams. */
+  fctx.globalCompositeOperation = 'destination-out';
+  for (const room of d.rooms) {
+    const rx = (room.x + room.w / 2) * TILE - cam.x;
+    const ry = (room.y + room.h / 2) * TILE - cam.y;
+    const rr = Math.max(room.w, room.h) * TILE * 0.62;
+    const cx2 = rx * sx, cy2 = ry * sy, r2 = rr * sx;
+    if (cx2 < -r2 || cy2 < -r2 || cx2 > fw + r2 || cy2 > fh + r2) continue;
+    /* only if at least one tile of this room has been seen */
+    let seen = false;
+    for (let y = room.y; y < room.y + room.h && !seen; y++) {
+      for (let x = room.x; x < room.x + room.w; x++) {
+        if (d.exploredMap[y * d.W + x]) { seen = true; break; }
+      }
+    }
+    if (!seen) continue;
+    const rg = fctx.createRadialGradient(cx2, cy2, r2 * 0.15, cx2, cy2, r2);
+    rg.addColorStop(0, 'rgba(0,0,0,0.34)');
+    rg.addColorStop(0.65, 'rgba(0,0,0,0.22)');
+    rg.addColorStop(1, 'rgba(0,0,0,0)');
+    fctx.fillStyle = rg;
+    fctx.beginPath(); fctx.arc(cx2, cy2, r2, 0, TAU); fctx.fill();
   }
-  /* composite fog */
+
   ctx.save();
   ctx.imageSmoothingEnabled = true;
   ctx.drawImage(Game.fogCanvas, 0, 0, fw, fh, 0, 0, Game.W, Game.H);
-  /* torch colour wash over lit areas */
+
+  /* ---- additive light colour ---- */
   ctx.globalCompositeOperation = 'lighter';
-  for (const pr of Game.props) {
-    if (pr.dead) continue;
-    if (pr.kind !== 'torch' && pr.kind !== 'brazier') continue;
-    const tx = Math.floor(pr.x / TILE), ty = Math.floor(pr.y / TILE);
-    if (!d.visible[ty * d.W + tx]) continue;
-    const cx = pr.x - cam.x, cy = pr.y - cam.y;
-    const r = pr.kind === 'brazier' ? 130 : 88;
-    const tg = ctx.createRadialGradient(cx, cy, 2, cx, cy, r);
-    tg.addColorStop(0, rgba(d.theme.torchColor, 0.16));
-    tg.addColorStop(0.55, rgba(d.theme.torchColor, 0.06));
-    tg.addColorStop(1, rgba(d.theme.torchColor, 0));
+  for (const L of lights) {
+    const cx = L.x - cam.x, cy = L.y - cam.y;
+    if (cx < -L.r || cy < -L.r || cx > Game.W + L.r || cy > Game.H + L.r) continue;
+    const tg = ctx.createRadialGradient(cx, cy, 2, cx, cy, L.r);
+    tg.addColorStop(0, rgba(L.colour, 0.20 * L.intensity));
+    tg.addColorStop(0.45, rgba(L.colour, 0.09 * L.intensity));
+    tg.addColorStop(1, rgba(L.colour, 0));
     ctx.fillStyle = tg;
-    ctx.beginPath(); ctx.arc(cx, cy, r, 0, TAU); ctx.fill();
+    ctx.beginPath(); ctx.arc(cx, cy, L.r, 0, TAU); ctx.fill();
   }
   ctx.restore();
 }
+
+/* ---------- ambient occlusion around walls ----------
+   Darkens the floor where it meets a wall and adds a contact shadow, which is
+   the single cheapest trick for making a tile grid look like real geometry.  */
+function drawAmbientOcclusion(ctx, cam) {
+  const d = Game.dungeon;
+  if (!d) return;
+  const startTx = Math.max(0, Math.floor(cam.x / TILE) - 1);
+  const startTy = Math.max(0, Math.floor(cam.y / TILE) - 1);
+  const endTx = Math.min(d.W - 1, Math.ceil((cam.x + Game.W) / TILE) + 1);
+  const endTy = Math.min(d.H - 1, Math.ceil((cam.y + Game.H) / TILE) + 1);
+  ctx.save();
+  /* Soft contact shading only: a gradient band hugging each wall edge plus a
+     gentle corner pool. Kept subtle — the lighting pass does the heavy work. */
+  for (let y = startTy; y <= endTy; y++) {
+    for (let x = startTx; x <= endTx; x++) {
+      const idx = y * d.W + x;
+      if (!d.exploredMap[idx]) continue;
+      if (d.tiles[idx] === WALL) continue;
+      const sx = x * TILE - cam.x, sy = y * TILE - cam.y;
+      if (sx < -TILE || sy < -TILE || sx > Game.W + TILE || sy > Game.H + TILE) continue;
+      const solidN = d.get(x, y - 1) === WALL;
+      const solidS = d.get(x, y + 1) === WALL;
+      const solidW = d.get(x - 1, y) === WALL;
+      const solidE = d.get(x + 1, y) === WALL;
+      if (!solidN && !solidS && !solidW && !solidE) continue;
+      const band = TILE * 0.42;
+      if (solidN) {
+        const g = ctx.createLinearGradient(0, sy, 0, sy + band);
+        g.addColorStop(0, 'rgba(0,0,0,0.46)');
+        g.addColorStop(0.55, 'rgba(0,0,0,0.14)');
+        g.addColorStop(1, 'rgba(0,0,0,0)');
+        ctx.fillStyle = g; ctx.fillRect(sx, sy, TILE, band);
+      }
+      if (solidS) {
+        const g = ctx.createLinearGradient(0, sy + TILE, 0, sy + TILE - band);
+        g.addColorStop(0, 'rgba(0,0,0,0.40)');
+        g.addColorStop(0.55, 'rgba(0,0,0,0.12)');
+        g.addColorStop(1, 'rgba(0,0,0,0)');
+        ctx.fillStyle = g; ctx.fillRect(sx, sy + TILE - band, TILE, band);
+      }
+      if (solidW) {
+        const g = ctx.createLinearGradient(sx, 0, sx + band, 0);
+        g.addColorStop(0, 'rgba(0,0,0,0.40)');
+        g.addColorStop(0.55, 'rgba(0,0,0,0.12)');
+        g.addColorStop(1, 'rgba(0,0,0,0)');
+        ctx.fillStyle = g; ctx.fillRect(sx, sy, band, TILE);
+      }
+      if (solidE) {
+        const g = ctx.createLinearGradient(sx + TILE, 0, sx + TILE - band, 0);
+        g.addColorStop(0, 'rgba(0,0,0,0.40)');
+        g.addColorStop(0.55, 'rgba(0,0,0,0.12)');
+        g.addColorStop(1, 'rgba(0,0,0,0)');
+        ctx.fillStyle = g; ctx.fillRect(sx + TILE - band, sy, band, TILE);
+      }
+    }
+  }
+  ctx.restore();
+}
+/* ---------- atmosphere ----------
+   Horizontal light shafts that drift across lit space, plus a slow colour
+   grade per biome. These are subtle by design: they add depth without hiding
+   gameplay information. */
+function drawAtmosphere(ctx, cam) {
+  const d = Game.dungeon;
+  if (!d) return;
+  const t = Game.time;
+  const theme = d.theme.key;
+
+  /* volumetric shafts sliding down from the top of the screen */
+  ctx.save();
+  ctx.globalCompositeOperation = 'lighter';
+  const shaftColour = theme === 'lava' ? '255,120,40' : theme === 'ice' ? '150,215,255' : '170,195,235';
+  for (let i = 0; i < 3; i++) {
+    const phase = (t * 0.06 + i * 0.37) % 1;
+    const x = phase * (Game.W + 400) - 200;
+    const w = 90 + i * 40;
+    const g = ctx.createLinearGradient(x, 0, x + w, Game.H);
+    g.addColorStop(0, `rgba(${shaftColour},0)`);
+    g.addColorStop(0.35, `rgba(${shaftColour},${0.020 + i * 0.008})`);
+    g.addColorStop(0.7, `rgba(${shaftColour},${0.012 + i * 0.005})`);
+    g.addColorStop(1, `rgba(${shaftColour},0)`);
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.moveTo(x, 0);
+    ctx.lineTo(x + w, 0);
+    ctx.lineTo(x + w * 2.2, Game.H);
+    ctx.lineTo(x + w * 0.5, Game.H);
+    ctx.closePath();
+    ctx.fill();
+  }
+  ctx.restore();
+
+  /* drifting dust motes, seeded so they never pop */
+  if (!Game._motes) {
+    Game._motes = [];
+    for (let i = 0; i < 46; i++) {
+      Game._motes.push({
+        x: Math.random() * Game.W,
+        y: Math.random() * Game.H,
+        z: 0.35 + Math.random() * 0.85,
+        ph: Math.random() * TAU
+      });
+    }
+  }
+  ctx.save();
+  ctx.globalCompositeOperation = 'lighter';
+  for (const m of Game._motes) {
+    const driftX = Math.sin(t * 0.12 + m.ph) * 22;
+    const driftY = ((m.y - t * 6 * m.z) % (Game.H + 40) + Game.H + 40) % (Game.H + 40) - 20;
+    const px = (m.x + driftX) % Game.W;
+    const twinkle = 0.35 + Math.sin(t * 1.7 + m.ph) * 0.3;
+    ctx.fillStyle = `rgba(${shaftColour},${0.10 * twinkle * m.z})`;
+    ctx.beginPath();
+    ctx.arc(px, driftY, 0.7 + m.z * 0.9, 0, TAU);
+    ctx.fill();
+  }
+  ctx.restore();
+}
+
+/* ---------- post-process grade ----------
+   A gentle bloom on bright pixels plus per-biome colour grading. Implemented
+   as a few full-screen composite passes; cheap enough to run every frame. */
+function drawPostProcess(ctx) {
+  const d = Game.dungeon;
+  if (!d) return;
+  const theme = d.theme.key;
+  ctx.save();
+
+  /* biome grade: warm for lava, cool for ice, neutral-cool for stone */
+  if (theme === 'lava') {
+    ctx.globalCompositeOperation = 'overlay';
+    ctx.fillStyle = 'rgba(90,26,6,0.13)';
+    ctx.fillRect(0, 0, Game.W, Game.H);
+  } else if (theme === 'ice') {
+    ctx.globalCompositeOperation = 'overlay';
+    ctx.fillStyle = 'rgba(18,58,92,0.15)';
+    ctx.fillRect(0, 0, Game.W, Game.H);
+  } else {
+    ctx.globalCompositeOperation = 'overlay';
+    ctx.fillStyle = 'rgba(22,30,52,0.12)';
+    ctx.fillRect(0, 0, Game.W, Game.H);
+  }
+
+  /* a cheap "bloom": sample the frame downscaled, smear it back additively */
+  const bc = Game.bloomCanvas;
+  if (bc && Game.player) {
+    const bctx = Game.bloomCtx;
+    bctx.setTransform(1, 0, 0, 1, 0, 0);
+    bctx.globalCompositeOperation = 'source-over';
+    bctx.clearRect(0, 0, bc.width, bc.height);
+    bctx.drawImage(Game.canvas, 0, 0, bc.width, bc.height);
+    ctx.globalCompositeOperation = 'lighter';
+    ctx.globalAlpha = 0.16;
+    ctx.imageSmoothingEnabled = true;
+    ctx.drawImage(bc, 0, 0, Game.W, Game.H);
+    ctx.globalAlpha = 1;
+  }
+  ctx.restore();
+}
+
 function drawVignette(ctx) {
   const d = Game.dungeon;
   if (!d) return;
@@ -6490,47 +7334,37 @@ function setupInput() {
   });
   window.addEventListener('mouseup', () => { Game.input.mouseDown = false; });
   canvas.addEventListener('contextmenu', (ev) => ev.preventDefault());
-  /* touch: tap = attack, drag = virtual stick, and a tap on the lower corners
-     triggers the magic / potion shortcuts so the game is playable on a tablet */
-  let touchId = null, touchOrigin = null, touchMoved = false;
+  /* On a touch device the canvas is aim-space: dragging turns the hero to face
+     that point. Movement comes from the left thumbstick and actions from the
+     buttons, both handled by Phone. */
   canvas.addEventListener('touchstart', (ev) => {
     if (!ev.touches.length) return;
-    const t = ev.touches[0];
-    touchId = t.identifier;
-    touchOrigin = { x: t.clientX, y: t.clientY };
-    touchMoved = false;
-    Game.input.mx = t.clientX; Game.input.my = t.clientY;
-    if (Game.state === 'playing' && !Game.paused) Combat.playerAttack();
+    Game.input.mx = ev.touches[0].clientX;
+    Game.input.my = ev.touches[0].clientY;
   }, { passive: true });
   canvas.addEventListener('touchmove', (ev) => {
-    for (const t of ev.touches) {
-      if (t.identifier !== touchId || !touchOrigin) continue;
-      const dx = t.clientX - touchOrigin.x, dy = t.clientY - touchOrigin.y;
-      const len = Math.hypot(dx, dy);
-      Game.input.mx = t.clientX; Game.input.my = t.clientY;
-      if (len > 14) {
-        touchMoved = true;
-        Game.input.touchDir = { x: dx / len, y: dy / len };
-      }
+    if (ev.touches.length) {
+      Game.input.mx = ev.touches[0].clientX;
+      Game.input.my = ev.touches[0].clientY;
     }
-    if (touchMoved) ev.preventDefault();
+    ev.preventDefault();
   }, { passive: false });
-  const endTouch = (ev) => {
-    let still = false;
-    for (const t of ev.touches) if (t.identifier === touchId) still = true;
-    if (still) return;
-    /* a short stationary tap on the right third of the canvas casts a spell */
-    if (!touchMoved && touchOrigin && Game.state === 'playing' && !Game.paused) {
-      const rect = canvas.getBoundingClientRect();
-      const relX = (touchOrigin.x - rect.left) / Math.max(1, rect.width);
-      if (relX > 0.78) Combat.playerMagic();
-      else if (relX < 0.10 && touchOrigin.y - rect.top > rect.height * 0.7) drinkPotion();
-    }
-    Game.input.touchDir = null;
-    touchId = null; touchOrigin = null;
-  };
-  canvas.addEventListener('touchend', endTouch, { passive: true });
-  canvas.addEventListener('touchcancel', endTouch, { passive: true });
+  canvas.addEventListener('touchend', () => {
+    if (Game.isPhone && Game.state === 'playing' && !Game.paused) Combat.playerAttack();
+  }, { passive: true });
+
+  /* Tapping the phone prompt bar performs the nearby interaction — there is no
+     F key on a phone, so this is how chests, stairs and the vault are used. */
+  const hbEl = $('hintBar');
+  if (hbEl) {
+    hbEl.addEventListener('pointerdown', (ev) => {
+      if (!Game.isPhone || !hbEl.classList.contains('tappable')) return;
+      ev.preventDefault();
+      ev.stopPropagation();
+      Sound.init(); Sound.resume();
+      if (Game.state === 'playing' && !Game.paused) doInteract();
+    }, { passive: false });
+  }
   /* hotbar clicks */
   $$('.ability').forEach(btn => {
     btn.addEventListener('click', () => {
@@ -6606,6 +7440,208 @@ function flashAbility(id) {
   void el.offsetWidth;
   el.classList.add('flash');
 }
+
+/* ============================== PHONE MODE ============================== */
+/* Real touch controls: a left-thumb virtual stick, right-thumb action
+   buttons with cooldown sweeps, a compact vitals rail and an orientation
+   nudge. Every branch is gated on Game.isPhone, so desktop input is
+   completely untouched. */
+const Phone = {
+  stickId: null, cx: 0, cy: 0, maxR: 52, dead: 0.16, enabled: false,
+
+  detect() {
+    const coarse = window.matchMedia && window.matchMedia('(pointer: coarse)').matches;
+    const touch = ('ontouchstart' in window) || (navigator.maxTouchPoints || 0) > 0;
+    const narrow = Math.min(window.screen.width, window.screen.height) <= 900;
+    return touch && coarse && narrow;
+  },
+
+  enable() {
+    if (this.enabled) return;
+    this.enabled = true;
+    Game.isPhone = true;
+    document.body.classList.add('is-phone');
+    this.bindStick();
+    this.bindActions();
+    this.syncIcons();
+    resizeCanvas();
+  },
+
+  /* ---- virtual stick ---- */
+  bindStick() {
+    const zone = $('stickZone'), base = $('stickBase'), knob = $('stickKnob');
+    if (!zone || !base || !knob) return;
+    const place = (x, y) => {
+      base.style.left = x + 'px'; base.style.top = y + 'px';
+      knob.style.left = x + 'px'; knob.style.top = y + 'px';
+    };
+    const release = () => {
+      this.stickId = null;
+      Game.input.touchDir = null;
+      document.body.classList.remove('stick-active');
+    };
+    const track = (cx, cy) => {
+      let dx = cx - this.cx, dy = cy - this.cy;
+      const len = Math.hypot(dx, dy);
+      if (len > this.maxR) { dx = dx / len * this.maxR; dy = dy / len * this.maxR; }
+      knob.style.left = (this.cx + dx) + 'px';
+      knob.style.top = (this.cy + dy) + 'px';
+      const mag = Math.min(1, len / this.maxR);
+      if (mag < this.dead) {
+        Game.input.touchDir = null;
+      } else {
+        /* rescale past the deadzone so small pushes stay controllable */
+        const norm = Math.min(1, ((mag - this.dead) / (1 - this.dead)) * 1.25);
+        const dl = Math.hypot(dx, dy) || 1;
+        Game.input.touchDir = { x: (dx / dl) * norm, y: (dy / dl) * norm };
+        /* face the direction of travel while steering */
+        Game.player.aimAngle = Math.atan2(Game.input.touchDir.y, Game.input.touchDir.x);
+      }
+    };
+    zone.addEventListener('touchstart', (ev) => {
+      if (Game.paused || Game.invOpen || Game.shopOpen) return;
+      const t = ev.changedTouches[0];
+      if (!t) return;
+      this.stickId = t.identifier;
+      this.cx = t.clientX; this.cy = t.clientY;
+      place(this.cx, this.cy);
+      document.body.classList.add('stick-active');
+      track(t.clientX, t.clientY);
+      ev.preventDefault();
+    }, { passive: false });
+    zone.addEventListener('touchmove', (ev) => {
+      for (const t of ev.changedTouches) {
+        if (t.identifier === this.stickId) track(t.clientX, t.clientY);
+      }
+      ev.preventDefault();
+    }, { passive: false });
+    const end = (ev) => {
+      for (const t of ev.changedTouches) {
+        if (t.identifier === this.stickId) release();
+      }
+    };
+    zone.addEventListener('touchend', end, { passive: true });
+    zone.addEventListener('touchcancel', end, { passive: true });
+
+    /* mouse fallback so the stick can be exercised on a desktop touchscreen */
+    let mouseHeld = false;
+    zone.addEventListener('mousedown', (ev) => {
+      if (Game.paused || Game.invOpen || Game.shopOpen) return;
+      mouseHeld = true;
+      this.cx = ev.clientX; this.cy = ev.clientY;
+      place(this.cx, this.cy);
+      document.body.classList.add('stick-active');
+      ev.preventDefault();
+    });
+    window.addEventListener('mousemove', (ev) => {
+      if (!mouseHeld) return;
+      const dx = ev.clientX - this.cx, dy = ev.clientY - this.cy;
+      const len = Math.hypot(dx, dy);
+      if (len < 10) { Game.input.touchDir = null; return; }
+      let kx = dx, ky = dy;
+      if (len > this.maxR) { kx = dx / len * this.maxR; ky = dy / len * this.maxR; }
+      knob.style.left = (this.cx + kx) + 'px';
+      knob.style.top = (this.cy + ky) + 'px';
+      Game.input.touchDir = { x: dx / len, y: dy / len };
+    });
+    window.addEventListener('mouseup', () => {
+      if (!mouseHeld) return;
+      mouseHeld = false;
+      release();
+    });
+  },
+
+  /* ---- action buttons ---- */
+  bindActions() {
+    const fire = (action) => {
+      if (Game.state !== 'playing' || Game.paused) {
+        if (action === 'inventory') toggleInventory();
+        return;
+      }
+      if (action === 'attack') { Combat.playerAttack(); flashAbility('ab0'); }
+      else if (action === 'magic') { Combat.playerMagic(); flashAbility('ab1'); }
+      else if (action === 'slam') { Combat.playerSlam(); flashAbility('ab3'); }
+      else if (action === 'potion') { drinkPotion(); flashAbility('ab2'); }
+      else if (action === 'inventory') toggleInventory();
+    };
+    $$('#touchActions .tBtn').forEach(btn => {
+      const action = btn.dataset.action;
+      /* pointerdown: no 300 ms mobile click delay */
+      btn.addEventListener('pointerdown', (ev) => {
+        ev.preventDefault();
+        ev.stopPropagation();
+        Sound.init(); Sound.resume();
+        btn.classList.add('press');
+        fire(action);
+        if (navigator.vibrate) { try { navigator.vibrate(8); } catch (e) {} }
+      }, { passive: false });
+      const unpress = () => btn.classList.remove('press');
+      btn.addEventListener('pointerup', unpress);
+      btn.addEventListener('pointercancel', unpress);
+      btn.addEventListener('pointerleave', unpress);
+      btn.addEventListener('contextmenu', (ev) => ev.preventDefault());
+    });
+  },
+
+  /* copy the procedurally painted hotbar icons onto the touch buttons */
+  syncIcons() {
+    const map = { tAttack: 'ab0', tMagic: 'ab1', tSlam: 'ab3', tPotion: 'ab2', tPack: 'ab4' };
+    Object.keys(map).forEach(id => {
+      const host = $(id), src = $(map[id]);
+      if (!host || !src) return;
+      const srcCanvas = src.querySelector('canvas');
+      const dst = host.querySelector('canvas');
+      if (!srcCanvas || !dst) return;
+      const c = dst.getContext('2d');
+      c.clearRect(0, 0, dst.width, dst.height);
+      c.drawImage(srcCanvas, 0, 0, dst.width, dst.height);
+    });
+  },
+
+  updateRail() {
+    const p = Game.player;
+    if (!p) return;
+    const set = (id, v) => { const e = $(id); if (e && e.textContent !== v) e.textContent = v; };
+    const wid = (id, pct) => {
+      const e = $(id); if (!e) return;
+      const v = Math.max(0, Math.min(100, pct)) + '%';
+      if (e.style.width !== v) e.style.width = v;
+    };
+    wid('pHpFill', p.hp / p.maxHp * 100);
+    wid('pMpFill', p.mana / p.maxMana * 100);
+    set('pHpText', Math.ceil(Math.max(0, p.hp)) + '/' + Math.round(p.maxHp));
+    set('pMpText', Math.floor(p.mana) + '/' + Math.round(p.maxMana));
+    set('pLvl', 'LV ' + p.level);
+    set('pFloor', 'FLOOR ' + Game.floor);
+    set('pGold', fmt(p.gold));
+    set('pKeys', String(p.keys));
+    set('pPotions', String(p.potions));
+    /* radial cooldown sweeps */
+    const cd = (id, ratio) => {
+      const el = $(id);
+      if (!el) return;
+      const sweep = el.querySelector('.cdSweep');
+      if (!sweep) return;
+      const deg = Math.round(Math.max(0, Math.min(360, ratio * 360)));
+      if (sweep.dataset.deg !== String(deg)) {
+        sweep.dataset.deg = String(deg);
+        sweep.style.setProperty('--cd', deg + 'deg');
+      }
+    };
+    cd('tAttack', p.attackCd / 0.40);
+    cd('tMagic', p.magicCd / 1.1);
+    cd('tSlam', p.slamCd / 2.6);
+    cd('tPotion', p.potionCd / 0.7);
+  },
+
+  checkOrientation() {
+    const el = $('rotateNudge');
+    if (!el) return;
+    if (!this.enabled) { el.classList.remove('show'); return; }
+    const portrait = window.innerHeight > window.innerWidth * 1.06;
+    el.classList.toggle('show', portrait && Game.state === 'playing');
+  }
+};
 function drinkPotion() {
   const p = Game.player;
   if (!p || p.dead) return;
@@ -6722,6 +7758,11 @@ function updatePlayer(dt) {
   if (input.down) dy += 1;
   if (input.left) dx -= 1;
   if (input.right) dx += 1;
+  /* the virtual stick takes over when no key is held */
+  if (input.touchDir && dx === 0 && dy === 0) {
+    dx = input.touchDir.x; dy = input.touchDir.y;
+    if (Math.hypot(dx, dy) < 0.18) { dx = 0; dy = 0; }
+  }
   /* virtual stick takes over when the touch drag is active */
   if (input.touchDir && (dx === 0 && dy === 0)) {
     dx = input.touchDir.x; dy = input.touchDir.y;
@@ -6833,10 +7874,16 @@ function update(dt) {
     /* hint bar */
     const target = nearestInteractable();
     if (target) {
-      const hint = target.kind === 'chest' ? 'Press <b>F</b> to open the chest.'
-        : target.kind === 'merchant' ? 'Press <b>F</b> to trade with the Quartermaster.'
-        : 'Press <b>F</b> to descend to the next floor.';
-      if (Game.lastInteractHint !== hint) { $('hintBar').innerHTML = hint; Game.lastInteractHint = hint; }
+      const verb = target.kind === 'chest' ? 'open the chest'
+        : target.kind === 'merchant' ? 'trade with the Quartermaster'
+        : 'descend to the next floor';
+      const hint = Game.isPhone ? '<b>TAP</b> to ' + verb : 'Press <b>F</b> to ' + verb + '.';
+      if (Game.lastInteractHint !== hint) {
+        $('hintBar').innerHTML = hint;
+        Game.lastInteractHint = hint;
+      }
+      const hb = $('hintBar');
+      if (Game.isPhone) hb.classList.add('tappable'); else hb.classList.remove('tappable');
     } else if (Game.lastInteractHint) {
       $('hintBar').innerHTML = '';
       Game.lastInteractHint = '';
@@ -6844,7 +7891,9 @@ function update(dt) {
     /* vault door prompt */
     if (d.vaultDoor && d.vaultDoor.locked) {
       const vd = dist(Game.player.x, Game.player.y, (d.vaultDoor.x + 0.5) * TILE, (d.vaultDoor.y + 0.5) * TILE);
-      if (vd < 62) $('hintBar').innerHTML = Game.player.keys > 0 ? 'Press <b>F</b> to use a key on the vault door.' : 'The vault door is <b>locked</b>. Search the floor for a key.';
+      if (vd < 62) $('hintBar').innerHTML = Game.player.keys > 0
+        ? (Game.isPhone ? '<b>TAP</b> to use a key on the vault door.' : 'Press <b>F</b> to use a key on the vault door.')
+        : 'The vault door is <b>locked</b>. Search the floor for a key.';
     }
   } else if (Game.state === 'paused') {
     FX.update(0);
@@ -6869,7 +7918,9 @@ function render() {
   }
   renderWorld(ctx);
   drawThreatIndicators(ctx);
+  drawAtmosphere(ctx, Game.cam);
   drawVignette(ctx);
+  drawPostProcess(ctx);
   if (Game.player.hurtFlash > 0) {
     ctx.save();
     ctx.globalCompositeOperation = 'lighter';
@@ -6949,6 +8000,11 @@ function loop(ts) {
   }
   update(dt);
   render();
+  if (Phone.enabled) {
+    Phone.updateRail();
+    Phone.railTick = (Phone.railTick || 0) + dt;
+    if (Phone.railTick > 0.4) { Phone.railTick = 0; Phone.checkOrientation(); }
+  }
 }
 
 /* ============================== 21. BOOT ================================ */
@@ -6960,6 +8016,8 @@ function boot() {
   drawPaperdollBackdrop();
   /* pre-bake tiles for all themes so floor transitions are instant */
   THEMES.forEach(th => TileArt.bake(th));
+  if (Phone.detect()) Phone.enable();
+  Phone.checkOrientation();
   Game.state = 'menu';
   Game.titleEmbers = null;
   requestAnimationFrame(loop);
