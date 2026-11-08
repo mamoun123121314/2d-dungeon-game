@@ -909,6 +909,99 @@ body.is-phone #startScreen .phoneStart{display:flex;}
   #affixBar { bottom: 150px; max-width: 88vw; }
   .affixChip { font-size: 8.5px; padding: 2px 6px; }
 }
+</style>/* ---------------- elemental item styling ---------------- */
+.ttElement { display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
+  font-family: var(--mono, monospace); font-size: 10px; letter-spacing: .11em;
+  text-transform: uppercase; margin: 7px 0 2px; padding: 5px 8px; border-radius: 6px;
+  border: 1px solid; background: rgba(255,255,255,.04); }
+.ttElement .ttElIcon { font-size: 13px; }
+.ttElement .ttElPct { display: block; width: 100%; font-size: 9px; letter-spacing: .06em;
+  opacity: .72; text-transform: none; margin-top: 1px; }
+</style>/* ---------------- save / continue UI ---------------- */
+.startBtnRow { display: flex; gap: 10px; justify-content: center; align-items: stretch;
+  flex-wrap: wrap; margin: 4px 0 10px; }
+.startBtnRow .bigBtn { margin: 0; min-width: 190px; }
+#continueBtn { position: relative; display: inline-flex; flex-direction: column;
+  align-items: center; justify-content: center; gap: 2px;
+  border-color: rgba(140,220,160,.5); color: #d6f5de;
+  background: linear-gradient(180deg, rgba(60,140,90,.34), rgba(24,60,38,.34)); }
+#continueBtn::after { content: 'AUTOSAVED RUN'; font-family: var(--mono, monospace);
+  font-size: 8.5px; letter-spacing: .18em; opacity: .62; }
+#continueBtn .contMeta { font-family: var(--mono, monospace); font-size: 9.5px;
+  letter-spacing: .06em; opacity: .7; text-transform: none; }
+.bestRecord { display: flex; gap: 18px; justify-content: center; flex-wrap: wrap;
+  font-family: var(--mono, monospace); font-size: 10.5px; letter-spacing: .1em;
+  text-transform: uppercase; color: #8d95a8; margin: 2px 0 12px; }
+.bestRecord b { color: #ffd88a; font-size: 12.5px; }
+.bestRecord.hidden { display: none; }
+.linkBtn { background: none; border: none; color: #7c8698; font-family: var(--mono, monospace);
+  font-size: 9.5px; letter-spacing: .12em; text-transform: uppercase; cursor: pointer;
+  text-decoration: underline; text-underline-offset: 3px; padding: 4px; opacity: .75; }
+.linkBtn:hover { color: #ff9a9a; opacity: 1; }
+.linkBtn.hidden { display: none; }
+#saveToast { position: absolute; right: 16px; bottom: 16px; display: flex; align-items: center;
+  gap: 6px; font-family: var(--mono, monospace); font-size: 9.5px; letter-spacing: .16em;
+  text-transform: uppercase; color: #8fe0a8; opacity: 0; pointer-events: none;
+  transition: opacity .3s; text-shadow: 0 1px 3px #000; z-index: 4; }
+#saveToast.pop { animation: savePop 1.5s ease-out; }
+.svDot { width: 6px; height: 6px; border-radius: 50%; background: #8fe0a8;
+  box-shadow: 0 0 8px #8fe0a8; }
+@keyframes savePop {
+  0% { opacity: 0; transform: translateY(4px); }
+  12% { opacity: 1; transform: translateY(0); }
+  70% { opacity: 1; }
+  100% { opacity: 0; }
+}
+@media (max-width: 760px) {
+  .startBtnRow .bigBtn { min-width: 150px; font-size: 12px; }
+  .bestRecord { font-size: 9px; gap: 12px; }
+}
+</style>/* ---------------- bounties ---------------- */
+#bountyHud { position: absolute; right: 14px; top: 232px; width: 206px;
+  display: flex; flex-direction: column; gap: 7px; pointer-events: none; z-index: 3;
+  transition: opacity .3s; }
+#bountyHud.hidden { display: none; }
+.bountyHead { font-family: var(--serif, Georgia, serif); font-size: 11px; letter-spacing: .2em;
+  text-transform: uppercase; color: #b7a98a; opacity: .8; text-align: right;
+  text-shadow: 0 1px 3px #000; margin-bottom: -1px; }
+.bountyRow { background: rgba(8,6,12,.6); border: 1px solid rgba(255,255,255,.08);
+  border-radius: 7px; padding: 6px 8px; backdrop-filter: blur(2px);
+  transition: border-color .25s, background .25s; }
+.bountyRow.done { border-color: rgba(255,216,138,.5); background: rgba(255,216,138,.09); }
+.bTitle { display: flex; justify-content: space-between; align-items: baseline; gap: 6px; }
+.bName { font-family: var(--mono, monospace); font-size: 9.5px; letter-spacing: .13em;
+  text-transform: uppercase; color: #dfe4ee; }
+.bNum { font-family: var(--mono, monospace); font-size: 9px; color: #8d95a8; }
+.bountyRow.done .bNum { color: #ffd88a; }
+.bTrack { height: 3px; border-radius: 2px; background: rgba(255,255,255,.1);
+  margin: 4px 0 3px; overflow: hidden; }
+.bFill { height: 100%; border-radius: 2px; background: linear-gradient(90deg, #8fb8ff, #8fe0a8);
+  transition: width .3s cubic-bezier(.2,.8,.3,1); }
+.bountyRow.done .bFill { background: linear-gradient(90deg, #ffd88a, #ffb347); }
+.bReward { font-family: var(--mono, monospace); font-size: 8.5px; letter-spacing: .06em;
+  color: #6f7888; }
+.bountyRow.done .bReward { color: #8fe0a8; }
+
+/* ---------------- combo meter ---------------- */
+#comboHud { position: absolute; right: 14px; bottom: 120px; width: 150px;
+  text-align: right; pointer-events: none; z-index: 3; opacity: 0; transition: opacity .18s; }
+#comboHud.show { opacity: 1; }
+#comboHud.hidden { display: none; }
+.cX { font-family: var(--serif, Georgia, serif); font-size: 30px; line-height: 1;
+  color: #ffd166; text-shadow: 0 0 16px rgba(255,180,60,.8), 0 2px 4px #000;
+  display: block; transition: transform .1s; }
+#comboHud.bump .cX { transform: scale(1.22); }
+.cLabel { font-family: var(--mono, monospace); font-size: 8.5px; letter-spacing: .3em;
+  color: #b7a98a; text-transform: uppercase; display: block; margin-top: 1px; }
+.cTrack { height: 3px; background: rgba(255,255,255,.12); border-radius: 2px;
+  margin-top: 5px; overflow: hidden; }
+.cFill { height: 100%; width: 100%; border-radius: 2px;
+  background: linear-gradient(90deg, #ffb347, #ff6b6b); transform-origin: right; }
+@media (max-width: 760px) {
+  #bountyHud { display: none; }
+  #comboHud { bottom: 176px; width: 104px; right: 8px; }
+  .cX { font-size: 22px; }
+}
 </style></style>
 </head>
 <body>
@@ -982,6 +1075,10 @@ body.is-phone #startScreen .phoneStart{display:flex;}
   </div>
 
   <div id="affixBar" class="hidden"></div>
+  <div id="bountyHud" class="hidden"></div>
+  <div id="comboHud" class="hidden"><span class="cX" id="comboX">x1</span><span class="cLabel">COMBO</span>
+    <div class="cTrack"><div class="cFill" id="comboFill"></div></div></div>
+<div id="saveToast" aria-hidden="true"><span class="svDot"></span>SAVED</div>
   <div id="toastLog"></div>
   <div id="hintBar"></div>
 
@@ -1195,6 +1292,7 @@ body.is-phone #startScreen .phoneStart{display:flex;}
     <div class="panelInner">
       <button class="bigBtn" id="resumeBtn">Resume Descent</button>
       <button class="bigBtn secondary" id="pauseInvBtn">Open Satchel</button>
+      <button class="bigBtn secondary" id="pauseSaveBtn">Save Game</button>
       <button class="bigBtn secondary" id="pauseSoundBtn">Toggle Sound</button>
       <button class="bigBtn secondary" id="abandonBtn">Abandon Run</button>
       <div class="controlsList">
@@ -1207,6 +1305,8 @@ body.is-phone #startScreen .phoneStart{display:flex;}
         <kbd>I / Tab</kbd><span>Inventory</span>
         <kbd>F</kbd><span>Interact: chests, stairs, merchant</span>
         <kbd>M</kbd><span>Mute audio</span>
+        <kbd>T</kbd><span>Talents (every 3rd level)</span>
+        <kbd>Ctrl+S</kbd><span>Save now (also autosaves)</span>
       </div>
     </div>
   </div>
@@ -1303,7 +1403,12 @@ body.is-phone #startScreen .phoneStart{display:flex;}
       </div>
     </div>
 
-    <button class="bigBtn" id="startBtn" style="margin:0 auto;">Enter The Dungeon</button>
+    <div class="startBtnRow">
+      <button class="bigBtn" id="startBtn">Enter The Dungeon</button>
+      <button class="bigBtn secondary hidden" id="continueBtn">Continue</button>
+    </div>
+    <div class="bestRecord hidden" id="bestRecord"></div>
+    <button class="linkBtn hidden" id="deleteSaveBtn">Delete saved run</button>
     <div class="startMeta">
       <span>Single-file · <b>0 KB</b> assets</span>
       <span>Canvas 2D · <b>Web Audio</b></span>
@@ -1333,10 +1438,22 @@ body.is-phone #startScreen .phoneStart{display:flex;}
 const TAU = Math.PI * 2;
 const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
 const lerp = (a, b, t) => a + (b - a) * t;
-const rand = (a = 1, b = 0) => b + Math.random() * (a - b);
-const randInt = (a, b) => Math.floor(a + Math.random() * (b - a + 1));
-const chance = (p) => Math.random() < p;
-const pick = (arr) => arr[(Math.random() * arr.length) | 0];
+/* ---------------------------------------------------------------- RNG
+   Every random draw goes through rngNow() so dungeon generation can be made
+   deterministic: buildFloor swaps in the dungeon's seeded stream while the
+   layout is built, then restores the normal Math.random stream. That keeps
+   the live game lively while still letting a save reload the exact same floor. */
+let rngSource = null;
+const rngNow = () => (rngSource ? rngSource() : Math.random());
+function withSeededRng(seed, fn) {
+  const prev = rngSource;
+  rngSource = mulberry32(seed | 0 || 1);
+  try { return fn(); } finally { rngSource = prev; }
+}
+const rand = (a = 1, b = 0) => b + rngNow() * (a - b);
+const randInt = (a, b) => Math.floor(a + rngNow() * (b - a + 1));
+const chance = (p) => rngNow() < p;
+const pick = (arr) => arr[(rngNow() * arr.length) | 0];
 const dist2 = (x1, y1, x2, y2) => { const dx = x2 - x1, dy = y2 - y1; return dx * dx + dy * dy; };
 const dist = (x1, y1, x2, y2) => Math.sqrt(dist2(x1, y1, x2, y2));
 const angleTo = (x1, y1, x2, y2) => Math.atan2(y2 - y1, x2 - x1);
@@ -1347,7 +1464,7 @@ const fmt = (n) => Math.round(n).toLocaleString('en-US');
 
 function shuffle(arr) {
   for (let i = arr.length - 1; i > 0; i--) {
-    const j = (Math.random() * (i + 1)) | 0;
+    const j = (rngNow() * (i + 1)) | 0;
     const t = arr[i]; arr[i] = arr[j]; arr[j] = t;
   }
   return arr;
@@ -1356,7 +1473,7 @@ function weightedPick(entries) {
   /* entries: [[value, weight], ...] */
   let total = 0;
   for (const e of entries) total += e[1];
-  let r = Math.random() * total;
+  let r = rngNow() * total;
   for (const e of entries) { r -= e[1]; if (r <= 0) return e[0]; }
   return entries[entries.length - 1][0];
 }
@@ -1628,6 +1745,27 @@ const Sound = (() => {
       g.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.5);
       o.connect(g); g.connect(sfxOut); o.start(t0); o.stop(t0 + 0.52);
       noise(t0 + 0.05, 0.4, 0.028, { type: 'bandpass', f: 1800, q: 4 });
+    },
+    comboUp() {
+      if (!ctx) return; const t0 = t();
+      const base = 330 + (Game.comboMult || 1) * 42;
+      osc('triangle', base, t0, 0.1, 0.075);
+      osc('triangle', base * 1.5, t0 + 0.045, 0.13, 0.06);
+      noise(t0, 0.08, 0.03, { type: 'highpass', f: 6200 });
+    },
+    bounty() {
+      if (!ctx) return; const t0 = t();
+      /* bright six-note fanfare with a bell tail */
+      [523.25, 659.25, 783.99, 1046.5].forEach((f, i) => {
+        const o = ctx.createOscillator(); const g = ctx.createGain();
+        o.type = 'triangle'; o.frequency.setValueAtTime(f, t0 + i * 0.075);
+        g.gain.setValueAtTime(0.0001, t0 + i * 0.075);
+        g.gain.exponentialRampToValueAtTime(0.13, t0 + i * 0.075 + 0.02);
+        g.gain.exponentialRampToValueAtTime(0.0001, t0 + i * 0.075 + 0.55);
+        o.connect(g); g.connect(sfxOut); o.start(t0 + i * 0.075); o.stop(t0 + i * 0.075 + 0.58);
+      });
+      chord([1046.5, 1318.5, 1568], t0 + 0.32, 1.3, 0.055, 'sine');
+      noise(t0 + 0.3, 0.7, 0.03, { type: 'highpass', f: 5400 });
     },
     boom() {
       if (!ctx) return; const t0 = t();
@@ -2590,8 +2728,11 @@ function rollItem(floorLevel, opts = {}) {
 function itemScore(item) {
   if (!item) return 0;
   const s = item.stats;
+  /* elemental attunement is worth roughly one extra stat affix */
+  const elementBonus = (item.element && item.element !== 'physical') ? 7 : 0;
   return (s.atk || 0) * 3 + (s.def || 0) * 2 + (s.hp || 0) * 0.45 + (s.mana || 0) * 0.35 +
-    (s.crit || 0) * 2.2 + (s.speed || 0) * 1.6 + (s.lifesteal || 0) * 3 + (s.thorns || 0) * 1.2 + (s.gold || 0) * 0.4;
+    (s.crit || 0) * 2.2 + (s.speed || 0) * 1.6 + (s.lifesteal || 0) * 3 + (s.thorns || 0) * 1.2 + (s.gold || 0) * 0.4
+    + elementBonus;
 }
 function statLines(item) {
   const out = [];
@@ -2773,7 +2914,8 @@ class Dungeon {
     this.corridors = [];
     this.visible = new Uint8Array(this.W * this.H);
     this.exploredMap = new Uint8Array(this.W * this.H);
-    this.seed = randInt(1, 1e9);
+    /* a saved run pins the seed so the same floor can be rebuilt exactly */
+    this.seed = opts.seed !== undefined ? (opts.seed | 0) : randInt(1, 1e9);
     this.rng = mulberry32(this.seed);
     this.roomLookup = new Map();
     this.props = [];        /* crates, chests, torches, braziers... */
@@ -2781,7 +2923,9 @@ class Dungeon {
     this.stairs = { x: 0, y: 0 };
     this.entrance = { x: 0, y: 0 };
     this.merchant = null;
-    this.generate();
+    /* Generation runs entirely on the seeded stream, so an identical seed
+       reproduces the identical floor — tiles, rooms, props and all. */
+    withSeededRng(this.seed, () => this.generate());
   }
   idx(x, y) { return y * this.W + x; }
   get(x, y) {
@@ -2975,7 +3119,7 @@ class Dungeon {
     if (this.floor >= 2 && others.length) {
       const m = others.filter(r => r !== this.vault && r !== this.guardianRoom)[0] || others[0];
       this.merchantRoom = m;
-      this.merchant = { x: (m.cx + 0.5) * TILE, y: (m.cy + 0.5) * TILE, room: m, bob: Math.random() * TAU };
+      this.merchant = { x: (m.cx + 0.5) * TILE, y: (m.cy + 0.5) * TILE, room: m, bob: rngNow() * TAU };
     }
   }
   lockVault(vault) {
@@ -4404,6 +4548,377 @@ const FX = {
   }
 };
 
+/* ============================== SAVE SYSTEM ============================= */
+/* Minecraft-style persistence: the run autosaves every few seconds and on
+   every floor change, so closing the tab never costs progress. A single slot
+   stores the seed (the whole dungeon is reproducible from it), the player,
+   their gear, talents and the run's stats. A separate meta block records
+   lifetime bests so death still leaves you something. */
+const Save = {
+  KEY: 'dungeonRogue.save.v1',
+  META_KEY: 'dungeonRogue.meta.v1',
+  AUTOSAVE_MS: 5000,
+  _timer: null,
+  _lastWrite: 0,
+
+  available() {
+    try {
+      const t = '__drprobe';
+      window.localStorage.setItem(t, '1');
+      window.localStorage.removeItem(t);
+      return true;
+    } catch (e) { return false; }
+  },
+
+  /* ---- serialisation ---- */
+  snapshotRun() {
+    const p = Game.player;
+    if (!p || !Game.dungeon || p.dead) return null;
+    return {
+      v: 1,
+      savedAt: Date.now(),
+      floor: Game.floor,
+      seed: Game.dungeon.seed,
+      endless: !!Game.endless,
+      maxFloor: MAX_FLOOR_DYNAMIC,
+      elapsedRun: Game.elapsedRun,
+      combatIntensity: Game.combatIntensity || 0,
+      runStats: Object.assign({}, Game.runStats),
+      shopDiscountUsed: !!Game.shopDiscountUsed,
+      shopRep: Game.shopRep || 0,
+      shopVisits: Game.shopVisits || 0,
+      shopRerolls: Game.shopRerolls,
+      shopRerollCost: Game.shopRerollCost,
+      endlessBundle: Game.endlessBundle ? {
+        list: Game.endlessBundle.list.slice(), floor: Game.endlessBundle.floor
+      } : null,
+      bountyState: Game.bountyState ? Object.assign({}, Game.bountyState) : null,
+      bounties: (Game.bounties || []).map(b => ({
+        id: b.id, name: b.name, desc: b.desc, target: b.target,
+        gold: b.gold, xp: b.xp, done: b.done
+      })),
+      player: {
+        x: p.x, y: p.y,
+        level: p.level, xp: p.xp, xpNext: p.xpNext,
+        hp: p.hp, mana: p.mana,
+        gold: p.gold, potions: p.potions, keys: p.keys,
+        baseAtk: p.baseAtk, baseDef: p.baseDef, baseMaxHp: p.baseMaxHp, baseMaxMana: p.baseMaxMana,
+        baseCrit: p.baseCrit, baseSpeed: p.baseSpeed,
+        skillPoints: p.skillPoints, skills: Object.assign({}, p.skills),
+        equipment: this.slimSlots(p.equipment),
+        totalKills: p.totalKills, totalGold: p.totalGold, depthReached: p.depthReached,
+        inventorySlots: p.maxInv
+      },
+      /* gear and bag contents live here so both survive a reload */
+      equipment: this.slimSlots(p.equipment),
+      inventory: p.inventory.map(it => this.slimItem(it))
+    };
+  },
+
+  slimSlots(slots) {
+    const out = {};
+    for (const slot of ITEM_SLOTS) out[slot] = slots[slot] ? this.slimItem(slots[slot]) : null;
+    return out;
+  },
+
+  slimItem(it) {
+    if (!it) return null;
+    return {
+      id: it.id, name: it.name, slot: it.slot, rarity: it.rarity, level: it.level,
+      stats: Object.assign({}, it.stats), value: it.value, element: it.element || null,
+      affixes: it.affixes ? it.affixes.slice(0, 8) : [],
+      flavor: it.flavor || '', iconSeed: it.iconSeed, iconKind: it.iconKind,
+      stackable: !!it.stackable, heal: it.heal
+    };
+  },
+
+  /* Rebuild a saved item into a live item object, guarding every field so a
+     corrupted or hand-edited save can never crash the boot. */
+  reviveItem(raw) {
+    if (!raw || typeof raw !== 'object' || !raw.slot) return null;
+    const validSlot = ITEM_SLOTS.includes(raw.slot) || raw.slot === 'consumable';
+    if (!validSlot) return null;
+    const rarity = clamp(Number(raw.rarity) || 0, 0, RARITIES.length - 1);
+    const stats = {};
+    if (raw.stats && typeof raw.stats === 'object') {
+      for (const k of ['atk', 'def', 'hp', 'mana', 'crit', 'speed', 'lifesteal', 'thorns', 'gold']) {
+        const v = Number(raw.stats[k]);
+        if (Number.isFinite(v) && v !== 0) stats[k] = v;
+      }
+    }
+    return {
+      id: Number(raw.id) || Math.random() * 1e9 | 0,
+      name: String(raw.name || 'Worn Relic').slice(0, 60),
+      slot: raw.slot,
+      rarity,
+      level: clamp(Number(raw.level) || 1, 1, 99),
+      stats,
+      value: Math.max(1, Number(raw.value) || 1),
+      element: raw.element && ELEMENTS[raw.element] ? raw.element : null,
+      affixes: Array.isArray(raw.affixes) ? raw.affixes.slice(0, 8).map(String) : [],
+      flavor: String(raw.flavor || '').slice(0, 200),
+      iconSeed: Number(raw.iconSeed) || 1234,
+      iconKind: raw.iconKind || null,
+      stackable: !!raw.stackable,
+      heal: Number(raw.heal) || 0
+    };
+  },
+
+  /* ---- run save/load ---- */
+  save() {
+    if (!this.available()) return false;
+    const snap = this.snapshotRun();
+    if (!snap) return false;
+    try {
+      window.localStorage.setItem(this.KEY, JSON.stringify(snap));
+      this._lastWrite = Date.now();
+      this.flashSaveIcon();
+      return true;
+    } catch (e) { return false; }
+  },
+
+  has() {
+    if (!this.available()) return false;
+    try { return !!window.localStorage.getItem(this.KEY); } catch (e) { return false; }
+  },
+
+  peek() {
+    if (!this.has()) return null;
+    try {
+      const raw = JSON.parse(window.localStorage.getItem(this.KEY));
+      if (!raw || raw.v !== 1 || !raw.player) return null;
+      return raw;
+    } catch (e) { return null; }
+  },
+
+  clear() {
+    try { window.localStorage.removeItem(this.KEY); } catch (e) { /* ignore */ }
+    this.refreshMenuControls();
+  },
+
+  /* Restore a saved run into the live game. Rebuilds the floor from the stored
+     seed first, then overlays the saved player so nothing is left stale. */
+  load() {
+    const snap = this.peek();
+    if (!snap) return false;
+    try {
+      const pdata = snap.player;
+      Game.endless = !!snap.endless;
+      MAX_FLOOR_DYNAMIC = Math.max(MAX_FLOOR, snap.maxFloor || MAX_FLOOR);
+      Game.elapsedRun = Number(snap.elapsedRun) || 0;
+      Game.runStats = Object.assign({ kills: 0, gold: 0, chests: 0, items: 0, depth: 1, time: 0 }, snap.runStats || {});
+      Game.shopDiscountUsed = !!snap.shopDiscountUsed;
+      Game.shopRep = clamp(Number(snap.shopRep) || 0, 0, 9);
+      Game.shopVisits = Number(snap.shopVisits) || 0;
+      Game.shopRerolls = Number.isFinite(snap.shopRerolls) ? snap.shopRerolls : 2;
+      Game.shopRerollCost = Number.isFinite(snap.shopRerollCost) ? snap.shopRerollCost : 20;
+
+      /* fresh player, then the saved numbers written over it */
+      Game.player = new Player();
+      const p = Game.player;
+      p.level = clamp(Number(pdata.level) || 1, 1, 999);
+      p.xp = Math.max(0, Number(pdata.xp) || 0);
+      p.xpNext = Math.max(1, Number(pdata.xpNext) || 60);
+      p.baseAtk = Number.isFinite(pdata.baseAtk) ? pdata.baseAtk : p.baseAtk;
+      p.baseDef = Number.isFinite(pdata.baseDef) ? pdata.baseDef : p.baseDef;
+      p.baseMaxHp = Number.isFinite(pdata.baseMaxHp) ? pdata.baseMaxHp : p.baseMaxHp;
+      p.baseMaxMana = Number.isFinite(pdata.baseMaxMana) ? pdata.baseMaxMana : p.baseMaxMana;
+      p.baseCrit = Number.isFinite(pdata.baseCrit) ? pdata.baseCrit : p.baseCrit;
+      p.baseSpeed = Number.isFinite(pdata.baseSpeed) ? pdata.baseSpeed : p.baseSpeed;
+      p.skillPoints = Math.max(0, Number(pdata.skillPoints) || 0);
+      p.skills = {};
+      if (pdata.skills && typeof pdata.skills === 'object') {
+        for (const id in pdata.skills) {
+          if (!SKILL_NODES[id]) continue;
+          const rank = clamp(Math.floor(Number(pdata.skills[id]) || 0), 0, SKILL_NODES[id].maxRank);
+          if (rank > 0) p.skills[id] = rank;
+        }
+      }
+      p.totalKills = Math.max(0, Number(pdata.totalKills) || 0);
+      p.totalGold = Math.max(0, Number(pdata.totalGold) || 0);
+      p.depthReached = Math.max(1, Number(pdata.depthReached) || 1);
+      p.potions = Math.max(0, Number(pdata.potions) || 0);
+      p.keys = Math.max(0, Number(pdata.keys) || 0);
+      p.gold = Math.max(0, Number(pdata.gold) || 0);
+      p.inventory = [];
+      if (Array.isArray(snap.inventory)) {
+        for (const raw of snap.inventory) {
+          const it = this.reviveItem(raw);
+          if (it && p.inventory.length < p.maxInv) p.inventory.push(it);
+        }
+      }
+      for (const slot of ITEM_SLOTS) {
+        const raw = (snap.equipment || {})[slot];
+        p.equipment[slot] = raw ? this.reviveItem(raw) : null;
+      }
+
+      /* rebuild the floor from the saved seed, then drop the player back in */
+      const floorN = clamp(Number(snap.floor) || 1, 1, 9999);
+      buildFloor(floorN, false, snap.seed);
+      if (snap.endlessBundle && Array.isArray(snap.endlessBundle.list)) {
+        Game.endlessBundle.list = snap.endlessBundle.list.filter(k => !!AFFIXES[k]).slice(0, 4);
+        Game.endlessBundle.floor = floorN;
+        Game.endlessBundle.enemyMult = 1; Game.endlessBundle.enemySpeed = 1;
+        Game.endlessBundle.enemyCooldown = 1; Game.endlessBundle.enemyArmor = 1;
+        Game.endlessBundle.enemyHp = 1; Game.endlessBundle.enemyLifesteal = 0;
+        Game.endlessBundle.goldMult = 1; Game.endlessBundle.lootMult = 1;
+        Game.endlessBundle.lightMult = 1; Game.endlessBundle.shopDiscount = 1;
+        Game.endlessBundle.explodeOnDeath = false; Game.endlessBundle.extraElites = 0;
+        for (const k of Game.endlessBundle.list) AFFIXES[k].apply(Game.endlessBundle);
+        renderAffixHud();
+      }
+      /* bounties belong to the floor, so restore them after the floor is rebuilt */
+      if (Array.isArray(snap.bounties) && snap.bounties.length) {
+        Game.bounties = snap.bounties.filter(b => b && b.id).slice(0, 4).map(b => ({
+          id: String(b.id), name: String(b.name || 'Bounty'),
+          desc: String(b.desc || ''), target: Math.max(1, Number(b.target) || 1),
+          gold: Math.max(0, Number(b.gold) || 0), xp: Math.max(0, Number(b.xp) || 0),
+          done: !!b.done
+        }));
+      }
+      Game.bountyState = { kills: 0, chests: 0, gold: 0, crates: 0, flawless: 0, bosses: 0 };
+      if (snap.bountyState && typeof snap.bountyState === 'object') {
+        for (const k in Game.bountyState) {
+          const v = Number(snap.bountyState[k]);
+          if (Number.isFinite(v)) Game.bountyState[k] = Math.max(0, v);
+        }
+      }
+      renderBountyHud();
+      /* position (only if walkable) */
+      const sx = Number(pdata.x), sy = Number(pdata.y);
+      if (Number.isFinite(sx) && Number.isFinite(sy) && Game.dungeon.isWalkablePx(sx, sy)) {
+        p.x = sx; p.y = sy;
+      }
+      p.hp = clamp(Number(pdata.hp) || p.maxHp, 1, p.maxHp);
+      p.mana = clamp(Number(pdata.mana) || p.maxMana, 0, p.maxMana);
+      p.invuln = 1.2;
+      Game.cam.x = p.x - Game.W / 2;
+      Game.cam.y = p.y - Game.H / 2;
+      clampCamera();
+      revealAround(p.x, p.y, 6.5);
+      Game.state = 'playing';
+      Game.paused = false;
+      Game.combatIntensity = 0;
+      updateHud(true);
+      refreshInventoryUI();
+      return true;
+    } catch (e) {
+      /* a broken save must never brick the game */
+      console.warn('Save load failed:', e && e.message);
+      this.clear();
+      return false;
+    }
+  },
+
+  /* ---- autosave loop ---- */
+  startAutosave() {
+    if (this._timer) return;
+    this._timer = setInterval(() => {
+      if (Game.state === 'playing' && !Game.paused && Game.player && !Game.player.dead) {
+        this.save();
+      }
+    }, this.AUTOSAVE_MS);
+  },
+  stopAutosave() {
+    if (this._timer) { clearInterval(this._timer); this._timer = null; }
+  },
+  flashSaveIcon() {
+    const el = $('saveToast');
+    if (!el) return;
+    el.classList.remove('pop');
+    void el.offsetWidth;
+    el.classList.add('pop');
+    Game.lastSaveAt = Date.now();
+  },
+
+  /* ---- meta progression (survives every death) ---- */
+  meta() {
+    const empty = { runs: 0, deepestFloor: 0, totalKills: 0, totalGold: 0,
+                    bossesSlain: 0, bestTime: 0, unlocked: {}, deaths: 0 };
+    if (!this.available()) return empty;
+    try {
+      const raw = JSON.parse(window.localStorage.getItem(this.META_KEY));
+      if (!raw || typeof raw !== 'object') return empty;
+      const out = Object.assign({}, empty);
+      for (const k of ['runs', 'deepestFloor', 'totalKills', 'totalGold', 'bossesSlain', 'bestTime', 'deaths']) {
+        const v = Number(raw[k]);
+        if (Number.isFinite(v)) out[k] = Math.max(0, v);
+      }
+      if (raw.unlocked && typeof raw.unlocked === 'object') {
+        for (const k in raw.unlocked) if (raw.unlocked[k]) out.unlocked[k] = true;
+      }
+      return out;
+    } catch (e) { return empty; }
+  },
+  writeMeta(m) {
+    if (!this.available()) return;
+    try { window.localStorage.setItem(this.META_KEY, JSON.stringify(m)); } catch (e) { /* ignore */ }
+  },
+  /* Called at run start, every floor, and on death. */
+  recordRunStart() {
+    const m = this.meta();
+    m.runs++;
+    this.writeMeta(m);
+    this.refreshMenuControls();
+    return m;
+  },
+  recordFloor(floorN) {
+    const m = this.meta();
+    if (floorN > m.deepestFloor) m.deepestFloor = floorN;
+    this.writeMeta(m);
+    this.refreshMenuControls();
+  },
+  recordBoss() {
+    const m = this.meta();
+    m.bossesSlain++;
+    this.writeMeta(m);
+  },
+  recordDeath() {
+    const m = this.meta();
+    m.deaths++;
+    const p = Game.player;
+    if (p) {
+      m.totalKills += p.totalKills || 0;
+      m.totalGold += p.totalGold || 0;
+      if (p.depthReached > m.deepestFloor) m.deepestFloor = p.depthReached;
+    }
+    this.writeMeta(m);
+    this.refreshMenuControls();
+  },
+  /* paint the start menu with whatever progress exists */
+  refreshMenuControls() {
+    const cont = $('continueBtn');
+    if (!cont) return;
+    const snap = this.peek();
+    if (snap) {
+      cont.classList.remove('hidden');
+      const when = new Date(snap.savedAt || Date.now());
+      const mins = Math.max(0, Math.round((Date.now() - (snap.savedAt || Date.now())) / 60000));
+      const ago = mins < 1 ? 'just now' : mins < 60 ? mins + 'm ago' : Math.round(mins / 60) + 'h ago';
+      cont.innerHTML = 'Continue · Floor ' + snap.floor + ' · Lv ' + snap.player.level
+        + ' <span class="contMeta">saved ' + ago + '</span>';
+    } else {
+      cont.classList.add('hidden');
+    }
+    const best = $('bestRecord');
+    if (best) {
+      const m = this.meta();
+      if (m.runs > 0) {
+        best.classList.remove('hidden');
+        best.innerHTML = '<span>Deepest <b>' + (m.deepestFloor || 1) + '</b></span>'
+          + '<span>Runs <b>' + m.runs + '</b></span>'
+          + '<span>Kills <b>' + fmt(m.totalKills) + '</b></span>'
+          + (m.bossesSlain ? '<span>Wardens <b>' + m.bossesSlain + '</b></span>' : '');
+      } else {
+        best.classList.add('hidden');
+      }
+    }
+    /* delete-save affordance only makes sense when a save exists */
+    const del = $('deleteSaveBtn');
+    if (del) del.classList.toggle('hidden', !snap);
+  }
+};
+
 /* ============================== 10. GAME STATE =========================== */
 const MAX_FLOOR = 10;
 const Game = {
@@ -4510,18 +5025,29 @@ function startRun() {
   Game.shopRerollCost = 20;
   Game.endlessAffixes = [];
   Game.combatIntensity = 0;
+  Game.bounties = [];
+  Game.bountyState = null;
+  Game.flawlessStreak = 0;
+  Game.comboMult = 1;
+  Game.comboCount = 0;
+  Game.comboExpires = 0;
   buildFloor(1, true);
   showBanner('Floor 1', THEMES[0].name, THEMES[0].sub);
   toast('You awaken at the mouth of the dungeon. Descend.', 'good');
   Sound.startMusic();
   updateHud(true);
   refreshInventoryUI();
+  /* a brand-new run supersedes any old save, then begins autosaving */
+  Save.clear();
+  Save.recordRunStart();
+  Save.startAutosave();
+  Save.save();
 }
 
-function buildFloor(n, first = false) {
+function buildFloor(n, first = false, seed) {
   const p = Game.player;
   Game.floor = n;
-  Game.dungeon = new Dungeon(n);
+  Game.dungeon = new Dungeon(n, seed !== undefined ? { seed: seed } : {});
   const d = Game.dungeon;
   d.exploredMap.fill(0);
   Game.enemies = [];
@@ -4544,6 +5070,7 @@ function buildFloor(n, first = false) {
   clampCamera();
   /* endless affixes are rolled per floor, before spawning uses them */
   Game.endlessBundle = rollEndlessAffixes(n);
+  rollBounties(n);
   spawnProps(d);
   spawnEnemies(d);
   spawnMerchantStock(n);
@@ -4562,6 +5089,9 @@ function buildFloor(n, first = false) {
   revealAround(p.x, p.y, 6.5);
   updateHud(true);
   refreshShopIfOpen();
+  Save.recordFloor(n);
+  /* the seed is captured here so the floor can be rebuilt on load */
+  Game.lastFloorSeed = d.seed;
 }
 
 /* ---------- prop placement ---------- */
@@ -4882,6 +5412,167 @@ function spawnEnemies(d) {
   }
 }
 
+/* ============================== BOUNTIES ================================= */
+/* A light objective layer that gives every floor a reason to keep pushing:
+   three rotating bounties drawn from a pool, each worth gold, XP and a talent
+   shard at higher tiers. Completing one is always audible and visible, which
+   is the whole trick — the pull is the next tick, not the reward itself. */
+const BOUNTY_POOL = [
+  { id: 'slay',    name: 'Cull',        target: 8,  stat: 'kills',   floorScale: true,  reward: { gold: 60, xp: 40 },  desc: n => 'Slay ' + n + ' monsters' },
+  { id: 'chests',  name: 'Plunder',     target: 2,  stat: 'chests',  floorScale: false, reward: { gold: 80, xp: 45 },  desc: n => 'Open ' + n + ' chests' },
+  { id: 'gold',    name: 'Tribute',     target: 150, stat: 'gold',   floorScale: true,  reward: { gold: 70, xp: 35 },  desc: n => 'Gather ' + n + ' gold' },
+  { id: 'crates',  name: 'Demolition',  target: 3,  stat: 'crates',  floorScale: false, reward: { gold: 55, xp: 30 },  desc: n => 'Smash ' + n + ' crates' },
+  { id: 'flawless', name: 'Untouched',  target: 5,  stat: 'flawless', floorScale: false, reward: { gold: 110, xp: 70 }, desc: n => 'Slay ' + n + ' without taking a hit' },
+  { id: 'boss',    name: 'Wardenfall',  target: 1,  stat: 'bosses',  floorScale: false, reward: { gold: 260, xp: 220 }, desc: n => 'Fell the Warden', floorOnly: 10 }
+];
+/* Roll a fresh set of bounties for a floor. Counters live in Game.bountyState
+   and are compared against live run stats, so no bookkeeping is duplicated. */
+function rollBounties(floorN) {
+  Game.bounties = [];
+  Game.bountyState = { kills: 0, chests: 0, gold: 0, crates: 0, flawless: 0, bosses: 0 };
+  Game.flawlessStreak = 0;
+  if (floorN === 1) return;
+  const pool = BOUNTY_POOL.filter(b => !b.floorOnly || floorN >= b.floorOnly);
+  const chosen = [];
+  while (chosen.length < 3 && pool.length) {
+    const b = pool.splice(Math.floor(Math.random() * pool.length), 1)[0];
+    chosen.push(b);
+  }
+  Game.bounties = chosen.map(b => {
+    const target = b.floorScale ? Math.round(b.target * (1 + Math.floor(floorN * 0.35))) : b.target;
+    return {
+      id: b.id, name: b.name, desc: b.desc(target), target,
+      gold: Math.round(b.reward.gold * (1 + floorN * 0.12)),
+      xp: Math.round(b.reward.xp * (1 + floorN * 0.10)),
+      done: false, claimed: false
+    };
+  });
+  renderBountyHud();
+}
+/* Feed the counters. Called from the places that already track the event. */
+function bountyTick(stat, amount) {
+  if (!Game.bountyState) return;
+  if (stat === 'flawlessBreak') {
+    /* taking a hit resets the streak and therefore the bounty progress */
+    Game.flawlessStreak = 0;
+    Game.bountyState.flawless = 0;
+    return;
+  }
+  if (stat === 'flawless') {
+    Game.flawlessStreak = (Game.flawlessStreak || 0) + 1;
+    Game.bountyState.flawless = Game.flawlessStreak;
+  } else if (stat === 'gold') {
+    Game.bountyState.gold += amount || 0;
+  } else if (Game.bountyState[stat] !== undefined) {
+    Game.bountyState[stat] += (amount === undefined ? 1 : amount);
+  }
+  evaluateBounties();
+}
+function evaluateBounties() {
+  if (!Game.bounties || !Game.bounties.length) return;
+  let changed = false;
+  for (const b of Game.bounties) {
+    if (b.done) continue;
+    if ((Game.bountyState[b.id] || 0) >= b.target) {
+      b.done = true;
+      changed = true;
+      grantBounty(b);
+    }
+  }
+  if (changed) renderBountyHud();
+}
+function grantBounty(b) {
+  const p = Game.player;
+  p.gold += b.gold;
+  p.totalGold += b.gold;
+  Game.runStats.gold += b.gold;
+  const before = p.level;
+  p.gainXp(b.xp);
+  Sound.play('bounty');
+  FX.screenSparkle();
+  FX.text(p.x, p.y - 46, 'BOUNTY: ' + b.name, { color: '#ffd88a', size: 15, bold: true, life: 1.4 });
+  toast('Bounty complete — ' + b.name + ' · +' + fmt(b.gold) + 'g, +' + b.xp + ' XP', 'gold');
+  if (p.level > before) { /* gainXp already levelled; banner is handled there */ }
+  updateHud();
+}
+/* One compact panel: each bounty gets a live progress bar. */
+function renderBountyHud() {
+  const el = $('bountyHud');
+  if (!el) return;
+  const list = Game.bounties || [];
+  if (!list.length) { el.classList.add('hidden'); el.innerHTML = ''; return; }
+  el.classList.remove('hidden');
+  const rows = list.map(b => {
+    const cur = Math.min(b.target, Game.bountyState[b.id] || 0);
+    const pct = Math.round(clamp(cur / b.target, 0, 1) * 100);
+    return '<div class="bountyRow' + (b.done ? ' done' : '') + '" title="' + escapeHtml(b.desc) + '">'
+      + '<div class="bTitle"><span class="bName">' + escapeHtml(b.name) + '</span>'
+      + '<span class="bNum">' + cur + '/' + b.target + '</span></div>'
+      + '<div class="bTrack"><div class="bFill" style="width:' + pct + '%"></div></div>'
+      + '<div class="bReward">' + (b.done ? '✦ complete' : '+' + fmt(b.gold) + 'g · ' + b.xp + 'xp') + '</div>'
+      + '</div>';
+  }).join('');
+  el.innerHTML = '<div class="bountyHead">Bounties</div>' + rows;
+}
+
+/* ============================== COMBO METER ============================== */
+/* Kill again within the window and the multiplier climbs — up to x8. Gold and
+   XP scale with it, so the correct play is always "one more kill", which is
+   exactly the loop that makes a run hard to put down. Taking a hit knocks one
+   step off instead of resetting, so it forgives a scratch but punishes sloppiness. */
+const COMBO_WINDOW = 3.2;      /* seconds between kills to keep the chain */
+const COMBO_MAX = 8;
+
+function comboAdd() {
+  const now = Game.time;
+  Game.comboCount = (Game.comboCount || 0) + 1;
+  Game.comboExpires = now + COMBO_WINDOW;
+  /* every second kill adds a multiplier step */
+  const tier = 1 + Math.floor(Game.comboCount / 2);
+  const next = Math.min(COMBO_MAX, tier);
+  if (next > (Game.comboMult || 1)) {
+    Game.comboMult = next;
+    Sound.play('comboUp', 0.7);
+    FX.text(Game.player.x, Game.player.y - 56, 'x' + next + ' COMBO', { color: '#ffd166', size: 15, bold: true, life: 1.0 });
+  }
+  Game.comboFlash = 0.18;
+}
+function comboBreak(penalty) {
+  if (!Game.comboMult || Game.comboMult <= 1) { Game.comboCount = 0; return; }
+  Game.comboMult = Math.max(1, Game.comboMult - (penalty || 1));
+  Game.comboCount = Math.max(0, Game.comboCount - 2);
+  Game.comboExpires = Game.time + COMBO_WINDOW * 0.6;
+}
+function comboTick(dt) {
+  if (!Game.comboMult) Game.comboMult = 1;
+  if (Game.comboExpires && Game.time > Game.comboExpires) {
+    if (Game.comboMult > 1) {
+      Game.comboMult = 1;
+      Game.comboCount = 0;
+      Game.comboExpires = 0;
+    } else {
+      Game.comboCount = 0;
+    }
+  }
+  if (Game.comboFlash > 0) Game.comboFlash -= dt;
+  const el = $('comboHud');
+  if (!el) return;
+  if (Game.comboMult > 1) {
+    el.classList.remove('hidden');
+    el.classList.add('show');
+    if (el.classList.contains('bump') && Game.comboFlash <= 0) el.classList.remove('bump');
+    const xEl = $('comboX');
+    if (xEl) xEl.textContent = 'x' + Game.comboMult;
+    const left = clamp(((Game.comboExpires || 0) - Game.time) / COMBO_WINDOW, 0, 1);
+    const fill = $('comboFill');
+    if (fill) fill.style.transform = 'scaleX(' + left.toFixed(3) + ')';
+    if (Game.comboFlash > 0 && !el.classList.contains('bump')) el.classList.add('bump');
+  } else {
+    el.classList.remove('show');
+    el.classList.remove('bump');
+  }
+}
+
 /* ============================== ENDLESS MODIFIERS ======================== */
 /* Once the Warden falls the descent continues, and every floor below the
    victory line rolls one or more affixes. Affixes are deliberately legible:
@@ -4982,6 +5673,8 @@ function descend() {
   const onStairs = d.roomAt(px, py) === d.stairsRoom && dist(px, py, (d.stairs.x + 0.5) * TILE, (d.stairs.y + 0.5) * TILE) < 52;
   if (!onStairs && !Game.nearStairs) { toast('You must stand on the stairs to descend.', 'danger'); Sound.play('error'); return; }
   Sound.play('stairs');
+  /* save right before the floor changes so a crash mid-transition is safe */
+  Save.save();
   Game.state = 'transition';
   const fade = $('transition');
   fade.classList.add('black');
@@ -5214,11 +5907,18 @@ const Combat = {
     e.deathT = 0;
     p.totalKills++;
     Game.runStats.kills++;
+    bountyTick('kills');
+    bountyTick('flawless');
+    if (e.isBoss) bountyTick('bosses');
     Sound.play('enemyDie', 0.8);
-    const xp = e.xpValue;
+    /* combo first, so this kill's own rewards already benefit from the chain */
+    comboAdd();
+    const multiplier = Game.comboMult || 1;
+    const xp = Math.round(e.xpValue * multiplier);
     const leveled = p.gainXp(xp);
     FX.text(e.x, e.y - e.radius - 20, '+' + xp + ' XP', { color: '#ffd76e', size: 12, life: 1.1 });
-    const gold = Math.round(randInt(e.goldRange[0], e.goldRange[1]) * (1 + p.goldFind / 100) * (e.goldMult || 1));
+    const gold = Math.round(randInt(e.goldRange[0], e.goldRange[1]) * (1 + p.goldFind / 100)
+      * (e.goldMult || 1) * multiplier);
     /* drops */
     const lootMult = (Game.endlessBundle && Game.endlessBundle.lootMult) || 1;
     const dropChance = Math.min(1, (e.isBoss ? 1 : e.isElite ? 0.9 : 0.22) * lootMult);
@@ -5253,6 +5953,7 @@ const Combat = {
       Game.cam.shake = Math.max(Game.cam.shake, 8); Game.cam.shakeT = 0.3;
       Sound.play('boom', 0.8);
     }
+    if (e.isBoss) Save.recordBoss();
     if (e.isElite || e.isBoss) {
       FX.lootBurst(e.x, e.y, e.isBoss ? '#ff4d6d' : '#ffa93c', 40);
       Game.cam.shake = e.isBoss ? 18 : 8; Game.cam.shakeT = 0.45;
@@ -5279,6 +5980,7 @@ const Combat = {
       pr.dead = true;
       if (pr.hp === 0) { /* second hit destroys */ }
       Sound.play('crate');
+      bountyTick('crates');
       FX.shatter(pr.x, pr.y, 18, ['#8a5a2b', '#5c3a1c', '#c08b4a', '#e0b070']);
       if (pr.loot) {
         if (pr.loot.gold) Game.drops.push({ kind: 'gold', amount: pr.loot.gold, x: pr.x, y: pr.y, vx: rand(60, -60), vy: rand(60, -60), life: 24, bob: 1 });
@@ -5294,6 +5996,8 @@ const Combat = {
     const reduced = rawDamage * (100 / (100 + p.defense * 4.2));
     const dmg = Math.max(1, Math.round(reduced * rand(1.06, 0.94)));
     p.hp -= dmg;
+    comboBreak(1);
+    bountyTick('flawlessBreak');
     p.hurtFlash = 0.25;
     p.invuln = 0.42;
     Game.cam.shake = Math.min(12, 3 + dmg * 0.28); Game.cam.shakeT = 0.24;
@@ -5858,6 +6562,7 @@ function pickupDrop(d, index) {
     p.gold += d.amount;
     p.totalGold += d.amount;
     Game.runStats.gold += d.amount;
+  bountyTick('gold', d.amount);
     FX.coinBurst(d.x, d.y, 6);
     FX.text(d.x, d.y - 16, '+' + d.amount + 'g', { color: '#f3d99a', size: 12, life: 0.9 });
     Sound.play('gold', 0.55);
@@ -5946,6 +6651,7 @@ function openChest(chest) {
   chest.opened = true;
   Sound.play('chest');
   Game.runStats.chests++;
+  bountyTick('chests');
   p.pickupMagnet = 2;
   const loot = chest.lootTable();
   chest.flash = 0.5;
@@ -7270,14 +7976,82 @@ function drawEnemy(ctx, e, cam, t) {
     default: drawSkeleton(ctx, e, tt, flash);
   }
   ctx.restore();
-  /* status auras */
+  /* ---------------- status auras ----------------
+     Each element gets a distinct, readable signature: frost crusts the base,
+     fire licks upward, storm crackles in short arcs. */
   if (e.chillT > 0) {
+    const a = clamp(e.chillT / STATUS.CHILL.duration, 0, 1);
     ctx.save(); ctx.globalCompositeOperation = 'lighter';
-    const g = ctx.createRadialGradient(x, y, 2, x, y, e.radius * 2);
-    g.addColorStop(0, 'rgba(140,220,255,0.22)'); g.addColorStop(1, 'rgba(140,220,255,0)');
-    ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x, y, e.radius * 2, 0, TAU); ctx.fill(); ctx.restore();
+    const g = ctx.createRadialGradient(x, y + 4, 2, x, y + 4, e.radius * 2.1);
+    g.addColorStop(0, 'rgba(140,220,255,' + (0.26 * a + 0.06) + ')');
+    g.addColorStop(0.6, 'rgba(110,190,255,' + (0.10 * a) + ')');
+    g.addColorStop(1, 'rgba(140,220,255,0)');
+    ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x, y + 4, e.radius * 2.1, 0, TAU); ctx.fill();
+    /* frost shards crusting the ground */
+    ctx.strokeStyle = 'rgba(200,240,255,' + (0.5 * a) + ')';
+    ctx.lineWidth = 1.1;
+    for (let i = 0; i < 5; i++) {
+      const ang = (i / 5) * TAU + e.x * 0.02;
+      const rx = x + Math.cos(ang) * e.radius * 1.25;
+      const ry = y + Math.sin(ang) * e.radius * 0.7 + e.radius * 0.55;
+      ctx.beginPath();
+      ctx.moveTo(rx, ry);
+      ctx.lineTo(rx + Math.cos(ang) * 3.4, ry - 4.2);
+      ctx.stroke();
+    }
+    ctx.restore();
   }
-  if (e.burnT > 0 && Math.random() < 0.3) FX.ember(x + cam.x, y + cam.y - 6, 1, '#ff8a3c');
+  if (e.burnT > 0) {
+    const a = clamp(e.burnT / STATUS.BURN.duration, 0, 1);
+    ctx.save(); ctx.globalCompositeOperation = 'lighter';
+    const g = ctx.createRadialGradient(x, y - 2, 2, x, y - 2, e.radius * 1.9);
+    g.addColorStop(0, 'rgba(255,150,60,' + (0.22 * a + 0.05) + ')');
+    g.addColorStop(1, 'rgba(255,80,20,0)');
+    ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x, y - 2, e.radius * 1.9, 0, TAU); ctx.fill();
+    /* flame tongues */
+    for (let i = 0; i < 3; i++) {
+      const ph = (Game.time * 2.4 + i * 0.66) % 1;
+      const fx2 = x + Math.sin(Game.time * 5 + i * 2.1) * e.radius * 0.55;
+      const fy2 = y - e.radius * 0.3 - ph * e.radius * 1.5;
+      ctx.fillStyle = 'rgba(255,' + Math.round(170 - ph * 90) + ',60,' + ((1 - ph) * 0.55 * a) + ')';
+      ctx.beginPath();
+      ctx.ellipse(fx2, fy2, 2.6 * (1 - ph * 0.45), 5.4 * (1 - ph * 0.5), 0, 0, TAU);
+      ctx.fill();
+    }
+    ctx.restore();
+    if (Math.random() < 0.22) FX.ember(x + cam.x, y + cam.y - 6, 1, '#ff8a3c');
+  }
+  if (e.shockT > 0) {
+    const a = clamp(e.shockT / STATUS.SHOCK.duration, 0, 1);
+    /* crackle: two short arcs that flicker on a fast cycle */
+    const on = Math.sin(Game.time * 34 + e.x * 0.1) > -0.2;
+    if (on) {
+      ctx.save();
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.strokeStyle = 'rgba(200,160,255,' + (0.72 * a) + ')';
+      ctx.shadowColor = '#c9a2ff'; ctx.shadowBlur = 8;
+      ctx.lineWidth = 1.4;
+      ctx.beginPath();
+      for (let i = 0; i <= 6; i++) {
+        const ang = -Math.PI * 0.85 + (i / 6) * Math.PI * 0.7;
+        const ry = e.radius * 1.05 + Math.sin(i * 2.7 + Game.time * 22) * 3.2;
+        const px2 = x + Math.cos(ang) * ry, py2 = y + Math.sin(ang) * ry;
+        if (i === 0) ctx.moveTo(px2, py2); else ctx.lineTo(px2, py2);
+      }
+      ctx.stroke();
+      ctx.strokeStyle = 'rgba(230,210,255,' + (0.5 * a) + ')';
+      ctx.beginPath();
+      for (let i = 0; i <= 5; i++) {
+        const ang = Math.PI * 0.1 + (i / 5) * Math.PI * 0.6;
+        const ry = e.radius * 1.0 + Math.cos(i * 3.1 + Game.time * 19) * 2.6;
+        const px2 = x + Math.cos(ang) * ry, py2 = y + Math.sin(ang) * ry;
+        if (i === 0) ctx.moveTo(px2, py2); else ctx.lineTo(px2, py2);
+      }
+      ctx.stroke();
+      ctx.restore();
+    }
+    if (Math.random() < 0.06) FX.spark(x + cam.x, y + cam.y, { count: 2, color: '#c9a2ff', speed: 90 });
+  }
   /* health bar */
   if (e.alive && (e.aggro || e.isElite || e.hp < e.maxHp) && !e.dead) {
     const w = Math.max(28, e.radius * 2.4);
@@ -8827,6 +9601,12 @@ function showTooltip(item, x, y, slot, fromInventory) {
       return `<div class="ttStat${cls}"><span>${l.label}</span><span class="v">${l.value > 0 ? '+' : ''}${l.value}${l.suffix}</span></div>`;
     }).join('');
   }
+  if (item.element && item.element !== 'physical' && ELEMENTS[item.element]) {
+    const el = ELEMENTS[item.element];
+    html += `<div class="ttElement" style="color:${el.colour};border-color:${el.colour}66">
+      <span class="ttElIcon">${el.icon}</span>${el.name} attuned
+      <span class="ttElPct">+18% damage · applies ${el.name.toLowerCase()}</span></div>`;
+  }
   if (item.affixes && item.affixes.length) {
     html += '<div class="ttDivider"></div>';
     html += item.affixes.map(a => `<div class="ttAffix">✦ ${escapeHtml(a)}</div>`).join('');
@@ -9206,12 +9986,16 @@ function showDeath() {
   $('deathStats').innerHTML = runStatsHtml(p);
   $('deathOverlay').classList.add('show');
   Sound.stopMusic();
+  Save.recordDeath();
+  Save.clear();
+  Save.stopAutosave();
 }
 function showVictory() {
   const p = Game.player;
   $('victoryStats').innerHTML = runStatsHtml(p);
   $('victoryOverlay').classList.add('show');
   Sound.stopMusic();
+  Save.save();
 }
 function runStatsHtml(p) {
   const mins = Math.floor(Game.elapsedRun / 60), secs = Math.floor(Game.elapsedRun % 60);
@@ -9259,6 +10043,9 @@ function setupInput() {
         break;
       case 'KeyF': if (!Game.paused) doInteract(); break;
       case 'KeyM': toggleSound(); break;
+      case 'KeyS':
+        if (ev.ctrlKey || ev.metaKey) { ev.preventDefault(); if (Save.save()) toast('Progress saved.', 'good'); }
+        break;
       case 'KeyP': togglePause(); break;
       case 'Enter': if (Game.paused) togglePause(); break;
       default: break;
@@ -9352,9 +10139,19 @@ function setupInput() {
   $('soundBtn').addEventListener('click', toggleSound);
   /* overlay buttons */
   $('startBtn').addEventListener('click', beginGame);
+  $('continueBtn').addEventListener('click', continueRun);
+  $('deleteSaveBtn').addEventListener('click', () => {
+    Save.clear();
+    Sound.play('ui');
+    toast('Saved run deleted.', 'good');
+  });
   $('resumeBtn').addEventListener('click', () => togglePause(false));
   $('pauseInvBtn').addEventListener('click', () => { togglePause(false); toggleInventory(true); });
   $('pauseSoundBtn').addEventListener('click', toggleSound);
+  $('pauseSaveBtn').addEventListener('click', () => {
+    if (Save.save()) { toast('Progress saved.', 'good'); Sound.play('ui'); }
+    else toast('Saving is unavailable in this browser.', 'danger');
+  });
   $('abandonBtn').addEventListener('click', () => {
     togglePause(false);
     Combat.onPlayerDeath(null);
@@ -9658,14 +10455,53 @@ function toggleSound() {
   $('soundBtn').style.opacity = muted ? '0.4' : '0.65';
   if (!muted) { Sound.resume(); Sound.play('ui'); }
 }
+/* refresh the start menu with whatever progress is on disk */
+function initSaveState() {
+  if (!Save.available()) {
+    console.warn('localStorage is unavailable: autosave disabled.');
+    return;
+  }
+  Save.refreshMenuControls();
+  /* last-chance save when the tab closes or reloads (Minecraft-style) */
+  window.addEventListener('beforeunload', () => {
+    if (Game.state === 'playing' && Game.player && !Game.player.dead) Save.save();
+  });
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'hidden' && Game.state === 'playing'
+        && Game.player && !Game.player.dead && !Game.paused) {
+      Save.save();
+    }
+  });
+}
 function beginGame() {
   Sound.init(); Sound.resume();
+  /* starting fresh discards the old save only once the new run is real */
   $('startFade').classList.add('black');
   setTimeout(() => {
     $('startScreen').classList.remove('show');
     startRun();
     $('startFade').classList.remove('black');
     Game.input.mouseDown = false;
+  }, 420);
+}
+/* Resume the autosaved run exactly where it was left. */
+function continueRun() {
+  Sound.init(); Sound.resume();
+  $('startFade').classList.add('black');
+  setTimeout(() => {
+    $('startScreen').classList.remove('show');
+    const ok = Save.load();
+    $('startFade').classList.remove('black');
+    Game.input.mouseDown = false;
+    if (!ok) {
+      toast('That save could not be read. Starting a new run.', 'danger');
+      startRun();
+    } else {
+      toast('Welcome back. Floor ' + Game.floor + ', level ' + Game.player.level + '.', 'good');
+      Sound.startMusic();
+      Sound.setAmbient(Game.dungeon.theme.key === 'lava' ? 0.7 : Game.dungeon.theme.key === 'ice' ? 0.45 : 0.3);
+      Save.startAutosave();
+    }
   }, 420);
 }
 function restartRun() {
@@ -9855,6 +10691,7 @@ function update(dt) {
     /* keep the minimap fresh */
     Game.minimapT = (Game.minimapT || 0) + dt;
     if (Game.minimapT > 0.14) { Game.minimapT = 0; drawMinimap(); }
+    comboTick(dt);
     /* boss bar tracks the biggest thing in the room */
     Game.bossHudT = (Game.bossHudT || 0) + dt;
     if (Game.bossHudT > 0.08) { Game.bossHudT = 0; updateBossBar(); }
@@ -10019,8 +10856,9 @@ function boot() {
   window.addEventListener('keydown', unlock);
   $('soundBtn').textContent = '♪';
 }
-if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
-else boot();
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', () => { boot(); initSaveState(); });
+} else { boot(); initSaveState(); }
 </script>
 </body>
 </html>
