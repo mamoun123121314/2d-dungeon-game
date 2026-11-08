@@ -28,6 +28,21 @@ start index.html         # Windows
 | `I` / `Tab` | Inventory, equipment paperdoll, item tooltips |
 | `M` | Mute |
 | `Esc` | Pause |
+
+### On a phone
+
+The touch layout switches on automatically for a coarse-pointer device with a
+screen under 900 px.
+
+| Input | Action |
+| --- | --- |
+| Left thumb — drag anywhere on the left | Virtual joystick, 8-directional with a deadzone |
+| Right thumb — **Slash** | Sword arc, the big ring under your thumb |
+| **Missile / Slam / Potion** | Skills with radial cooldown sweeps |
+| **Pack** | Inventory and paperdoll |
+| Tap the prompt bar | Open chests, take stairs, use the vault key |
+| Tap the canvas | Swing where you tapped |
+| Rotate to landscape | Portrait shows a rotate nudge |
 | Touch | Tap = attack, drag = virtual stick, tap far right = magic |
 
 ## What is in the game
@@ -75,6 +90,32 @@ start index.html         # Windows
 - Multi-layer particle system: spell trails, blood, embers, dust, chest bursts,
   level-up rings, torch smoke.
 
+### Graphics
+- **Dynamic lighting engine.** Every light carries colour, radius, intensity
+  and flicker: the hero's torch, wall sconces, braziers, glowing chests, the
+  stairs beacon, the breathing vault seal, and projectiles in flight, plus
+  lava tiles that glow upward. Lights are accumulated additively and carve the
+  fog with a multi-stop falloff, so overlapping pools compound naturally.
+- **Walls as volumes, not tiles.** Each block draws a lit top face, an
+  edge-on front face, a highlight lip and a contact shadow, choosing the face
+  direction from whether the tile below is open. Masonry is ashlar blocks with
+  bevelled edges, pitting, hairline cracks and damp streaks.
+- **Floors that read as surfaces.** Irregular flagstones (no 2x2 repeating
+  grid), per-slab mottling, bevelled edges, mortar joints, procedurally cracked
+  slabs, scattered lit pebbles and grime pooling in the low corners.
+- **Ambient occlusion.** Soft gradient bands hug every wall edge, giving the
+  tile grid contact shadow and depth.
+- **Atmosphere.** Three drifting volumetric light shafts per biome, 46 seeded
+  dust motes that twinkle as they fall, and a slow parallax with depth.
+- **Post-processing.** An eighth-resolution bloom buffer smeared back
+  additively, plus a per-biome colour grade — warm amber for lava, glacial blue
+  for ice, cold steel for stone.
+- **Hand-drawn torches.** Iron bracket, bound haft, a three-layer bezier flame
+  with a hot core, an additive bloom and escaping sparks that rise and fade.
+- **Fog with memory.** Lit space is carved by the light pool; rooms you have
+  already cleared stay dimly remembered via soft radial blobs rather than being
+  erased, and never with a visible tile grid.
+
 ### Interface
 - Canvas **minimap** top-right with fog of war, explored rooms, player/enemy
   dots, stairs, merchant and vault markers, plus an exploration percentage.
@@ -101,6 +142,17 @@ The build was exercised with a headless jsdom harness driving the real game loop
 - Merchant placement clear of props and reachable on every floor tested.
 - Boss/elite aggro on line of sight, proximity aggro through corners.
 - 1,200-frame stress run: no runtime errors, no console output.
+- Rendering: scenes captured to SVG/PNG and inspected per biome; verified lit
+  floors vs shadowed walls by luminance (stone 81/25, lava 75/19, ice 89/31),
+  and confirmed no fog grid artifacts.
+- Performance: 0.65 ms per frame for the whole render pass including bloom,
+  0.08 ms for ambient occlusion, 0.03 ms to gather lights; tile art is baked
+  once per theme and cached.
+- Phone mode: device detection, stick movement and deadzone, all five action
+  buttons, rail mirroring, orientation nudge, touch-only chest opening, and a
+  500-frame phone soak run — all passing with the desktop layout unchanged.
+- Button cluster geometry verified on four device sizes: no overlaps, none
+  outside the viewport, none intruding into the stick zone.
 
 ## Layout
 
