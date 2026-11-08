@@ -865,6 +865,32 @@ body.is-phone #startScreen .phoneStart{display:flex;}
   letter-spacing: .1em; padding: 1px 5px; border-radius: 4px; margin-left: 6px;
   background: rgba(143,224,168,.16); color: #8fe0a8; border: 1px solid rgba(143,224,168,.35);
   vertical-align: middle; }
+</style>/* ---------------- boss health bar ---------------- */
+#bossBar { position: absolute; top: 18px; left: 50%; transform: translateX(-50%);
+  width: min(560px, 54vw); pointer-events: none; text-align: center;
+  opacity: 0; transition: opacity .35s ease; }
+#bossBar.show { opacity: 1; }
+#bossBar.hidden { display: none; }
+.bossName { font-family: var(--serif, Georgia, serif); font-size: 15px; letter-spacing: .18em;
+  text-transform: uppercase; color: #ff8fa3; text-shadow: 0 0 14px rgba(255,60,90,.75), 0 2px 4px #000;
+  margin-bottom: 5px; }
+.bossTrack { position: relative; height: 15px; border-radius: 8px; overflow: hidden;
+  background: rgba(10,6,10,.85); border: 1px solid rgba(255,90,120,.42);
+  box-shadow: 0 0 20px rgba(255,40,80,.28), inset 0 1px 0 rgba(255,255,255,.10); }
+.bossFill { position: absolute; inset: 0; width: 100%; transform-origin: left center;
+  background: linear-gradient(180deg, #ff6a86, #b8173a 55%, #6d0c22);
+  transition: width .22s cubic-bezier(.2,.8,.3,1); }
+.bossGhost { position: absolute; inset: 0; width: 100%; background: rgba(255,220,230,.35);
+  transition: width .8s ease .18s; z-index: 0; }
+.bossFill { z-index: 1; }
+.bossPip { position: absolute; top: -3px; bottom: -3px; width: 2px; background: rgba(255,255,255,.5);
+  z-index: 2; box-shadow: 0 0 6px rgba(255,255,255,.6); }
+.bossPhase { font-family: var(--mono, monospace); font-size: 10px; letter-spacing: .22em;
+  text-transform: uppercase; color: #ffb8c6; margin-top: 4px; text-shadow: 0 1px 3px #000; }
+@media (max-width: 760px) {
+  #bossBar { width: min(360px, 74vw); top: 10px; }
+  .bossName { font-size: 11.5px; letter-spacing: .12em; }
+}
 </style></style>
 </head>
 <body>
@@ -877,6 +903,16 @@ body.is-phone #startScreen .phoneStart{display:flex;}
 
 <!-- ============================ HUD ============================ -->
 <div id="hud">
+  <div id="bossBar" class="hidden">
+    <div class="bossName" id="bossName">The Heartstone Warden</div>
+    <div class="bossTrack">
+      <div class="bossFill" id="bossFill"></div>
+      <div class="bossGhost" id="bossGhost"></div>
+      <div class="bossPip" style="left:66%"></div>
+      <div class="bossPip" style="left:33%"></div>
+    </div>
+    <div class="bossPhase" id="bossPhase">Phase I</div>
+  </div>
   <div id="playerHud" class="panel interactive">
     <div id="portraitWrap">
       <canvas id="portrait" width="148" height="148"></canvas>
@@ -1560,6 +1596,77 @@ const Sound = (() => {
       chord([523.25, 659.25, 783.99], t0 + 0.55, 1.5, 0.065, 'sine');
       noise(t0 + 0.5, 0.9, 0.035, { type: 'highpass', f: 5200 });
       osc('sine', 130.8, t0, 1.1, 0.11);
+    },
+    /* ---------------- boss cues ---------------- */
+    telegraph() {
+      if (!ctx) return; const t0 = t();
+      /* rising, thin warning whine */
+      const o = ctx.createOscillator(); const g = ctx.createGain();
+      o.type = 'triangle'; o.frequency.setValueAtTime(220, t0);
+      o.frequency.exponentialRampToValueAtTime(520, t0 + 0.42);
+      g.gain.setValueAtTime(0.0001, t0);
+      g.gain.exponentialRampToValueAtTime(0.085, t0 + 0.06);
+      g.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.5);
+      o.connect(g); g.connect(sfxOut); o.start(t0); o.stop(t0 + 0.52);
+      noise(t0 + 0.05, 0.4, 0.028, { type: 'bandpass', f: 1800, q: 4 });
+    },
+    bossSlam() {
+      if (!ctx) return; const t0 = t();
+      /* sub drop + splintering rock */
+      const o = ctx.createOscillator(); const g = ctx.createGain();
+      o.type = 'sine'; o.frequency.setValueAtTime(120, t0);
+      o.frequency.exponentialRampToValueAtTime(34, t0 + 0.5);
+      g.gain.setValueAtTime(0.0001, t0);
+      g.gain.exponentialRampToValueAtTime(0.30, t0 + 0.012);
+      g.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.7);
+      o.connect(g); g.connect(sfxOut); o.start(t0); o.stop(t0 + 0.72);
+      noise(t0, 0.45, 0.24, { type: 'lowpass', f: 1400, sweep: 180 });
+      noise(t0 + 0.03, 0.5, 0.10, { type: 'highpass', f: 2600 });
+      osc('sawtooth', 72, t0 + 0.02, 0.3, 0.09);
+    },
+    bossHit() {
+      if (!ctx) return; const t0 = t();
+      noise(t0, 0.3, 0.26, { type: 'bandpass', f: 700, q: 0.8, sweep: 140 });
+      osc('square', 96, t0, 0.2, 0.12);
+      osc('sine', 52, t0, 0.35, 0.14);
+    },
+    summon() {
+      if (!ctx) return; const t0 = t();
+      /* reverse-swell pact whisper */
+      noise(t0, 0.85, 0.07, { type: 'bandpass', f: 420, q: 2.4, sweep: 1300 });
+      [146.83, 174.61, 220, 261.63].forEach((f, i) => {
+        osc('sine', f, t0 + 0.15 + i * 0.08, 0.7, 0.06);
+      });
+      osc('sawtooth', 58, t0 + 0.2, 0.6, 0.06);
+    },
+    charge() {
+      if (!ctx) return; const t0 = t();
+      /* whooshing rush with a rising pitch */
+      const o = ctx.createOscillator(); const g = ctx.createGain();
+      o.type = 'sawtooth'; o.frequency.setValueAtTime(80, t0);
+      o.frequency.exponentialRampToValueAtTime(300, t0 + 0.35);
+      const f = ctx.createBiquadFilter(); f.type = 'lowpass'; f.frequency.setValueAtTime(700, t0);
+      f.frequency.exponentialRampToValueAtTime(2400, t0 + 0.3);
+      g.gain.setValueAtTime(0.0001, t0);
+      g.gain.exponentialRampToValueAtTime(0.14, t0 + 0.05);
+      g.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.42);
+      o.connect(f); f.connect(g); g.connect(sfxOut); o.start(t0); o.stop(t0 + 0.45);
+      noise(t0, 0.4, 0.13, { type: 'highpass', f: 1500 });
+    },
+    phase() {
+      if (!ctx) return; const t0 = t();
+      /* dissonant brass swell announcing the shift */
+      [110, 116.54, 155.56].forEach((f, i) => {
+        const o = ctx.createOscillator(); const g = ctx.createGain();
+        o.type = 'sawtooth'; o.frequency.setValueAtTime(f, t0);
+        o.frequency.linearRampToValueAtTime(f * 1.02, t0 + 1.1);
+        const fl = ctx.createBiquadFilter(); fl.type = 'lowpass'; fl.frequency.value = 900;
+        g.gain.setValueAtTime(0.0001, t0);
+        g.gain.exponentialRampToValueAtTime(0.075, t0 + 0.10 + i * 0.05);
+        g.gain.exponentialRampToValueAtTime(0.0001, t0 + 1.3);
+        o.connect(fl); fl.connect(g); g.connect(sfxOut); o.start(t0); o.stop(t0 + 1.32);
+      });
+      noise(t0, 1.0, 0.05, { type: 'bandpass', f: 900, q: 1.2, sweep: 200 });
     },
     playerHurt() {
       if (!ctx) return; const t0 = t();
@@ -3563,6 +3670,9 @@ class Player {
     this.burnT = 0;
     this.chillT = 0;
     this.regenAccum = 0;
+    this.knockVX = 0;
+    this.knockVY = 0;
+    this.knockT = 0;
     /* skill tree: points earned every third level, spent on three branches */
     this.skillPoints = 0;
     this.skills = {};
@@ -3945,6 +4055,38 @@ const FX = {
   drawDecals(ctx, cam) {
     for (const d of this.decals) {
       const a = clamp(d.life / d.maxLife, 0, 1);
+      if (d.kind === 'crack') {
+        /* jagged impact fissure: dark core with a hot rim */
+        ctx.globalAlpha = a * 0.85;
+        ctx.lineJoin = 'round';
+        ctx.lineCap = 'round';
+        ctx.strokeStyle = d.color;
+        ctx.lineWidth = 3.2;
+        ctx.beginPath();
+        ctx.moveTo(d.x - cam.x, d.y - cam.y);
+        for (const q of d.segs) ctx.lineTo(q.x - cam.x, q.y - cam.y);
+        ctx.stroke();
+        ctx.globalAlpha = a * 0.35;
+        ctx.strokeStyle = '#2a0d14';
+        ctx.lineWidth = 1.4;
+        ctx.stroke();
+        continue;
+      }
+      if (d.kind === 'emberPatch') {
+        const flick = 0.75 + Math.sin(Game.time * 9 + d.x * 0.05) * 0.25;
+        ctx.globalAlpha = a * flick * 0.85;
+        ctx.globalCompositeOperation = 'lighter';
+        const g = ctx.createRadialGradient(d.x - cam.x, d.y - cam.y, 0, d.x - cam.x, d.y - cam.y, d.r);
+        g.addColorStop(0, 'rgba(255,180,90,0.9)');
+        g.addColorStop(0.55, 'rgba(220,70,40,0.45)');
+        g.addColorStop(1, 'rgba(120,20,10,0)');
+        ctx.fillStyle = g;
+        ctx.beginPath();
+        ctx.ellipse(d.x - cam.x, d.y - cam.y, d.r, d.r * 0.66, 0, 0, TAU);
+        ctx.fill();
+        ctx.globalCompositeOperation = 'source-over';
+        continue;
+      }
       ctx.globalAlpha = a * 0.9;
       ctx.fillStyle = d.color;
       ctx.beginPath();
@@ -4797,6 +4939,204 @@ function onLevelUp() {
 }
 
 /* ============================== 13. AI & UPDATE ========================== */
+/* ---------------- boss moveset ----------------
+   The Warden is a three-phase fight. Each phase unlocks one more move and
+   shortens the cooldowns. Every move telegraphs for a beat — a ring, a crack
+   map or a charge lane — so a careful player can always read and dodge it.
+
+   Phase 1 (100-66% hp): ground slam, telegraphed cracks.
+   Phase 2 (66-33%):     + summon adds.
+   Phase 3 (33-0%):      + telegraphed charge and a faster everything. */
+const BOSS_MOVES = {
+  slam:   { windup: 0.85, cooldown: 3.4, radius: 118, damageMul: 1.20, name: 'Ground Slam' },
+  summon: { windup: 1.15, cooldown: 9.0, count: 3, name: 'Call the Swarm' },
+  charge: { windup: 0.75, cooldown: 6.0, speed: 620, damageMul: 1.45, name: 'Heartstone Charge' }
+};
+function bossPhase(e) {
+  const pct = e.hp / e.maxHp;
+  if (pct > 0.66) return 1;
+  if (pct > 0.33) return 2;
+  return 3;
+}
+/* Crack decals: short jagged lines radiating from the impact, drawn under
+   everything and fading out over a few seconds. */
+function spawnBossCracks(x, y, count, radius, color) {
+  for (let i = 0; i < count; i++) {
+    const a = (i / count) * TAU + rand(0.3, -0.3);
+    const segs = [];
+    let px = x, py = y, ang = a;
+    const len = radius * rand(1.0, 0.55);
+    const steps = 4 + Math.floor(Math.random() * 3);
+    for (let k = 0; k < steps; k++) {
+      ang += rand(0.34, -0.34);
+      px += Math.cos(ang) * (len / steps);
+      py += Math.sin(ang) * (len / steps);
+      segs.push({ x: px, y: py });
+    }
+    FX.decals.push({ kind: 'crack', x, y, segs, life: 6.5, maxLife: 6.5, color: color || 'rgba(255,70,90,0.55)' });
+  }
+  if (FX.decals.length > 90) FX.decals.splice(0, FX.decals.length - 90);
+}
+/* Begin a telegraphed move. `e.bossMove` drives the animation below. */
+function bossStartMove(e, move) {
+  const def = BOSS_MOVES[move];
+  e.bossMove = move;
+  e.bossT = 0;
+  e.bossWindup = def.windup * (bossPhase(e) === 3 ? 0.78 : 1);
+  e.bossAim = angleTo(e.x, e.y, Game.player.x, Game.player.y);
+  e.attackAnim = 1;
+  if (move === 'slam') {
+    e.bossSlamRadius = def.radius * (bossPhase(e) >= 2 ? 1.14 : 1);
+    FX.ring(e.x, e.y, e.bossSlamRadius, 'rgba(255,80,60,0.32)', def.windup, 3);
+    Sound.play('telegraph', 0.7);
+  } else if (move === 'summon') {
+    FX.ring(e.x, e.y, 90, 'rgba(190,120,255,0.4)', def.windup, 4);
+    Sound.play('telegraph', 0.8);
+  } else if (move === 'charge') {
+    /* a lane marker so the player can step out of the line */
+    e.bossLane = { x: e.x, y: e.y, ang: e.bossAim };
+    FX.ring(e.x, e.y, 52, 'rgba(255,180,90,0.45)', def.windup, 3);
+    Sound.play('telegraph', 0.9);
+  }
+}
+/* Resolve the move once the telegraph elapses. */
+function bossResolveMove(e) {
+  const def = BOSS_MOVES[e.bossMove];
+  const p = Game.player;
+  const phase = bossPhase(e);
+  const dmgBase = (e.def.damage + Game.floor * 2) * def.damageMul;
+  if (e.bossMove === 'slam') {
+    const radius = e.bossSlamRadius || def.radius;
+    if (dist(p.x, p.y, e.x, e.y) < radius + p.radius) {
+      Combat.damagePlayer(Math.round(dmgBase), e);
+      /* knock the player outward */
+      const a = angleTo(e.x, e.y, p.x, p.y);
+      p.knockVX = Math.cos(a) * 300;
+      p.knockVY = Math.sin(a) * 300;
+      p.knockT = 0.22;
+    }
+    spawnBossCracks(e.x, e.y, 9 + phase * 2, radius * 1.25, 'rgba(255,80,60,0.5)');
+    FX.ring(e.x, e.y, radius, 'rgba(255,120,80,0.7)', 0.45, 6);
+    FX.dustPuff(e.x, e.y, 22, 'rgba(120,90,80,0.5)');
+    FX.shatter(e.x, e.y, 16, ['#7a3b52', '#4a2233', '#b05a72']);
+    Game.cam.shake = 14; Game.cam.shakeT = 0.4;
+    Sound.play('bossSlam', 0.9);
+    /* phase 3 cracks leave burning ground */
+    if (phase >= 3) {
+      for (let i = 0; i < 5; i++) {
+        const a = rand(TAU), r = rand(radius * 0.8, 30);
+        FX.decals.push({ kind: 'emberPatch', x: e.x + Math.cos(a) * r, y: e.y + Math.sin(a) * r,
+                         r: rand(26, 14), life: 4.5, maxLife: 4.5 });
+      }
+    }
+  } else if (e.bossMove === 'summon') {
+    const count = def.count;
+    const pool = ['skeleton', 'crawler', 'imp'];
+    const liveAdds = Game.enemies.filter(z => z.alive && z.summoned).length;
+    const budget = Math.min(count, Math.max(0, 8 - liveAdds));
+    for (let i = 0; i < budget; i++) {
+      const a = (i / Math.max(1, budget)) * TAU + rand(0.4, -0.4);
+      const r = rand(80, 44);
+      const spot = findFreeSpot(e.x + Math.cos(a) * r, e.y + Math.sin(a) * r, 16);
+      const type = pool[Math.floor(Math.random() * pool.length)];
+      const add = new Enemy(type, spot.x, spot.y, Game.floor, { hpMult: 0.85 });
+      add.summoned = true;
+      add.aggro = true;
+      add.state = 'chase';
+      Game.enemies.push(add);
+      FX.ring(spot.x, spot.y, 40, 'rgba(190,120,255,0.65)', 0.5, 3);
+      FX.lootBurst(spot.x, spot.y, '#b06aff', 16);
+    }
+    if (budget > 0) toast('The Warden calls its swarm.', 'danger');
+    Game.cam.shake = 8; Game.cam.shakeT = 0.3;
+    Sound.play('summon', 0.85);
+  } else if (e.bossMove === 'charge') {
+    /* lunge forward, damaging anything in the lane */
+    e.chargeT = 0.42;
+    e.chargeAng = e.bossAim;
+    e.chargeHit = false;
+    Sound.play('charge', 1.0);
+  }
+  e.bossMove = null;
+  e.bossT = 0;
+}
+/* Called from updateEnemy while a boss is thinking. Returns true when the
+   caller should skip its normal melee logic this frame. */
+function updateBoss(e, dt, angToPlayer, dd, t) {
+  const p = Game.player;
+  const phase = bossPhase(e);
+  /* phase transition flourish */
+  if (phase !== e.bossPhase) {
+    if (e.bossPhase !== undefined) {
+      toast('The Warden enters phase ' + phase + '!', 'danger');
+      FX.ring(e.x, e.y, 180, 'rgba(255,80,110,0.7)', 0.8, 6);
+      Game.cam.shake = 12; Game.cam.shakeT = 0.45;
+      Sound.play('phase', 1.0);
+      /* on entering phase 3 clear the adds to keep the fight readable */
+      if (phase === 3) {
+        for (const z of Game.enemies) if (z.alive && z.summoned) z.hp = Math.min(z.hp, z.maxHp * 0.25);
+      }
+    }
+    e.bossPhase = phase;
+  }
+  /* active telegraph */
+  if (e.bossMove) {
+    e.bossT += dt;
+    if (e.bossT >= e.bossWindup) bossResolveMove(e);
+    return true;
+  }
+  /* mid-charge movement and hit test */
+  if (e.chargeT > 0) {
+    e.chargeT -= dt;
+    const step = BOSS_MOVES.charge.speed * dt;
+    moveWithCollision(e, Math.cos(e.chargeAng) * step, Math.sin(e.chargeAng) * step);
+    FX.dustPuff(e.x, e.y, 2, 'rgba(160,110,100,0.4)');
+    if (!e.chargeHit && dist(p.x, p.y, e.x, e.y) < e.radius + p.radius + 10) {
+      e.chargeHit = true;
+      Combat.damagePlayer(Math.round((e.def.damage + Game.floor * 2) * BOSS_MOVES.charge.damageMul), e);
+      Game.cam.shake = 15; Game.cam.shakeT = 0.4;
+      FX.ring(e.x, e.y, 70, 'rgba(255,180,90,0.7)', 0.4, 5);
+      Sound.play('bossHit', 1.0);
+    }
+    /* stop dead on a wall */
+    if (circleHitsWalls(e.x, e.y, e.radius * 0.8)) {
+      e.chargeT = 0;
+      spawnBossCracks(e.x, e.y, 5, 60, 'rgba(200,140,110,0.5)');
+      Game.cam.shake = 9; Game.cam.shakeT = 0.3;
+      Sound.play('bossSlam', 0.6);
+    }
+    return true;
+  }
+  if (e.bossCd === undefined) e.bossCd = 1.6;
+  e.bossCd -= dt;
+  /* pick a move when off cooldown and in range */
+  if (e.bossCd <= 0) {
+    const canSummon = phase >= 2 && dd < 700;
+    const canCharge = phase >= 3 && dd > 120 && dd < 460;
+    const wantSlam = dd < (e.bossSlamRadius || BOSS_MOVES.slam.radius) + 40;
+    let move = null;
+    if (wantSlam) move = 'slam';
+    else if (canSummon && chance(0.45)) move = 'summon';
+    else if (canCharge && chance(0.6)) move = 'charge';
+    else if (canSummon) move = 'summon';
+    else if (dd > 90) move = phase >= 3 ? 'charge' : null;
+    if (move) {
+      bossStartMove(e, move);
+      const cd = BOSS_MOVES[move].cooldown * (phase === 3 ? 0.72 : phase === 2 ? 0.86 : 1);
+      e.bossCd = cd + rand(0.6, -0.3);
+      return true;
+    }
+    e.bossCd = 0.5;
+  }
+  /* otherwise keep pressure on the player */
+  if (dd > 60) {
+    const sp = e.speed * (phase === 3 ? 1.35 : phase === 2 ? 1.15 : 1) * 1.1;
+    moveWithCollision(e, Math.cos(angToPlayer) * sp * dt, Math.sin(angToPlayer) * sp * dt);
+  }
+  return true;
+}
+
+
 function updateEnemy(e, dt) {
   const p = Game.player;
   e.animT += dt;
@@ -4850,6 +5190,17 @@ function updateEnemy(e, dt) {
     e.state = 'chase';
   } else if (!e.aggro) {
     e.state = 'patrol';
+  }
+
+  /* the Warden runs its own three-phase script */
+  if (t.behavior === 'boss') {
+    const busy = updateBoss(e, dt, angToPlayer, dd, t);
+    /* status ticks and cooldowns above already ran; skip the generic brain */
+    if (busy) {
+      if (!e.alive) return;
+      if (e.state === 'flee') e.state = 'chase';
+      return;
+    }
   }
 
   let mx = 0, my = 0;
@@ -4923,21 +5274,9 @@ function updateEnemy(e, dt) {
       /* strike */
       const strikeAngle = e.aimAngle;
       const reach = t.attackRange + 26;
-      if (t.behavior === 'boss') {
-        /* boss slam hits in a large arc */
-        for (let i = 0; i < 5; i++) {
-          const a = strikeAngle + (i - 2) * 0.24;
-          if (dist(p.x, p.y, e.x, e.y) < reach + 50 &&
-              Math.abs(((angleTo(e.x, e.y, p.x, p.y) - a + Math.PI * 3) % TAU) - Math.PI) < 0.3) {
-            Combat.damagePlayer(t.damage + Game.floor * 2, e);
-          }
-        }
-        FX.ring(e.x, e.y, reach + 60, 'rgba(255,60,80,0.5)', 0.5, 5);
-      } else {
-        const dAngle = Math.abs(((angleTo(e.x, e.y, p.x, p.y) - strikeAngle + Math.PI * 3) % TAU) - Math.PI);
-        if (dist(p.x, p.y, e.x, e.y) < reach && dAngle < 1.15) {
-          Combat.damagePlayer(t.damage + Game.floor * 1.0, e);
-        }
+      const dAngle = Math.abs(((angleTo(e.x, e.y, p.x, p.y) - strikeAngle + Math.PI * 3) % TAU) - Math.PI);
+      if (dist(p.x, p.y, e.x, e.y) < reach && dAngle < 1.15) {
+        Combat.damagePlayer(t.damage + Game.floor * 1.0, e);
       }
       FX.spark(e.x + Math.cos(strikeAngle) * 26, e.y + Math.sin(strikeAngle) * 26, { count: 5, angle: strikeAngle, speed: 130, color: '#ffcd8a' });
       if (e.type !== 'crawler') Sound.play('swing', 0.4);
@@ -5433,6 +5772,9 @@ function renderWorld(ctx) {
   }
   ents.sort((a, b) => a.y - b.y);
   for (const e of ents) e.draw();
+
+  /* ---- boss ground telegraphs (under particles, above entities) ---- */
+  drawBossTelegraphs(ctx, drawCam);
 
   /* ---- low particles + projectiles ---- */
   FX.drawProjectiles(ctx, drawCam);
@@ -6460,6 +6802,86 @@ function drawBoss(ctx, e, tt, flash, t) {
 }
 
 /* ---------- off-screen threat arrows ---------- */
+/* Ground-level warning shapes for the Warden's moves. Each is drawn with a
+   hard rim so it reads even over bright ice or lava tiles. */
+function drawBossTelegraphs(ctx, cam) {
+  for (const e of Game.enemies) {
+    if (!e.alive || !e.isBoss) continue;
+    if (e.bossMove === 'slam') {
+      const radius = e.bossSlamRadius || BOSS_MOVES.slam.radius;
+      const prog = clamp(e.bossT / e.bossWindup, 0, 1);
+      const x = e.x - cam.x, y = e.y - cam.y;
+      ctx.save();
+      /* dark base disc so the danger zone is unmistakable */
+      ctx.globalAlpha = 0.30 + prog * 0.22;
+      ctx.fillStyle = '#2a0a12';
+      ctx.beginPath(); ctx.ellipse(x, y, radius, radius * 0.62, 0, 0, TAU); ctx.fill();
+      /* filling sweep shows time remaining */
+      ctx.globalAlpha = 0.5;
+      ctx.fillStyle = 'rgba(255,70,80,0.42)';
+      ctx.beginPath();
+      ctx.ellipse(x, y, radius * prog, radius * 0.62 * prog, 0, 0, TAU);
+      ctx.fill();
+      /* hard rim */
+      ctx.globalAlpha = 0.85;
+      ctx.strokeStyle = 'rgba(255,130,120,' + (0.55 + prog * 0.45) + ')';
+      ctx.lineWidth = 2.5;
+      ctx.beginPath(); ctx.ellipse(x, y, radius, radius * 0.62, 0, 0, TAU); ctx.stroke();
+      ctx.restore();
+    } else if (e.bossMove === 'charge' && e.bossLane) {
+      const prog = clamp(e.bossT / e.bossWindup, 0, 1);
+      const L = e.bossLane, len = 460, w = 40;
+      const x = L.x - cam.x, y = L.y - cam.y;
+      ctx.save();
+      ctx.translate(x, y);
+      ctx.rotate(L.ang);
+      ctx.globalAlpha = 0.22 + prog * 0.2;
+      ctx.fillStyle = '#3a1a08';
+      ctx.fillRect(0, -w, len, w * 2);
+      ctx.globalAlpha = 0.42 + prog * 0.3;
+      const g = ctx.createLinearGradient(0, 0, len, 0);
+      g.addColorStop(0, 'rgba(255,190,90,0.55)');
+      g.addColorStop(1, 'rgba(255,90,40,0)');
+      ctx.fillStyle = g;
+      ctx.fillRect(0, -w * prog, len, w * 2 * prog);
+      ctx.globalAlpha = 0.75;
+      ctx.strokeStyle = 'rgba(255,200,120,0.75)';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(0, -w); ctx.lineTo(len, -w); ctx.moveTo(0, w); ctx.lineTo(len, w);
+      ctx.stroke();
+      ctx.restore();
+    } else if (e.bossMove === 'summon') {
+      const prog = clamp(e.bossT / e.bossWindup, 0, 1);
+      const x = e.x - cam.x, y = e.y - cam.y;
+      const r = 90 + prog * 26;
+      ctx.save();
+      ctx.globalAlpha = 0.55;
+      ctx.strokeStyle = 'rgba(196,128,255,' + (0.5 + prog * 0.5) + ')';
+      ctx.lineWidth = 3;
+      ctx.setLineDash([9, 7]);
+      ctx.lineDashOffset = -Game.time * 40;
+      ctx.beginPath(); ctx.ellipse(x, y, r, r * 0.62, 0, 0, TAU); ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.restore();
+    }
+    /* widening arc that telegraphs the ordinary boss melee swing */
+    if (e.windupT > 0 && !e.bossMove) {
+      const prog = 1 - clamp(e.windupT / (e.def.windup || 1), 0, 1);
+      ctx.save();
+      ctx.translate(e.x - cam.x, e.y - cam.y);
+      ctx.rotate(e.aimAngle);
+      ctx.globalAlpha = 0.18 + prog * 0.30;
+      ctx.fillStyle = 'rgba(255,90,110,0.7)';
+      ctx.beginPath();
+      ctx.moveTo(0, 0);
+      ctx.arc(0, 0, e.def.attackRange + 40, -0.55, 0.55);
+      ctx.closePath(); ctx.fill();
+      ctx.restore();
+    }
+  }
+  ctx.globalAlpha = 1;
+}
 function drawThreatIndicators(ctx) {
   const p = Game.player, cam = Game.cam;
   const pad = 46;
@@ -6917,6 +7339,28 @@ function drawVignette(ctx) {
 
 /* ============================== 15. HUD ================================= */
 let hpGhostV = 1, manaGhostV = 1;
+/* The boss bar only exists while a living Warden shares the room. */
+function updateBossBar() {
+  const bar = $('bossBar');
+  if (!bar) return;
+  const boss = Game.enemies.find(e => e.isBoss && e.alive);
+  if (!boss || Game.state !== 'playing') {
+    if (bar.classList.contains('show')) bar.classList.remove('show');
+    if (bar.classList.contains('hidden') === false) {
+      Game.bossBarHideT = (Game.bossBarHideT || 0) + 1;
+      if (Game.bossBarHideT > 8) bar.classList.add('hidden');
+    }
+    return;
+  }
+  Game.bossBarHideT = 0;
+  bar.classList.remove('hidden');
+  bar.classList.add('show');
+  const pct = clamp(boss.hp / boss.maxHp, 0, 1);
+  $('bossFill').style.width = (pct * 100).toFixed(1) + '%';
+  $('bossGhost').style.width = (pct * 100).toFixed(1) + '%';
+  const ph = bossPhase(boss);
+  $('bossPhase').textContent = ph === 1 ? 'Phase I' : ph === 2 ? 'Phase II' : 'Phase III — Enraged';
+}
 function updateHud(force = false) {
   const p = Game.player;
   if (!p) return;
@@ -8364,6 +8808,14 @@ function updatePlayer(dt) {
   p.castAnim = Math.max(0, p.castAnim - dt);
   p.slamAnim = Math.max(0, p.slamAnim - dt);
   p.healT = Math.max(0, p.healT - dt);
+  /* boss knockback impulse, decaying so it never fights normal input */
+  if (p.knockT > 0) {
+    p.knockT -= dt;
+    moveWithCollision(p, p.knockVX * dt, p.knockVY * dt);
+    p.knockVX *= Math.pow(0.02, dt);
+    p.knockVY *= Math.pow(0.02, dt);
+    if (p.knockT <= 0) { p.knockVX = 0; p.knockVY = 0; }
+  }
   if (p.dodging > 0) {
     p.dodging -= dt;
     const sp = 560;
@@ -8378,11 +8830,6 @@ function updatePlayer(dt) {
   if (input.right) dx += 1;
   /* the virtual stick takes over when no key is held */
   if (input.touchDir && dx === 0 && dy === 0) {
-    dx = input.touchDir.x; dy = input.touchDir.y;
-    if (Math.hypot(dx, dy) < 0.18) { dx = 0; dy = 0; }
-  }
-  /* virtual stick takes over when the touch drag is active */
-  if (input.touchDir && (dx === 0 && dy === 0)) {
     dx = input.touchDir.x; dy = input.touchDir.y;
     if (Math.hypot(dx, dy) < 0.18) { dx = 0; dy = 0; }
   }
@@ -8489,6 +8936,9 @@ function update(dt) {
     /* keep the minimap fresh */
     Game.minimapT = (Game.minimapT || 0) + dt;
     if (Game.minimapT > 0.14) { Game.minimapT = 0; drawMinimap(); }
+    /* boss bar tracks the biggest thing in the room */
+    Game.bossHudT = (Game.bossHudT || 0) + dt;
+    if (Game.bossHudT > 0.08) { Game.bossHudT = 0; updateBossBar(); }
     /* hint bar */
     const target = nearestInteractable();
     if (target) {
