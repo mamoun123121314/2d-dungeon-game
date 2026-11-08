@@ -26,8 +26,10 @@ start index.html         # Windows
 | `Shift` | Dodge roll (brief invulnerability) |
 | `F` | Interact — chests, stairs, merchant, vault door |
 | `I` / `Tab` | Inventory, equipment paperdoll, item tooltips |
+| `T` | Talents — spend points earned every third level |
+| `Ctrl`/`Cmd` + `S` | Save now (the game also autosaves) |
 | `M` | Mute |
-| `Esc` | Pause |
+| `Esc` | Pause (also closes any open panel) |
 
 ### On a phone
 
@@ -57,6 +59,16 @@ screen under 900 px.
   breakable crates, chests, torches, and stairs to the next floor.
 - Ten floors to a **victory**, then an **endless mode** that keeps scaling
   enemy health, damage and count.
+- **Deterministic seeds.** Every floor is generated from a stored seed, so a
+  saved run reloads the exact same dungeon — every tile, room, and prop.
+- **Eleven procedural room personalities.** Chambers roll a character:
+  *Library*, *Oubliette*, *Kitchen*, *Shrine*, *Workshop*, *Crypt*,
+  *Sunken Garden*, *Counting House*, *Barracks* and *Ritual Chamber*, each with
+  its own furniture set and a flavour line on first entry. A floor leans toward
+  one or two flavours so it feels designed rather than shuffled.
+- **31 kinds of themed furniture**, all drawn procedurally: bookshelves with
+  individually coloured spines, a cauldron that visibly simmers, a statue whose
+  face was struck off, an inscribed ritual circle that pulses, and more.
 
 ### Character & progression
 - Stats: HP, Mana, Attack, Defense, Crit chance, Crit damage, Move Speed, XP.
@@ -77,6 +89,54 @@ screen under 900 px.
 - Equipment **paperdoll** with a procedural backdrop and six live slots.
 - A merchant ("Quartermaster") on deeper floors with rotating stock, buy and
   sell prices, and a gold economy.
+- **Haggling.** A **reputation** track lowers prices by 2% per point (max 18%)
+  and rises with every purchase or sale. A one-per-run **welcome discount**
+  takes 25% off the first *gear* purchase only — buying a potion never burns it.
+  Stock can be **rerolled** twice per floor for gold, at an escalating price,
+  which also nudges reputation up.
+
+### Talents
+A talent point arrives every third level, spent across **three branches**:
+
+| Branch | Talents | What it does |
+| --- | --- | --- |
+| **Might** | Wide Cleave → Heavy Blow / Long Reach | cleave more targets, +% damage, +px sword reach |
+| **Arcana** | Arcane Focus → Efficiency / Wellspring | +% spell power, cheaper spells, more mana and regen |
+| **Guile** | Fleet Foot → Evasion / Greed | +% move speed, faster dodge, +gold and +crit |
+
+Nine nodes, 21 ranks, with two-rank prerequisites so a build has a shape.
+Every effect is wired into the live stat pipeline: cleave cap, swing reach,
+spell multiplier, mana cost multiplier, dodge cooldown multiplier, gold find
+and crit chance all read from the talent state.
+
+### Elemental status
+Four damage types — **Physical**, **Fire**, **Frost**, **Storm** — with a shared
+status engine:
+
+- **Burn** ticks damage over 4 s (updated every 0.5 s at 5.5% of the hit).
+- **Chill** slows the target to 55% speed for 3.5 s.
+- **Shock** arcs to up to two more enemies within 150 px for 35% damage.
+
+Status is applied by your equipped weapon and ring element. Weapons and rings
+from **Rare** upward can roll an element, weighted by biome (lava leans fire,
+ice leans frost), and carry a prefix — *Blazing*, *Frostbound*, *Stormforged* —
+merged into the existing generated names. Elemental gear adds 18% damage and a
++7 gear-score bonus, and the tooltip names the element explicitly.
+Each status has its own rendering signature: frost crusts the base with shards,
+fire licks upward with flame tongues, storm crackles in flickering arcs.
+
+### The Warden
+The Heartstone Warden is a three-phase fight, and every move telegraphs:
+
+| Phase | Health | Unlocks |
+| --- | --- | --- |
+| **I** | 100–66% | Ground Slam — a filling disc shows the impact zone, then jagged cracks erupt |
+| **II** | 66–33% | **Call the Swarm** — summons up to 8 adds, ringed in violet as they arrive |
+| **III** | 33–0% | **Heartstone Charge** — a lane marker shows the path; the slam leaves burning ground |
+
+Each phase shift gets a brass swell, a screen shake and a toast. The boss has a
+dedicated health bar with phase pips and a fill that ghosts back when it takes a
+hit. Charge hits knock the player back with a proper decaying impulse.
 
 ### Combat & enemies
 - **Skeleton Crawler**, **Orc Warrior**, **Necromancer**, **Ice Wraith** and
@@ -89,6 +149,49 @@ screen under 900 px.
 - Floating combat text for damage, crits, `MISSED!`, `BURN`, and XP orbs.
 - Multi-layer particle system: spell trails, blood, embers, dust, chest bursts,
   level-up rings, torch smoke.
+- **Six elite champion traits** — *Swift*, *Shielded*, *Leeching*, *Volatile*,
+  *Giant* and *Beckoner* — each changes how the fight must be played, and each
+  is named in its own colour over the monster's head. Champions start appearing
+  from floor 3 and always drop better loot.
+- **Volatile** enemies (and the endless Volatile affix) detonate on death,
+  damaging everything nearby — including you.
+- **Beckoner** elites periodically summon crawlers, capped at six live adds.
+
+### Keeping you playing
+- **Combo meter.** Chain kills within 3.2 s to climb from **x1 to x8**. Gold and
+  XP scale with the multiplier; taking a hit knocks one step off rather than
+  resetting, so a scratch is forgiven and sloppiness is not. A decaying timer bar
+  shows exactly how long you have.
+- **Loot reveals.** Rare and better drops trigger a card that names the item,
+  lists its bonuses, states its element, and tells you whether it beats what you
+  wear (**▲ Upgrade +12** / **▼ Downgrade** / **≈ Sidegrade**). Common junk stays
+  quiet so the card keeps its meaning. Legendaries shake the camera.
+- **Bounties.** Three rotating objectives per floor (*Cull*, *Plunder*,
+  *Tribute*, *Demolition*, *Untouched*, *Wardenfall*) with live progress bars,
+  paying gold and XP. They reset every floor, so there is always a next goal.
+- **Milestones.** Every fifth floor pays a lump of gold, a potion and a key.
+- **Endless affixes.** Past floor 10 every floor rolls 1–4 modifiers from a pool
+  of twelve (*Horde*, *Frenzy*, *Armoured*, *Vampiric*, *Volatile*, *Wealthy*,
+  *Fertile*, *Swift*, *Guttering*, *Brittle*, *Championed*, *Thrifty*). They are
+  shown as coloured chips and named in the floor banner. *Guttering* dims your
+  torch, clamped so the game never becomes unplayable.
+- **Meta progression.** Runs played, deepest floor, lifetime kills and gold, and
+  Wardens felled are all recorded permanently and shown on the title screen.
+
+### Saving
+A Minecraft-style autosave keeps a single run slot:
+
+- Autosaves every 5 seconds while playing, on every floor change, when the tab
+  is hidden or closed, on `Ctrl`/`Cmd` + `S`, and from the pause menu.
+- Stores the **floor seed**, so the dungeon rebuilds identically. Player level,
+  XP, HP, mana, gold, potions, keys, every talent rank, all six equipped items,
+  the whole satchel, shop reputation and the current affixes all persist.
+- **Continue** on the title screen resumes the saved run and shows the floor,
+  level and how long ago it was saved. **Delete saved run** clears it.
+- Loading is defensive: ratings, ranks, item fields and slot names are all
+  clamped and validated, and a corrupt or hand-edited save is discarded rather
+  than crashing the game. A broken save can never brick the boot.
+- Saves are ~1.2 KB and cost 0.05 ms to write.
 
 ### Graphics
 - **Dynamic lighting engine.** Every light carries colour, radius, intensity
@@ -125,15 +228,41 @@ screen under 900 px.
   all styled with CSS only.
 
 ### Audio
-All 26 sound effects are built from oscillators, filtered noise and gain
+All 40 sound effects are built from oscillators, filtered noise and gain
 envelopes — sword swing, spell cast, enemy grunts, chest chime, player hurt,
-level-up jingle, gold pickup, door unlock, heartbeat at low HP and more — plus a
-layered ambient music bed that changes per biome.
+level-up jingle, gold pickup, door unlock, heartbeat at low HP, boss telegraph,
+slam, charge, phase shift, loot reveal, bounty fanfare, combo climb and more —
+plus a layered ambient music bed that changes per biome.
+
+**The soundtrack is reactive.** The pad and its distant bell motif always play,
+but when three or more enemies are aggro and near, a combat layer fades in: a
+war drum on the beat, a minor-third ostinato on eighths, and — at full
+intensity — a bowed minor-second tension rub. Intensity engages quickly and
+relaxes slowly (a boss pins it at maximum), so the music swells with the fight
+and eases out afterwards instead of switching on and off.
 
 ## Verified
 
-The build was exercised with a headless jsdom harness driving the real game loop:
+The build was exercised with a headless jsdom harness driving the real game loop.
+**1,403 automated assertions across six suites, all passing:**
 
+| Suite | Checks | What it covers |
+| --- | --- | --- |
+| `regress.js` | 287 | boot, DOM bindings, run start, room themes, status engine, elemental loot, talent tree, merchant, boss moveset, live sim, combat, 10 floor builds |
+| `endless.js` | 146 | affix table and rolls, per-affix effects, volatile explosion, HUD chips, light clamping, endless floors, combat intensity |
+| `savetest.js` | 159 | save round-trip, seed reproducibility, corrupt/hostile saves, meta progression, menu UI, combo, bounties, elite traits, loot reveal, milestones |
+| `soak.js` | 778 | 2,400 frames of combat, 16 floors, repeated save/load, 40 shops, full talent tree, 900-frame status storm, 3,000-frame boss fight, phone run |
+| `uitest.js` | 33 | every panel, every button clickable, bounty/combo/affix widgets |
+| `phonetest.js` | 13 | detection, touch movement, action buttons, phone-size render |
+
+Additional verification:
+
+- **Deterministic seeds**: the same seed produces a byte-identical tile array;
+  a different seed produces a different layout; `seed: 0` is honoured.
+- **Corrupt saves**: broken JSON, a missing player, and hostile values (NaN
+  levels, negative gold, 99-rarity items, bogus talent ids, junk inventory
+  slots) are all discarded or clamped without a single throw.
+- **Saves never double-pay**: a loaded floor does not re-award its milestone.
 - 480 generated floors: every entrance reaches the stairs, the vault stays sealed.
 - Full run: ten floors → victory → endless floor 11 with a scaled boss.
 - Combat math, melee/crit/miss, magic missiles, potions, dodge, slam.
@@ -145,8 +274,9 @@ The build was exercised with a headless jsdom harness driving the real game loop
 - Rendering: scenes captured to SVG/PNG and inspected per biome; verified lit
   floors vs shadowed walls by luminance (stone 81/25, lava 75/19, ice 89/31),
   and confirmed no fog grid artifacts.
-- Performance: 0.65 ms per frame for the whole render pass including bloom,
-  0.08 ms for ambient occlusion, 0.03 ms to gather lights; tile art is baked
+- Performance on a busy floor 9 (37 enemies, 165 props, 155 particles,
+  combat layer at full intensity): **0.38 ms** render, **2.65 ms** update,
+  **0.03 ms** light gathering, **0.05 ms** to save 1.2 KB. Tile art is baked
   once per theme and cached.
 - Phone mode: device detection, stick movement and deadzone, all five action
   buttons, rail mirroring, orientation nudge, touch-only chest opening, and a
@@ -156,21 +286,24 @@ The build was exercised with a headless jsdom harness driving the real game loop
 
 ## Layout
 
-`index.html` is the whole game — markup, CSS and approximately 6,900 lines of
+`index.html` is the whole game — markup, CSS and ~11,000 lines of
 vanilla ES2020 JavaScript, organised into clearly commented sections:
 
 1. Page shell and CSS
-2. Utility maths and RNG
+2. Utility maths and seeded RNG (`withSeededRng`)
 3. Procedural sprite and tile baking
-4. Item tables, affixes, rarity, loot rolls
-5. Dungeon generation (BSP, themes, connectivity, vaults)
-6. Entities: player, enemies, props, projectiles
-7. Particle and floating-text effects
-8. Game state, floor building, save-free run lifecycle
-9. Combat resolution
-10. Enemy AI
-11. World and prop rendering
-12. Fog of war, vignette, threat indicators
-13. HUD, minimap, portraits, ability icons
-14. Menus, inventory, shop
-15. Input handling, update loop, bootstrap
+4. Item tables, affixes, rarity, elemental rolls
+5. Dungeon generation (BSP, biome themes, 11 room personalities, connectivity, vaults)
+6. Themed prop factory and 31 furniture kinds
+7. Entities: elemental status, enemies, elite traits, boss moveset
+8. Player, talents, derived stat pipeline
+9. Particle and floating-text effects (incl. arc bolts)
+10. Save system and meta progression
+11. Game state, floor building, shop haggling
+12. Combat resolution, combo meter, bounties, milestones, endless affixes
+13. Enemy AI, boss phases, elite summoning
+14. World and prop rendering
+15. Fog of war, vignette, threat indicators, boss telegraphs
+16. HUD, minimap, portraits, ability icons, affix chips
+17. Menus, inventory, shop, talents panel
+18. Input handling, update loop, bootstrap
