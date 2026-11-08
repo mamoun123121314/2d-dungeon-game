@@ -273,6 +273,7 @@ canvas{display:block;}
 .toast.danger{border-left-color:var(--danger);color:#ffbdb7;}
 .toast.gold{border-left-color:var(--gold);color:#f4dfa9;}
 .toast.good{border-left-color:#58c870;color:#c4f3cd;}
+.toast.lore{border-left-color:#a48cff;color:#d3caff;font-style:italic;letter-spacing:.01em;}
 .toast.out{opacity:0;transform:translateX(-12px);}
 @keyframes toastIn{from{opacity:0;transform:translateX(-16px);}to{opacity:1;transform:none;}}
 
@@ -2572,13 +2573,111 @@ function themeForFloor(n) {
   return THEMES[[0, 1, 2][n % 3]];
 }
 
+/* ---------------- procedural room themes ----------------
+   Every non-special room rolls a personality. The personality decides which
+   props are strewn about, what atmosphere line the player reads on entry and
+   how the lighting feels, so two floors never read the same way. */
+const ROOM_THEMES = {
+  empty: {
+    name: 'Chamber', weight: 20, tint: null,
+    lines: ['Dust and old purpose.', 'Something happened here, once.', 'The walls keep their counsel.']
+  },
+  library: {
+    name: 'Library', weight: 12, tint: 'rgba(120,150,255,0.05)',
+    props: ['bookshelf', 'bookshelf', 'lectern', 'candle', 'bookpile'],
+    lines: ['Rotting spines lean against one another.', 'Pages crumble at a breath.',
+            'A ledger records debts older than the dungeon.'],
+    light: 'candle'
+  },
+  prison: {
+    name: 'Oubliette', weight: 12, tint: 'rgba(90,110,90,0.05)',
+    props: ['cage', 'cage', 'shackles', 'skeleton', 'bucket'],
+    lines: ['Rust has eaten the bars through.', 'Scratch marks count a great many days.',
+            'The straw still smells of fear.'],
+    light: 'gloom'
+  },
+  kitchen: {
+    name: 'Kitchen', weight: 11, tint: 'rgba(255,160,90,0.05)',
+    props: ['cauldron', 'table', 'barrel', 'barrel', 'hangingMeat'],
+    lines: ['Something still simmers. Best not to ask what.', 'Knives arranged by size, all clean.',
+            'The larder is better stocked than the crypt.'],
+    light: 'fire'
+  },
+  shrine: {
+    name: 'Shrine', weight: 10, tint: 'rgba(255,220,140,0.06)',
+    props: ['altar', 'statue', 'candle', 'candle', 'offering'],
+    lines: ['A god with its face chiselled away.', 'Wax has pooled for a hundred years.',
+            'The air here is quieter, and it is watching.'],
+    light: 'holy'
+  },
+  workshop: {
+    name: 'Workshop', weight: 9, tint: 'rgba(200,180,140,0.04)',
+    props: ['anvil', 'bench', 'barrel', 'toolRack'],
+    lines: ['The forge has been cold for decades.', 'Half a blade waits for a handle that never came.',
+            'Sparks burned their signatures into the floor.'],
+    light: 'fire'
+  },
+  crypt: {
+    name: 'Crypt', weight: 10, tint: 'rgba(140,130,200,0.05)',
+    props: ['sarcophagus', 'bones', 'bones', 'urn', 'candle'],
+    lines: ['Names worn smooth by fingertips.', 'The dead were laid out with care, then forgotten.',
+            'Every slab is just slightly ajar.'],
+    light: 'gloom'
+  },
+  garden: {
+    name: 'Sunken Garden', weight: 8, tint: 'rgba(120,255,170,0.05)',
+    props: ['planter', 'planter', 'tree', 'vine', 'planter'],
+    lines: ['Pale growth that has never seen a sun.', 'Roots drink from somewhere far below.',
+            'It is beautiful. It is also hungry.'],
+    light: 'growth'
+  },
+  treasury: {
+    name: 'Counting House', weight: 7, tint: 'rgba(255,215,120,0.07)',
+    props: ['coinpile', 'coinpile', 'strongbox', 'balance', 'coinpile'],
+    lines: ['Empty chests, lids thrown wide.', 'Somebody left in a hurry, and left a lot behind.',
+            'Gold has an honest smell, even down here.'],
+    light: 'gold'
+  },
+  barracks: {
+    name: 'Barracks', weight: 9, tint: 'rgba(180,90,90,0.04)',
+    props: ['bunk', 'weaponRack', 'table', 'bucket', 'weaponRack'],
+    lines: ['Beds made with drill-ground precision.', 'A watch roster with every name crossed out.',
+            'Steel oil and old sweat.'],
+    light: 'gloom'
+  },
+  ritual: {
+    name: 'Ritual Chamber', weight: 8, tint: 'rgba(200,90,255,0.07)',
+    props: ['circle', 'candle', 'candle', 'candle', 'sacrifice'],
+    lines: ['The circle has been drawn and redrawn.', 'Whatever was called, it did not leave.',
+            'The chalk lines are warm to the eye.'],
+    light: 'unholy'
+  }
+};
+const ROOM_THEME_KEYS = Object.keys(ROOM_THEMES);
+/* Weighted pick so the common chambers stay common and the odd ones surprise. */
+function rollRoomTheme(dungeon, room) {
+  if (room.type !== 'normal') return;
+  const pool = [];
+  for (const k of ROOM_THEME_KEYS) {
+    const w = ROOM_THEMES[k].weight || 0;
+    for (let i = 0; i < w; i++) pool.push(k);
+  }
+  /* a floor leans into one or two dominant flavours so it feels designed */
+  const lean = dungeon.decorLean || 'any';
+  let pickTheme = pick(pool);
+  if (lean !== 'any' && chance(0.5)) pickTheme = lean;
+  room.decor = pickTheme;
+}
+
 class Room {
   constructor(x, y, w, h, depth) {
     this.x = x; this.y = y; this.w = w; this.h = h; this.depth = depth;
     this.cx = (x + w / 2) | 0; this.cy = (y + h / 2) | 0;
     this.explored = false;
-    this.type = 'normal'; /* normal | vault | shrine | boss */
+    this.type = 'normal'; /* normal | vault | shrine | boss | guardian | stairs */
+    this.decor = 'empty'; /* procedural room personality, see ROOM_THEMES */
     this.lit = false;
+    this.flavorSeen = false;
   }
   get area() { return this.w * this.h; }
   inner() { return { x: this.x + 1, y: this.y + 1, w: this.w - 2, h: this.h - 2 }; }
@@ -2787,6 +2886,11 @@ class Dungeon {
       boss.type = 'guardian';
       this.guardianRoom = boss;
     }
+    /* procedural room personalities — after the special rooms are assigned
+       so vaults, guardians and stairs never get overwritten */
+    this.decorLean = pick(['any', 'any', 'library', 'prison', 'kitchen', 'shrine',
+                           'workshop', 'crypt', 'garden', 'treasury', 'barracks', 'ritual']);
+    for (const r of rooms) rollRoomTheme(this, r);
     /* merchant room on deeper floors */
     if (this.floor >= 2 && others.length) {
       const m = others.filter(r => r !== this.vault && r !== this.guardianRoom)[0] || others[0];
@@ -3680,9 +3784,11 @@ class Player {
   }
   /* bonus contributed by spent skill points */
   get skillStats() {
+    /* every entry accumulates additively from zero; multiplicative stats are
+       expressed as percentages/fractions and folded in by the getters below */
     const out = { atk: 0, def: 0, hp: 0, crit: 0, speed: 0, mana: 0,
                   lifesteal: 0, thorns: 0, cleave: 0, reach: 0,
-                  magicPower: 0, manaCostMul: 1, dodgeCdMul: 1, regen: 0,
+                  magicPower: 0, manaCostMul: 0, dodgeCdMul: 0, regen: 0,
                   goldFind: 0, slamRadius: 0 };
     const sk = this.skills || {};
     for (const id in sk) {
@@ -3692,7 +3798,6 @@ class Player {
       if (!node) continue;
       for (const k in node.effects) out[k] = (out[k] || 0) + node.effects[k] * n;
     }
-    if (out.manaCostMul === 0) out.manaCostMul = 1;
     return out;
   }
   hasSkill(id) { return (this.skills[id] || 0) > 0; }
@@ -4374,6 +4479,101 @@ function buildFloor(n, first = false) {
 }
 
 /* ---------- prop placement ---------- */
+/* Wall-hugging tiles inside a room, shuffled, for furniture placement. */
+function roomWallTiles(room) {
+  const tiles = [];
+  const x0 = room.x + 1, x1 = room.x + room.w - 2;
+  const y0 = room.y + 1, y1 = room.y + room.h - 2;
+  for (let x = x0; x <= x1; x++) { tiles.push([x, y0]); if (y1 !== y0) tiles.push([x, y1]); }
+  for (let y = y0 + 1; y < y1; y++) { tiles.push([x0, y]); if (x1 !== x0) tiles.push([x1, y]); }
+  return shuffle(tiles);
+}
+/* Solid props are big — they take a full tile and block movement, so only drop
+   them on genuinely free wall tiles and never within arm's reach of the door. */
+function spawnThemeProps(d, room, props, p) {
+  const theme = ROOM_THEMES[room.decor];
+  if (!theme || !theme.props || room.type === 'vault' || room.type === 'guardian') return;
+  const occupied = (tx, ty) => {
+    for (const pr of props) {
+      if (pr.dead) continue;
+      if (Math.abs(pr.x / TILE - (tx + 0.5)) < 0.75 && Math.abs(pr.y / TILE - (ty + 0.5)) < 0.75) return true;
+    }
+    return false;
+  };
+  const cands = roomWallTiles(room);
+  const wanted = Math.min(theme.props.length, 2 + Math.floor(room.area / 40));
+  let placed = 0;
+  for (const kind of theme.props) {
+    if (placed >= wanted) break;
+    let spot = null;
+    for (const [tx, ty] of cands) {
+      if (d.get(tx, ty) !== FLOOR) continue;
+      if (occupied(tx, ty)) continue;
+      /* don't box in the entrance/stairs/merchant */
+      const wx = (tx + 0.5) * TILE, wy = (ty + 0.5) * TILE;
+      if (dist2(wx, wy, p.x, p.y) < 80 * 80) continue;
+      if (d.merchant && dist2(wx, wy, d.merchant.x, d.merchant.y) < 70 * 70) continue;
+      spot = [tx, ty];
+      break;
+    }
+    if (!spot) continue;
+    const [tx, ty] = spot;
+    const pr = makeThemeProp(kind, (tx + 0.5) * TILE, (ty + 0.5) * TILE);
+    if (!pr) continue;
+    props.push(pr);
+    placed++;
+  }
+}
+/* Small factory so the spawner and the draw switch agree on kind names. */
+function makeThemeProp(kind, x, y) {
+  switch (kind) {
+    case 'bookshelf': return new Prop('bookshelf', x, y, { solid: true, r: 15 });
+    case 'lectern': return new Prop('lectern', x, y, { solid: true, r: 11 });
+    case 'bookpile': return new Prop('bookpile', x, y, { solid: false, r: 8 });
+    case 'cage': return new Prop('cage', x, y, { solid: true, r: 14 });
+    case 'shackles': return new Prop('shackles', x, y, { solid: false, r: 8 });
+    case 'skeleton': return new Prop('skeleton', x, y, { solid: false, r: 9 });
+    case 'bones': return new Prop('bones', x, y, { solid: false, r: 10 });
+    case 'urn': return new Prop('urn', x, y, { solid: chance(0.4), r: 10 });
+    case 'bucket': return new Prop('bucket', x, y, { solid: false, r: 7 });
+    case 'cauldron': {
+      const pr = new Prop('cauldron', x, y, { solid: true, r: 13 });
+      pr.lightR = 2.4;
+      return pr;
+    }
+    case 'table': return new Prop('table', x, y, { solid: true, r: 14 });
+    case 'barrel': return new Prop('barrel', x, y, { solid: true, r: 11 });
+    case 'hangingMeat': return new Prop('hangingMeat', x, y, { solid: false, r: 10 });
+    case 'altar': {
+      const pr = new Prop('altar', x, y, { solid: true, r: 14 });
+      pr.lightR = 2.8;
+      return pr;
+    }
+    case 'statue': return new Prop('statue', x, y, { solid: true, r: 13 });
+    case 'offering': return new Prop('offering', x, y, { solid: false, r: 8 });
+    case 'candle': {
+      const pr = new Prop('candle', x, y, { solid: false, r: 6 });
+      pr.lightR = 2.3;
+      return pr;
+    }
+    case 'anvil': return new Prop('anvil', x, y, { solid: true, r: 13 });
+    case 'bench': return new Prop('bench', x, y, { solid: true, r: 13 });
+    case 'toolRack': return new Prop('toolRack', x, y, { solid: true, r: 12 });
+    case 'sarcophagus': return new Prop('sarcophagus', x, y, { solid: true, r: 15 });
+    case 'planter': return new Prop('planter', x, y, { solid: true, r: 11 });
+    case 'tree': return new Prop('tree', x, y, { solid: true, r: 16 });
+    case 'vine': return new Prop('vine', x, y, { solid: false, r: 9 });
+    case 'coinpile': return new Prop('coinpile', x, y, { solid: false, r: 9 });
+    case 'strongbox': return new Prop('strongbox', x, y, { solid: true, r: 12 });
+    case 'balance': return new Prop('balance', x, y, { solid: true, r: 10 });
+    case 'bunk': return new Prop('bunk', x, y, { solid: true, r: 14 });
+    case 'weaponRack': return new Prop('weaponRack', x, y, { solid: true, r: 12 });
+    case 'circle': return new Prop('circle', x, y, { solid: false, r: 18 });
+    case 'sacrifice': return new Prop('sacrifice', x, y, { solid: false, r: 10 });
+    default: return null;
+  }
+}
+
 function spawnProps(d) {
   const props = Game.props;
   const p = Game.player;
@@ -4422,6 +4622,9 @@ function spawnProps(d) {
       pr.lightR = 4.2;
       props.push(pr);
     }
+    /* theme furniture — the room's personality, laid out against the walls so
+       the middle stays walkable and fights keep their space */
+    spawnThemeProps(d, room, props, p);
   }
   /* chests */
   const chestRooms = d.rooms.filter(r => r !== d.startRoom);
@@ -5565,6 +5768,15 @@ function revealAround(px, py, radiusTiles) {
   }
   /* room reveal: entering a room reveals the whole room shape */
   const room = d.roomAt(px, py);
+  /* first visit: a one-line flavour note so each chamber has a voice */
+  if (room && !room.flavorSeen) {
+    room.flavorSeen = true;
+    if (room.decor && room.decor !== 'empty' && ROOM_THEMES[room.decor] && Game.state === 'playing') {
+      const lines = ROOM_THEMES[room.decor].lines;
+      const note = (ROOM_THEMES[room.decor].name + ' — ' + pick(lines));
+      setTimeout(() => { if (Game.dungeon === d) toast(note, 'lore'); }, 220);
+    }
+  }
   if (room && !room.explored) {
     room.explored = true;
     for (let y = room.y - 1; y <= room.y + room.h; y++)
@@ -6025,6 +6237,481 @@ function drawProp(ctx, pr, cam, t) {
       ctx.quadraticCurveTo(-11, 0, -6, -10); ctx.closePath(); ctx.fill();
       ctx.strokeStyle = 'rgba(220,200,160,.2)'; ctx.lineWidth = 1;
       ctx.stroke();
+      break;
+    }
+    /* ---------------- thematic furniture ---------------- */
+    case 'bookshelf': {
+      const g = ctx.createLinearGradient(-15, -18, 15, 14);
+      g.addColorStop(0, '#4a3320'); g.addColorStop(1, '#241708');
+      ctx.fillStyle = g;
+      ctx.beginPath(); ctx.roundRect(-15, -20, 30, 34, 2); ctx.fill();
+      ctx.strokeStyle = 'rgba(20,12,4,.85)'; ctx.lineWidth = 2; ctx.stroke();
+      /* three shelves of spines */
+      const spineCols = ['#8b2d3a', '#2d5a8b', '#6b5a2d', '#3f7a52', '#6a2d7a', '#a07030'];
+      for (let row = 0; row < 3; row++) {
+        const sy = -15 + row * 11;
+        ctx.fillStyle = 'rgba(0,0,0,.5)';
+        ctx.fillRect(-13, sy + 7, 26, 1.6);
+        let bx = -12.5;
+        for (let i = 0; i < 5; i++) {
+          const w = 3 + ((pr.seed + row * 7 + i * 3) % 3);
+          const col = spineCols[(Math.floor(pr.seed) + row * 5 + i) % spineCols.length];
+          const lean = ((pr.seed + i * 13) % 5 === 0) ? 0.18 : 0;
+          ctx.save();
+          ctx.translate(bx + w / 2, sy + 6.6);
+          ctx.rotate(lean);
+          ctx.fillStyle = col;
+          ctx.fillRect(-w / 2, -6.2, w, 6.2);
+          ctx.fillStyle = 'rgba(255,235,190,.22)';
+          ctx.fillRect(-w / 2, -6.2, w, 1.1);
+          ctx.restore();
+          bx += w + 0.6;
+          if (bx > 12) break;
+        }
+      }
+      break;
+    }
+    case 'lectern': {
+      ctx.fillStyle = '#3d2a18';
+      ctx.beginPath();
+      ctx.moveTo(-9, 12); ctx.lineTo(9, 12); ctx.lineTo(5, -6); ctx.lineTo(-5, -6); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = '#efe0bc';
+      ctx.save(); ctx.translate(0, -8); ctx.rotate(-0.13);
+      ctx.fillRect(-10, -3, 20, 6);
+      ctx.strokeStyle = 'rgba(180,150,110,.75)'; ctx.lineWidth = 0.8;
+      for (let i = 0; i < 3; i++) { ctx.beginPath(); ctx.moveTo(-7, -1.6 + i * 1.7); ctx.lineTo(5, -1.6 + i * 1.7); ctx.stroke(); }
+      ctx.restore();
+      /* guttering reading light */
+      const fl = Math.sin(t * 8 + pr.seed) * 0.22 + 1;
+      ctx.save(); ctx.globalCompositeOperation = 'lighter';
+      const gg = ctx.createRadialGradient(0, -10, 1, 0, -10, 22 * fl);
+      gg.addColorStop(0, 'rgba(255,240,190,0.55)'); gg.addColorStop(1, 'rgba(255,200,110,0)');
+      ctx.fillStyle = gg; ctx.beginPath(); ctx.arc(0, -10, 22 * fl, 0, TAU); ctx.fill();
+      ctx.restore();
+      break;
+    }
+    case 'bookpile': {
+      const cols = ['#7a2d38', '#2d4d78', '#5f7a2d', '#6a4a24'];
+      for (let i = 0; i < 4; i++) {
+        const w = 15 - i * 2.2;
+        ctx.save();
+        ctx.translate(((pr.seed + i * 5) % 4) - 1.5, 6 - i * 3.1);
+        ctx.rotate((((pr.seed * (i + 1)) % 7) - 3) * 0.05);
+        ctx.fillStyle = cols[(Math.floor(pr.seed) + i) % cols.length];
+        ctx.fillRect(-w / 2, -3, w, 3.2);
+        ctx.fillStyle = 'rgba(240,225,190,.5)';
+        ctx.fillRect(-w / 2, -3, w, 0.7);
+        ctx.restore();
+      }
+      break;
+    }
+    case 'candle': {
+      ctx.fillStyle = '#d9cdb0';
+      ctx.beginPath(); ctx.roundRect(-2.2, -8, 4.4, 13, 1); ctx.fill();
+      ctx.fillStyle = 'rgba(0,0,0,.28)';
+      ctx.fillRect(-2.2, -8, 1.4, 13);
+      const fl = Math.sin(t * 11 + pr.seed) * 0.28 + 1;
+      ctx.save();
+      ctx.globalCompositeOperation = 'lighter';
+      const gg = ctx.createRadialGradient(0, -12, 0.5, 0, -12, 26 * fl);
+      gg.addColorStop(0, 'rgba(255,245,200,0.85)');
+      gg.addColorStop(0.35, 'rgba(255,180,80,0.42)');
+      gg.addColorStop(1, 'rgba(255,120,20,0)');
+      ctx.fillStyle = gg; ctx.beginPath(); ctx.arc(0, -12, 26 * fl, 0, TAU); ctx.fill();
+      ctx.fillStyle = 'rgba(255,250,220,0.95)';
+      ctx.beginPath(); ctx.ellipse(0, -12 - fl, 1.7, 3.6 * fl, 0, 0, TAU); ctx.fill();
+      ctx.restore();
+      break;
+    }
+    case 'cage': {
+      ctx.strokeStyle = '#4a4a50'; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.roundRect(-13, -20, 26, 32, 3); ctx.stroke();
+      ctx.strokeStyle = 'rgba(120,120,130,.65)'; ctx.lineWidth = 1.4;
+      for (let i = -9; i <= 9; i += 4.5) { ctx.beginPath(); ctx.moveTo(i, -19); ctx.lineTo(i, 11); ctx.stroke(); }
+      ctx.beginPath(); ctx.moveTo(-12, -10); ctx.lineTo(12, -10); ctx.stroke();
+      /* the occupant */
+      ctx.fillStyle = 'rgba(200,198,180,.32)';
+      ctx.beginPath(); ctx.arc(0, -2, 4, 0, TAU); ctx.fill();
+      ctx.fillStyle = 'rgba(180,178,160,.22)';
+      ctx.beginPath(); ctx.ellipse(0, 4, 5, 4, 0, 0, TAU); ctx.fill();
+      ctx.strokeStyle = 'rgba(90,90,96,.9)';
+      ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.moveTo(-13, -20); ctx.lineTo(-13, -26); ctx.moveTo(13, -20); ctx.lineTo(13, -26); ctx.stroke();
+      break;
+    }
+    case 'shackles': {
+      ctx.strokeStyle = 'rgba(90,88,80,.85)'; ctx.lineWidth = 1.8;
+      ctx.beginPath(); ctx.arc(-6, 2, 4.2, 0, TAU); ctx.stroke();
+      ctx.beginPath(); ctx.arc(6, 2, 4.2, 0, TAU); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(-2, 2); ctx.lineTo(2, 2); ctx.stroke();
+      ctx.strokeStyle = 'rgba(70,68,60,.55)'; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(-8, 6); ctx.lineTo(-14, 12); ctx.moveTo(8, 6); ctx.lineTo(14, 12); ctx.stroke();
+      break;
+    }
+    case 'skeleton': {
+      ctx.fillStyle = 'rgba(214,212,196,.82)';
+      ctx.beginPath(); ctx.ellipse(0, -2, 4.6, 5.2, 0, 0, TAU); ctx.fill();
+      ctx.fillStyle = 'rgba(30,26,22,.85)';
+      ctx.beginPath(); ctx.arc(-1.7, -3, 1.15, 0, TAU); ctx.arc(1.7, -3, 1.15, 0, TAU); ctx.fill();
+      ctx.fillStyle = 'rgba(214,212,196,.62)';
+      for (let i = 0; i < 3; i++) { ctx.fillRect(-5 + i * 3.6, 3, 2, 6.5); }
+      ctx.beginPath(); ctx.moveTo(-7, 9); ctx.lineTo(7, 9); ctx.moveTo(-2, 10); ctx.lineTo(-4, 15); ctx.moveTo(2, 10); ctx.lineTo(4, 15);
+      ctx.strokeStyle = 'rgba(214,212,196,.6)'; ctx.lineWidth = 2; ctx.stroke();
+      break;
+    }
+    case 'bucket': {
+      ctx.fillStyle = '#3c3428';
+      ctx.beginPath(); ctx.moveTo(-6, -4); ctx.lineTo(6, -4); ctx.lineTo(4.4, 6); ctx.lineTo(-4.4, 6); ctx.closePath(); ctx.fill();
+      ctx.strokeStyle = 'rgba(140,130,110,.5)'; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.arc(0, -4, 6, Math.PI, 0); ctx.stroke();
+      ctx.fillStyle = 'rgba(40,60,55,.6)';
+      ctx.beginPath(); ctx.ellipse(0, -3.4, 5, 1.5, 0, 0, TAU); ctx.fill();
+      break;
+    }
+    case 'cauldron': {
+      ctx.fillStyle = '#26221c';
+      ctx.beginPath(); ctx.ellipse(0, 0, 13, 11, 0, 0, TAU); ctx.fill();
+      ctx.strokeStyle = '#4a4038'; ctx.lineWidth = 2; ctx.stroke();
+      ctx.fillStyle = '#2f2418';
+      ctx.beginPath(); ctx.moveTo(-11, 6); ctx.lineTo(-6, 14); ctx.lineTo(-2, 14); ctx.lineTo(-5, 6); ctx.closePath(); ctx.fill();
+      ctx.beginPath(); ctx.moveTo(11, 6); ctx.lineTo(6, 14); ctx.lineTo(2, 14); ctx.lineTo(5, 6); ctx.closePath(); ctx.fill();
+      /* simmering surface */
+      const bob = Math.sin(t * 2.6 + pr.seed) * 1.2;
+      const gg = ctx.createRadialGradient(0, -4 + bob, 1, 0, -4, 12);
+      gg.addColorStop(0, 'rgba(190,255,150,0.85)');
+      gg.addColorStop(0.5, 'rgba(120,220,90,0.45)');
+      gg.addColorStop(1, 'rgba(60,140,40,0)');
+      ctx.save(); ctx.globalCompositeOperation = 'lighter';
+      ctx.fillStyle = gg; ctx.beginPath(); ctx.ellipse(0, -4 + bob, 10, 4.4, 0, 0, TAU); ctx.fill();
+      ctx.restore();
+      ctx.strokeStyle = 'rgba(200,240,180,.28)'; ctx.lineWidth = 1.4;
+      const ph = (t * 0.5 + pr.seed) % 1;
+      ctx.beginPath();
+      ctx.moveTo(Math.sin(ph * 9) * 5, -6);
+      ctx.quadraticCurveTo(Math.sin(ph * 6) * 8, -14 - ph * 8, Math.sin(ph * 12) * 4, -22 - ph * 10);
+      ctx.stroke();
+      break;
+    }
+    case 'table': {
+      ctx.fillStyle = '#3a2a18';
+      ctx.fillRect(-14, -6, 5, 20); ctx.fillRect(9, -6, 5, 20);
+      const g = ctx.createLinearGradient(0, -11, 0, 2);
+      g.addColorStop(0, '#6d5230'); g.addColorStop(1, '#3d2c16');
+      ctx.fillStyle = g;
+      ctx.beginPath(); ctx.roundRect(-17, -12, 34, 10, 2); ctx.fill();
+      ctx.strokeStyle = 'rgba(220,190,140,.18)'; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(-16, -7); ctx.lineTo(16, -7); ctx.stroke();
+      /* a bowl and a knife left mid-meal */
+      ctx.fillStyle = '#8a8272'; ctx.beginPath(); ctx.ellipse(-4, -11, 4.2, 1.8, 0, 0, TAU); ctx.fill();
+      ctx.strokeStyle = 'rgba(210,210,220,.7)'; ctx.lineWidth = 1.6;
+      ctx.beginPath(); ctx.moveTo(6, -12); ctx.lineTo(13, -12); ctx.stroke();
+      break;
+    }
+    case 'barrel': {
+      const g = ctx.createLinearGradient(-10, -14, 10, 14);
+      g.addColorStop(0, '#6a4b28'); g.addColorStop(0.55, '#4a3319'); g.addColorStop(1, '#2c1d0e');
+      ctx.fillStyle = g;
+      ctx.beginPath(); ctx.roundRect(-9.5, -13, 19, 26, 4); ctx.fill();
+      ctx.strokeStyle = 'rgba(30,22,12,.85)'; ctx.lineWidth = 1.6; ctx.stroke();
+      ctx.strokeStyle = 'rgba(150,150,160,.5)'; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.moveTo(-9.5, -7); ctx.lineTo(9.5, -7); ctx.moveTo(-9.5, 5); ctx.lineTo(9.5, 5); ctx.stroke();
+      ctx.fillStyle = 'rgba(255,220,160,.14)';
+      ctx.beginPath(); ctx.ellipse(-2, -13, 7.5, 2.6, 0, 0, TAU); ctx.fill();
+      break;
+    }
+    case 'hangingMeat': {
+      ctx.strokeStyle = 'rgba(120,110,90,.85)'; ctx.lineWidth = 1.4;
+      ctx.beginPath(); ctx.moveTo(0, -24); ctx.lineTo(0, -12); ctx.stroke();
+      const g = ctx.createLinearGradient(0, -14, 0, 6);
+      g.addColorStop(0, '#9c4a44'); g.addColorStop(1, '#5a2420');
+      ctx.fillStyle = g;
+      ctx.beginPath();
+      ctx.moveTo(-6, -12); ctx.quadraticCurveTo(-9, 0, -3, 6); ctx.quadraticCurveTo(3, 9, 7, 2);
+      ctx.quadraticCurveTo(9, -6, 5, -12); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = 'rgba(240,220,200,.75)';
+      ctx.beginPath(); ctx.ellipse(3, 2, 2.2, 3.4, 0.3, 0, TAU); ctx.fill();
+      break;
+    }
+    case 'altar': {
+      const g = ctx.createLinearGradient(-15, -14, 15, 16);
+      g.addColorStop(0, '#7c7686'); g.addColorStop(0.5, '#565060'); g.addColorStop(1, '#2e2a38');
+      ctx.fillStyle = g;
+      ctx.beginPath(); ctx.moveTo(-15, 14); ctx.lineTo(15, 14); ctx.lineTo(12, -6); ctx.lineTo(-12, -6); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = '#8d8698';
+      ctx.beginPath(); ctx.roundRect(-15, -10, 30, 5.5, 2); ctx.fill();
+      ctx.strokeStyle = 'rgba(255,235,180,.28)'; ctx.lineWidth = 1;
+      ctx.strokeRect(-9, -1, 18, 8);
+      /* the relic above it */
+      const fl = Math.sin(t * 2.4 + pr.seed) * 0.3 + 1;
+      ctx.save(); ctx.globalCompositeOperation = 'lighter';
+      const gg = ctx.createRadialGradient(0, -16, 1, 0, -16, 24 * fl);
+      gg.addColorStop(0, 'rgba(255,250,215,0.8)');
+      gg.addColorStop(0.4, 'rgba(255,215,130,0.4)');
+      gg.addColorStop(1, 'rgba(255,180,60,0)');
+      ctx.fillStyle = gg; ctx.beginPath(); ctx.arc(0, -16, 24 * fl, 0, TAU); ctx.fill();
+      ctx.fillStyle = 'rgba(255,245,200,0.92)';
+      ctx.beginPath();
+      for (let i = 0; i < 4; i++) {
+        const a = t * 0.6 + i * Math.PI / 2;
+        ctx.lineTo(Math.cos(a) * 5, -16 + Math.sin(a) * 5);
+      }
+      ctx.closePath(); ctx.fill();
+      ctx.restore();
+      break;
+    }
+    case 'statue': {
+      const g = ctx.createLinearGradient(-10, -28, 10, 14);
+      g.addColorStop(0, '#8c8a92'); g.addColorStop(0.6, '#5e5c66'); g.addColorStop(1, '#3a3842');
+      ctx.fillStyle = '#4a4852';
+      ctx.beginPath(); ctx.roundRect(-11, 8, 22, 8, 2); ctx.fill();
+      ctx.fillStyle = g;
+      /* robed figure with its face struck off */
+      ctx.beginPath();
+      ctx.moveTo(-9, 9); ctx.quadraticCurveTo(-7, -8, -3, -14);
+      ctx.lineTo(3, -14); ctx.quadraticCurveTo(7, -8, 9, 9); ctx.closePath(); ctx.fill();
+      ctx.beginPath(); ctx.arc(0, -18, 5.2, 0, TAU); ctx.fill();
+      ctx.fillStyle = '#3a3842';
+      ctx.beginPath(); ctx.ellipse(0, -18, 3, 3.6, 0, 0, TAU); ctx.fill();
+      ctx.strokeStyle = 'rgba(200,200,215,.22)'; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(-4, -6); ctx.lineTo(-2, 8); ctx.moveTo(4, -6); ctx.lineTo(2, 8); ctx.stroke();
+      break;
+    }
+    case 'offering': {
+      ctx.fillStyle = 'rgba(210,190,140,.35)';
+      ctx.beginPath(); ctx.ellipse(0, 5, 9, 3.4, 0, 0, TAU); ctx.fill();
+      const cols = ['#c8a23c', '#b8573c', '#9c7ac8'];
+      for (let i = 0; i < 3; i++) {
+        ctx.fillStyle = cols[i];
+        ctx.beginPath();
+        ctx.arc(((pr.seed + i * 9) % 9) - 4, 3 + ((pr.seed + i * 5) % 4), 2.2, 0, TAU);
+        ctx.fill();
+      }
+      ctx.fillStyle = '#d9cdb0';
+      ctx.fillRect(4, -4, 2.4, 7);
+      break;
+    }
+    case 'anvil': {
+      const g = ctx.createLinearGradient(-14, -10, 14, 10);
+      g.addColorStop(0, '#5a5a64'); g.addColorStop(0.5, '#3a3a44'); g.addColorStop(1, '#1e1e26');
+      ctx.fillStyle = g;
+      ctx.beginPath();
+      ctx.moveTo(-14, -8); ctx.lineTo(14, -8); ctx.lineTo(9, -1); ctx.lineTo(6, -1);
+      ctx.lineTo(7, 6); ctx.lineTo(-7, 6); ctx.lineTo(-6, -1); ctx.lineTo(-9, -1); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = '#26262e';
+      ctx.beginPath(); ctx.moveTo(-7, 6); ctx.lineTo(7, 6); ctx.lineTo(9, 12); ctx.lineTo(-9, 12); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = 'rgba(255,200,140,.18)';
+      ctx.fillRect(-14, -8, 28, 2);
+      break;
+    }
+    case 'bench': {
+      ctx.fillStyle = '#3d2b16';
+      ctx.fillRect(-15, 2, 5, 12); ctx.fillRect(10, 2, 5, 12);
+      const g = ctx.createLinearGradient(0, -6, 0, 6);
+      g.addColorStop(0, '#6b4d2c'); g.addColorStop(1, '#3a2712');
+      ctx.fillStyle = g;
+      ctx.beginPath(); ctx.roundRect(-17, -5, 34, 9, 2); ctx.fill();
+      /* tools resting on it */
+      ctx.strokeStyle = '#8a8a94'; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.moveTo(-9, -6); ctx.lineTo(1, -6); ctx.stroke();
+      ctx.fillStyle = '#5a4230';
+      ctx.fillRect(4, -8, 7, 3);
+      break;
+    }
+    case 'toolRack': {
+      ctx.fillStyle = '#3a2a18';
+      ctx.fillRect(-13, -18, 3, 30); ctx.fillRect(10, -18, 3, 30);
+      ctx.fillRect(-13, -16, 26, 3);
+      /* hanging implements */
+      ctx.strokeStyle = 'rgba(160,160,175,.75)'; ctx.lineWidth = 1.6;
+      ctx.beginPath(); ctx.moveTo(-7, -13); ctx.lineTo(-7, -2); ctx.stroke();
+      ctx.fillStyle = 'rgba(160,160,175,.85)';
+      ctx.beginPath(); ctx.moveTo(-9, -2); ctx.lineTo(-5, -2); ctx.lineTo(-7, 4); ctx.closePath(); ctx.fill();
+      ctx.strokeStyle = 'rgba(140,120,90,.8)';
+      ctx.beginPath(); ctx.moveTo(2, -13); ctx.lineTo(2, 2); ctx.stroke();
+      ctx.fillStyle = '#7a6446';
+      ctx.fillRect(0, 2, 4, 5);
+      break;
+    }
+    case 'sarcophagus': {
+      const g = ctx.createLinearGradient(-16, -22, 16, 18);
+      g.addColorStop(0, '#6d6a74'); g.addColorStop(0.5, '#4a4752'); g.addColorStop(1, '#2a2830');
+      ctx.fillStyle = g;
+      ctx.beginPath(); ctx.roundRect(-13, -22, 26, 40, 8); ctx.fill();
+      ctx.strokeStyle = 'rgba(20,18,24,.9)'; ctx.lineWidth = 2; ctx.stroke();
+      /* carved effigy */
+      ctx.fillStyle = 'rgba(190,186,200,.22)';
+      ctx.beginPath(); ctx.arc(0, -14, 4.4, 0, TAU); ctx.fill();
+      ctx.beginPath(); ctx.roundRect(-5.5, -9, 11, 18, 4); ctx.fill();
+      ctx.strokeStyle = 'rgba(210,200,230,.16)'; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(-9, -20); ctx.lineTo(-9, 14); ctx.moveTo(9, -20); ctx.lineTo(9, 14); ctx.stroke();
+      break;
+    }
+    case 'planter': {
+      ctx.fillStyle = '#4a3a28';
+      ctx.beginPath(); ctx.moveTo(-11, -2); ctx.lineTo(11, -2); ctx.lineTo(8, 11); ctx.lineTo(-8, 11); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = 'rgba(30,24,16,.75)';
+      ctx.beginPath(); ctx.ellipse(0, -2, 10, 3, 0, 0, TAU); ctx.fill();
+      /* pale growth */
+      const sway = Math.sin(t * 1.4 + pr.seed) * 2;
+      ctx.strokeStyle = 'rgba(150,230,170,.72)'; ctx.lineWidth = 1.6;
+      for (let i = 0; i < 4; i++) {
+        const bx = -6 + i * 4;
+        ctx.beginPath();
+        ctx.moveTo(bx, -3);
+        ctx.quadraticCurveTo(bx + sway * 0.5, -12 - i, bx + sway, -18 - i * 3);
+        ctx.stroke();
+      }
+      ctx.fillStyle = 'rgba(190,255,210,.55)';
+      for (let i = 0; i < 3; i++) {
+        ctx.beginPath();
+        ctx.arc(-4 + i * 4 + sway, -20 - i * 3, 1.8, 0, TAU);
+        ctx.fill();
+      }
+      break;
+    }
+    case 'tree': {
+      ctx.strokeStyle = '#3a3020'; ctx.lineWidth = 4;
+      ctx.beginPath(); ctx.moveTo(0, 14); ctx.lineTo(0, -10); ctx.stroke();
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(0, -2); ctx.lineTo(-9, -12); ctx.moveTo(0, -6); ctx.lineTo(8, -15);
+      ctx.moveTo(0, 2); ctx.lineTo(10, -4); ctx.stroke();
+      const sway = Math.sin(t * 1.1 + pr.seed) * 1.6;
+      ctx.save(); ctx.globalCompositeOperation = 'lighter';
+      const gg = ctx.createRadialGradient(sway, -18, 2, sway, -18, 20);
+      gg.addColorStop(0, 'rgba(150,255,190,0.30)');
+      gg.addColorStop(1, 'rgba(60,180,120,0)');
+      ctx.fillStyle = gg;
+      ctx.beginPath(); ctx.arc(sway, -18, 20, 0, TAU); ctx.fill();
+      ctx.restore();
+      ctx.fillStyle = 'rgba(140,220,170,.42)';
+      for (let i = 0; i < 5; i++) {
+        const a = (i / 5) * TAU + pr.seed;
+        ctx.beginPath();
+        ctx.ellipse(sway + Math.cos(a) * 8, -18 + Math.sin(a) * 6, 6, 4.4, a, 0, TAU);
+        ctx.fill();
+      }
+      break;
+    }
+    case 'vine': {
+      ctx.strokeStyle = 'rgba(110,200,140,.55)'; ctx.lineWidth = 1.6;
+      for (let i = 0; i < 3; i++) {
+        ctx.beginPath();
+        const off = i * 5 - 5;
+        ctx.moveTo(off, -14);
+        ctx.quadraticCurveTo(off + Math.sin(t + i) * 5, -4, off - 2, 8);
+        ctx.stroke();
+      }
+      ctx.fillStyle = 'rgba(130,230,170,.5)';
+      for (let i = 0; i < 4; i++) {
+        ctx.beginPath();
+        ctx.ellipse(-7 + i * 4.6, -9 + (i % 2) * 8, 2.6, 1.6, 0.6, 0, TAU);
+        ctx.fill();
+      }
+      break;
+    }
+    case 'coinpile': {
+      const shine = 0.5 + Math.sin(t * 2.4 + pr.seed) * 0.22;
+      for (let i = 0; i < 9; i++) {
+        const a = (i / 9) * TAU + pr.seed;
+        const rr = (i % 3) * 3.4;
+        ctx.fillStyle = i % 2 ? '#c9a13c' : '#e0bc58';
+        ctx.beginPath();
+        ctx.ellipse(Math.cos(a) * rr, Math.sin(a) * (rr * 0.5) + 3, 3.4, 1.9, 0, 0, TAU);
+        ctx.fill();
+      }
+      ctx.save(); ctx.globalCompositeOperation = 'lighter';
+      ctx.globalAlpha = shine * 0.5;
+      ctx.fillStyle = 'rgba(255,220,120,0.9)';
+      ctx.beginPath(); ctx.arc(1, 1, 2.6, 0, TAU); ctx.fill();
+      ctx.restore();
+      break;
+    }
+    case 'strongbox': {
+      const g = ctx.createLinearGradient(-12, -12, 12, 12);
+      g.addColorStop(0, '#6a4a26'); g.addColorStop(1, '#33220e');
+      ctx.fillStyle = g;
+      ctx.beginPath(); ctx.roundRect(-12, -10, 24, 20, 2); ctx.fill();
+      ctx.strokeStyle = 'rgba(190,160,90,.65)'; ctx.lineWidth = 2; ctx.stroke();
+      ctx.strokeStyle = 'rgba(190,160,90,.55)'; ctx.lineWidth = 1.6;
+      ctx.beginPath(); ctx.moveTo(-12, -2); ctx.lineTo(12, -2); ctx.stroke();
+      ctx.fillStyle = '#d9b357';
+      ctx.beginPath(); ctx.roundRect(-2.6, -4, 5.2, 6, 1); ctx.fill();
+      break;
+    }
+    case 'balance': {
+      ctx.strokeStyle = '#7a6a4a'; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.moveTo(0, 12); ctx.lineTo(0, -10); ctx.stroke();
+      const tilt = Math.sin(t * 0.9 + pr.seed) * 0.14;
+      ctx.save(); ctx.translate(0, -10); ctx.rotate(tilt);
+      ctx.beginPath(); ctx.moveTo(-13, 0); ctx.lineTo(13, 0); ctx.stroke();
+      ctx.strokeStyle = 'rgba(160,150,120,.7)'; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(-11, 0); ctx.lineTo(-11, 6); ctx.moveTo(11, 0); ctx.lineTo(11, 6); ctx.stroke();
+      ctx.fillStyle = '#8a7a58';
+      ctx.beginPath(); ctx.ellipse(-11, 7, 3.6, 1.6, 0, 0, TAU); ctx.fill();
+      ctx.beginPath(); ctx.ellipse(11, 7, 3.6, 1.6, 0, 0, TAU); ctx.fill();
+      ctx.restore();
+      ctx.fillStyle = '#6a5a3a';
+      ctx.beginPath(); ctx.roundRect(-9, 12, 18, 4, 2); ctx.fill();
+      break;
+    }
+    case 'bunk': {
+      ctx.fillStyle = '#4a3a22';
+      ctx.fillRect(-15, -18, 4, 32); ctx.fillRect(11, -18, 4, 32);
+      for (let i = 0; i < 2; i++) {
+        const by = -12 + i * 18;
+        ctx.fillStyle = '#5e4a2c';
+        ctx.fillRect(-12, by, 24, 3.4);
+        ctx.fillStyle = 'rgba(160,150,130,.35)';
+        ctx.beginPath(); ctx.roundRect(-11, by - 4, 22, 4.4, 2); ctx.fill();
+      }
+      break;
+    }
+    case 'weaponRack': {
+      ctx.fillStyle = '#3a2a18';
+      ctx.fillRect(-14, -6, 28, 3.4);
+      ctx.fillRect(-14, -22, 28, 3.4);
+      /* spears and a sword */
+      for (let i = 0; i < 3; i++) {
+        const sx = -9 + i * 8.5;
+        ctx.strokeStyle = '#6a5232'; ctx.lineWidth = 1.8;
+        ctx.beginPath(); ctx.moveTo(sx, -22); ctx.lineTo(sx + 1.5, 12); ctx.stroke();
+        ctx.fillStyle = 'rgba(170,175,190,.8)';
+        ctx.beginPath();
+        ctx.moveTo(sx - 1.5, -22); ctx.lineTo(sx + 2.5, -30); ctx.lineTo(sx + 3.5, -22);
+        ctx.closePath(); ctx.fill();
+      }
+      break;
+    }
+    case 'circle': {
+      const pulse = 0.35 + Math.sin(t * 1.6 + pr.seed) * 0.18;
+      ctx.save();
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.strokeStyle = 'rgba(200,110,255,' + (pulse + 0.25) + ')';
+      ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.ellipse(0, 2, 20, 12, 0, 0, TAU); ctx.stroke();
+      ctx.lineWidth = 1.2;
+      ctx.beginPath(); ctx.ellipse(0, 2, 13, 7.6, 0, 0, TAU); ctx.stroke();
+      /* inscribed star */
+      ctx.strokeStyle = 'rgba(230,160,255,' + pulse + ')';
+      ctx.beginPath();
+      for (let i = 0; i < 5; i++) {
+        const a = -Math.PI / 2 + (i * TAU * 2) / 5;
+        const px = Math.cos(a) * 18, py = 2 + Math.sin(a) * 10.8;
+        if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+      }
+      ctx.closePath(); ctx.stroke();
+      ctx.restore();
+      break;
+    }
+    case 'sacrifice': {
+      /* a ritual slab with a stained outline */
+      ctx.fillStyle = '#4a4452';
+      ctx.beginPath(); ctx.roundRect(-13, -6, 26, 16, 4); ctx.fill();
+      ctx.fillStyle = 'rgba(120,20,40,.42)';
+      ctx.beginPath(); ctx.ellipse(0, 2, 6, 9, 0, 0, TAU); ctx.fill();
+      ctx.strokeStyle = 'rgba(230,160,255,.35)'; ctx.lineWidth = 1.2;
+      ctx.beginPath(); ctx.roundRect(-13, -6, 26, 16, 4); ctx.stroke();
       break;
     }
     case 'merchantStand': {
