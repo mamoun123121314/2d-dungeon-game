@@ -804,7 +804,68 @@ body.is-phone #startScreen .phoneStart{display:flex;}
   body.is-phone #phoneRail{padding:5px 8px 4px;}
   body.is-phone #hintBar{top:40px;font-size:10px;}
 }
-</style>
+/* ---------------- skill tree ---------------- */
+.skillPanel { width: min(980px, 94vw); max-height: 90vh; display: flex; flex-direction: column; }
+.skillPts { display: flex; align-items: center; gap: 6px; font-family: var(--mono, monospace);
+  font-size: 13px; letter-spacing: .12em; color: #ffd88a; text-transform: uppercase; }
+.skillPts .curIcon { position: static; display: inline-flex; align-items: center; justify-content: center;
+  width: 22px; height: 22px; font-size: 12px; }
+.skillBody { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; padding: 16px 20px;
+  overflow-y: auto; flex: 1; min-height: 0; }
+.skillBranch { border: 1px solid rgba(255,255,255,.09); border-radius: 10px; background: rgba(0,0,0,.28);
+  padding: 12px; display: flex; flex-direction: column; gap: 9px; }
+.skillBranchHead { display: flex; align-items: center; gap: 8px; padding-bottom: 8px;
+  border-bottom: 1px solid rgba(255,255,255,.08); }
+.skillBranchHead .dot { width: 10px; height: 10px; border-radius: 50%; box-shadow: 0 0 10px currentColor; }
+.skillBranchHead .bname { font-family: var(--serif, Georgia, serif); font-size: 16px; letter-spacing: .06em; }
+.skillBranchHead .bpts { margin-left: auto; font-family: var(--mono, monospace); font-size: 11px;
+  color: #8d95a8; letter-spacing: .1em; }
+.skillBranchHead .bdesc { font-size: 11px; color: #7c8698; }
+.skillNode { display: flex; gap: 9px; align-items: flex-start; padding: 9px; border-radius: 8px;
+  border: 1px solid rgba(255,255,255,.07); background: rgba(255,255,255,.025);
+  cursor: pointer; transition: background .12s, border-color .12s, transform .08s; }
+.skillNode:hover { background: rgba(255,255,255,.06); border-color: rgba(255,255,255,.16); }
+.skillNode:active { transform: scale(.99); }
+.skillNode.locked { opacity: .45; cursor: not-allowed; }
+.skillNode.locked:hover { background: rgba(255,255,255,.025); border-color: rgba(255,255,255,.07); }
+.skillNode.maxed { border-color: rgba(255,209,102,.45); background: rgba(255,209,102,.07); cursor: default; }
+.skillNode.can { border-color: rgba(140,220,160,.42); background: rgba(140,220,160,.07); }
+.skillNode .sicon { width: 30px; height: 30px; flex: 0 0 30px; border-radius: 7px; display: flex;
+  align-items: center; justify-content: center; background: rgba(0,0,0,.42);
+  border: 1px solid rgba(255,255,255,.1); }
+.skillNode .smeta { flex: 1; min-width: 0; }
+.skillNode .sname { font-family: var(--serif, Georgia, serif); font-size: 13.5px; letter-spacing: .04em;
+  display: flex; align-items: center; gap: 6px; }
+.skillNode .rank { font-family: var(--mono, monospace); font-size: 10px; letter-spacing: .08em;
+  color: #9aa4b6; margin-left: auto; white-space: nowrap; }
+.skillNode .sdesc { font-size: 11.5px; line-height: 1.4; color: #9aa4b6; margin-top: 3px; }
+.skillNode .sdesc b { color: #ffd88a; font-weight: 600; }
+.skillFoot { display: flex; align-items: center; gap: 14px; padding: 12px 20px;
+  border-top: 1px solid rgba(255,255,255,.08); }
+.skillHint { font-size: 11.5px; color: #7c8698; letter-spacing: .04em; }
+@media (max-width: 760px) {
+  .skillBody { grid-template-columns: 1fr; }
+  .skillPanel { width: 96vw; }
+}
+</style>/* ---------------- merchant haggling ---------------- */
+.shopHaggle { display: flex; align-items: center; gap: 10px; margin: 8px 0 6px; flex-wrap: wrap; }
+.shopRerollBtn { font-family: var(--mono, monospace); font-size: 11.5px; letter-spacing: .1em;
+  text-transform: uppercase; padding: 7px 13px; border-radius: 7px; cursor: pointer;
+  color: #ffd88a; background: rgba(255,216,138,.09); border: 1px solid rgba(255,216,138,.32);
+  transition: background .12s, transform .08s; }
+.shopRerollBtn:hover:not(:disabled) { background: rgba(255,216,138,.18); }
+.shopRerollBtn:active:not(:disabled) { transform: scale(.98); }
+.shopRerollBtn:disabled { opacity: .38; cursor: not-allowed; }
+.shopRerolls { font-family: var(--mono, monospace); font-size: 10.5px; letter-spacing: .09em;
+  color: #8d95a8; text-transform: uppercase; }
+.shopMoodWarm { color: #8fe0a8 !important; }
+.shopMoodCold { color: #c0c8d8 !important; }
+.priceTag { font-family: var(--mono, monospace); font-size: 10px; letter-spacing: .06em; }
+.discountBadge { display: inline-block; font-family: var(--mono, monospace); font-size: 9px;
+  letter-spacing: .1em; padding: 1px 5px; border-radius: 4px; margin-left: 6px;
+  background: rgba(143,224,168,.16); color: #8fe0a8; border: 1px solid rgba(143,224,168,.35);
+  vertical-align: middle; }
+</style></style>
 </head>
 <body>
 <!-- ============================ GAME CANVAS ============================ -->
@@ -1037,7 +1098,11 @@ body.is-phone #startScreen .phoneStart{display:flex;}
     <div class="shopBody">
       <div class="shopCol">
         <h3>For Sale</h3>
-        <div class="desc">Fresh stock, restocked each floor. Click a name to inspect.</div>
+        <div class="desc" id="shopMood">Fresh stock, restocked each floor. Click a name to inspect.</div>
+        <div class="shopHaggle">
+          <button class="shopRerollBtn" id="shopRerollBtn">Reroll Stock · 20g</button>
+          <span class="shopRerolls" id="shopRerolls">2 rerolls left</span>
+        </div>
         <div class="shopList" id="shopStock"></div>
         <div class="shopMesg" id="shopMsg"></div>
       </div>
@@ -1046,6 +1111,24 @@ body.is-phone #startScreen .phoneStart{display:flex;}
         <div class="desc">Right-click items in your satchel to sell them instantly.</div>
         <div class="shopList" id="sellList"></div>
       </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============================ SKILL TREE ============================ -->
+<div class="overlay" id="skillOverlay">
+  <div class="panel skillPanel">
+    <div class="panelHead">
+      <h2>Talents</h2>
+      <span class="sub" id="skillSub">Spend a point to shape your build</span>
+      <div class="spacer"></div>
+      <div class="skillPts"><span class="curIcon" id="skillPtsNum">0</span> points</div>
+      <button class="closeBtn" data-close-ov="skillOverlay">✕</button>
+    </div>
+    <div class="skillBody" id="skillBody"></div>
+    <div class="skillFoot">
+      <span class="skillHint">Every third level grants a talent point.</span>
+      <button class="bigBtn secondary" id="skillDoneBtn" style="max-width:220px;margin:0">Done</button>
     </div>
   </div>
 </div>
@@ -2282,7 +2365,25 @@ function rollItem(floorLevel, opts = {}) {
   if (prefix && suffix) name = prefix + ' ' + baseName + ' of ' + suffix;
   else if (prefix) name = prefix + ' ' + baseName;
   else if (suffix) name = baseName + ' of ' + suffix;
-  if (rarity.id === 3) name = '\u2726 ' + name + ' \u2726';
+  /* ---- elemental attunement ----
+     Only weapons and rings can carry an element, and only from Rare upward.
+     Flavour naming follows the element so the item reads at a glance. */
+  let element = 'physical';
+  if ((slot === 'weapon' || slot === 'ring') && rarity.id >= 1) {
+    const chanceByRarity = [0, 0.28, 0.52, 0.78][rarity.id];
+    if (Math.random() < chanceByRarity) {
+      const pool = ['fire', 'ice', 'storm'];
+      /* bias toward the floor's biome so loot feels placed, not random */
+      const biomeBias = { lava: 'fire', ice: 'ice', stone: null }[(Game.dungeon && Game.dungeon.theme && Game.dungeon.theme.key) || 'stone'];
+      element = (biomeBias && Math.random() < 0.55) ? biomeBias : pick(pool);
+    }
+  }
+  if (element !== 'physical') {
+    const prefixByElement = { fire: 'Blazing', ice: 'Frostbound', storm: 'Stormforged' };
+    if (!name.startsWith('\u2726')) name = prefixByElement[element] + ' ' + name;
+    else name = '\u2726 ' + prefixByElement[element] + ' ' + name.replace(/\u2726/g, '').trim() + ' \u2726';
+  }
+  if (rarity.id === 3 && element === 'physical') name = '\u2726 ' + name + ' \u2726';
   /* value */
   let value = Math.round((8 + tier * tier * 5 + floorLevel * 3) * rarity.valueMult * rand(0.85, 1.2));
   const item = {
@@ -2292,6 +2393,7 @@ function rollItem(floorLevel, opts = {}) {
     iconKind: SLOT_ICON[slot],
     iconSeed: randInt(1, 999999),
     flavor: pick(RARITY_FLAVOR[rarity.key]),
+    element,
     affixes: Array.from(usedText),
     metal: meta.metal, blade: meta.blade, grip: meta.grip, gem: meta.gem, leather: meta.leather
   };
@@ -3150,6 +3252,90 @@ class Prop {
 }
 
 /* ============================== 07. ENEMIES ============================== */
+/* ---------- elemental status effects ----------
+   Burn (lava), Chill (ice) and Shock (storm) all share one small contract:
+   an enemy carries a timer and a stack count, ticks do damage or slow, and the
+   renderer reads the timers to draw the corresponding aura. Elemental damage
+   never re-enters takeDamage() recursively — it mutates hp directly and calls
+   the shared kill path, so a burn tick can never double-count a death. */
+const ELEMENTS = {
+  physical: { key: 'physical', name: 'Physical', colour: '#d8d4c8', icon: '✦' },
+  fire:     { key: 'fire',     name: 'Fire',     colour: '#ff7a2a', icon: '🔥' },
+  ice:      { key: 'ice',      name: 'Frost',    colour: '#7fd4ff', icon: '❄' },
+  storm:    { key: 'storm',    name: 'Storm',    colour: '#c9a2ff', icon: '⚡' }
+};
+const STATUS = {
+  BURN:  { key: 'burn',  duration: 4.0, tickEvery: 0.5, scale: 0.055, colour: '#ff7a2a', label: 'BURN' },
+  CHILL: { key: 'chill', duration: 3.5, tickEvery: 0,   scale: 0,     colour: '#7fd4ff', label: 'CHILL' },
+  SHOCK: { key: 'shock', duration: 2.5, tickEvery: 0,   scale: 0,     colour: '#c9a2ff', label: 'SHOCK' }
+};
+
+/** Apply elemental damage from a hit. `amount` is the raw damage dealt. */
+function applyElement(enemy, element, amount, source) {
+  if (!enemy || !enemy.alive || !element || element === 'physical') return;
+  if (element === 'fire') {
+    enemy.burnT = Math.max(enemy.burnT || 0, STATUS.BURN.duration);
+    if (!(enemy.burnTick > 0)) enemy.burnTick = STATUS.BURN.tickEvery;
+    /* burn damage scales with the hit that started it, not with player attack,
+       so a weak hit cannot tick harder than the hit that applied it */
+    enemy.burnPower = Math.max(enemy.burnPower || 0, Math.max(1, Math.round(amount * 0.30)));
+  } else if (element === 'ice') {
+    enemy.chillT = Math.max(enemy.chillT || 0, STATUS.CHILL.duration);
+  } else if (element === 'storm') {
+    /* shock chains: a capped fraction of the hit to up to two other enemies */
+    enemy.shockT = Math.max(enemy.shockT || 0, STATUS.SHOCK.duration);
+    if (enemy._shockLock) return;
+    enemy._shockLock = true;
+    let chained = 0;
+    for (const other of Game.enemies) {
+      if (chained >= 2) break;
+      if (other === enemy || !other.alive) continue;
+      if (dist(other.x, other.y, enemy.x, enemy.y) > 150) continue;
+      chained++;
+      const arc = Math.max(1, Math.round(amount * 0.35));
+      other.hp -= arc;
+      other.hurtFlash = 0.18;
+      FX.text(other.x, other.y - other.radius - 8, arc, { color: '#c9a2ff', size: 12 });
+      FX.arcBolt(enemy.x, enemy.y - 8, other.x, other.y - 8, '#c9a2ff');
+      if (other.hp <= 0) { other.die(); Combat.onEnemyDeath(other); }
+    }
+    enemy._shockLock = false;
+  }
+}
+
+/** Per-frame status tick. Called from updateEnemy before the state machine. */
+function tickStatus(enemy, dt) {
+  /* burn */
+  if (enemy.burnT > 0) {
+    enemy.burnT -= dt;
+    enemy.burnTick -= dt;
+    if (enemy.burnTick <= 0) {
+      enemy.burnTick = STATUS.BURN.tickEvery;
+      const dmg = Math.max(1, Math.round((enemy.burnPower || 2) * 0.55));
+      enemy.hp -= dmg;
+      FX.text(enemy.x + rand(12, -12), enemy.y - enemy.radius, String(dmg), { color: '#ff9a3c', size: 11, life: 0.55 });
+      FX.ember(enemy.x, enemy.y, 3, '#ff9a3c');
+      if (enemy.hp <= 0 && enemy.alive) {
+        enemy.die();
+        Combat.onEnemyDeath(enemy);
+        return;
+      }
+    }
+    if (enemy.burnT <= 0) { enemy.burnT = 0; enemy.burnPower = 0; }
+  }
+  /* chill */
+  if (enemy.chillT > 0) {
+    enemy.chillT -= dt;
+    if (enemy.chillT <= 0) enemy.chillT = 0;
+    if (chance(dt * 4)) FX.frost(enemy.x, enemy.y, 1);
+  }
+  /* shock */
+  if (enemy.shockT > 0) {
+    enemy.shockT -= dt;
+    if (enemy.shockT <= 0) enemy.shockT = 0;
+  }
+}
+
 const ENEMY_TYPES = {
   crawler: {
     name: 'Skeletal Crawler', hp: 26, atk: 6, def: 0, speed: 118, radius: 12, xp: 12, gold: [2, 8],
@@ -3226,6 +3412,8 @@ class Enemy {
     this.chillT = 0;
     this.burnT = 0;
     this.burnTick = 0;
+    this.burnPower = 0;
+    this.shockT = 0;
     this.stunT = 0;
     this.dead = false;
     this.deathT = 0;
@@ -3268,6 +3456,66 @@ class Enemy {
 }
 
 /* ============================== 08. PLAYER =============================== */
+/* ---------- skill tree ----------
+   A point every third level, spent across three branches: Might (melee),
+   Arcana (spells) and Guile (mobility and greed). Nodes form two ranks per
+   branch so a build has shape without needing a giant tree. */
+const SKILL_BRANCHES = [
+  { key: 'might', name: 'Might', colour: '#ff8a4c', desc: 'Steel and sinew.' },
+  { key: 'arcana', name: 'Arcana', colour: '#8fb8ff', desc: 'Formulas and fire.' },
+  { key: 'guile', name: 'Guile', colour: '#8fe0a8', desc: 'Footwork and fortune.' }
+];
+const SKILL_NODES = {
+  /* ---- Might ---- */
+  cleave: {
+    name: 'Wide Cleave', branch: 'might', maxRank: 2, icon: 'slash',
+    desc: 'Your slash cuts {n} more foes.',
+    effects: { cleave: 1 }, costs: [1, 1]
+  },
+  heavy: {
+    name: 'Heavy Blow', branch: 'might', requires: 'cleave', requiresRank: 1, maxRank: 3, icon: 'fist',
+    desc: '+{p}% melee damage.',
+    effects: { atk: 6 }, costs: [1, 1, 2]
+  },
+  reach: {
+    name: 'Long Reach', branch: 'might', requires: 'cleave', requiresRank: 1, maxRank: 2, icon: 'reach',
+    desc: '+{n}px sword reach.',
+    effects: { reach: 12 }, costs: [1, 1]
+  },
+  /* ---- Arcana ---- */
+  focus: {
+    name: 'Arcane Focus', branch: 'arcana', maxRank: 3, icon: 'orb',
+    desc: '+{p}% spell damage.',
+    effects: { magicPower: 0.16 }, costs: [1, 1, 1]
+  },
+  efficiency: {
+    name: 'Efficiency', branch: 'arcana', requires: 'focus', requiresRank: 1, maxRank: 2, icon: 'mana',
+    desc: 'Spells cost {p}% less mana.',
+    effects: { manaCostMul: -0.14 }, costs: [1, 1]
+  },
+  wellspring: {
+    name: 'Wellspring', branch: 'arcana', requires: 'focus', requiresRank: 2, maxRank: 2, icon: 'spring',
+    desc: '+{n} max mana and faster regeneration.',
+    effects: { mana: 18, regen: 0.35 }, costs: [1, 2]
+  },
+  /* ---- Guile ---- */
+  fleet: {
+    name: 'Fleet Foot', branch: 'guile', maxRank: 3, icon: 'boot',
+    desc: '+{n}% move speed.',
+    effects: { speed: 5 }, costs: [1, 1, 1]
+  },
+  evasion: {
+    name: 'Evasion', branch: 'guile', requires: 'fleet', requiresRank: 1, maxRank: 2, icon: 'dodge',
+    desc: 'Dodge recharges {p}% faster.',
+    effects: { dodgeCdMul: -0.20 }, costs: [1, 1]
+  },
+  greed: {
+    name: 'Greed', branch: 'guile', requires: 'fleet', requiresRank: 2, maxRank: 2, icon: 'coin',
+    desc: '+{p}% gold and +{n}% critical chance.',
+    effects: { goldFind: 25, crit: 3 }, costs: [1, 2]
+  }
+};
+
 class Player {
   constructor() {
     this.x = 0; this.y = 0;
@@ -3315,6 +3563,43 @@ class Player {
     this.burnT = 0;
     this.chillT = 0;
     this.regenAccum = 0;
+    /* skill tree: points earned every third level, spent on three branches */
+    this.skillPoints = 0;
+    this.skills = {};
+    this.pendingSkillChoice = false;
+  }
+  /* bonus contributed by spent skill points */
+  get skillStats() {
+    const out = { atk: 0, def: 0, hp: 0, crit: 0, speed: 0, mana: 0,
+                  lifesteal: 0, thorns: 0, cleave: 0, reach: 0,
+                  magicPower: 0, manaCostMul: 1, dodgeCdMul: 1, regen: 0,
+                  goldFind: 0, slamRadius: 0 };
+    const sk = this.skills || {};
+    for (const id in sk) {
+      const n = sk[id] || 0;
+      if (!n) continue;
+      const node = SKILL_NODES[id];
+      if (!node) continue;
+      for (const k in node.effects) out[k] = (out[k] || 0) + node.effects[k] * n;
+    }
+    if (out.manaCostMul === 0) out.manaCostMul = 1;
+    return out;
+  }
+  hasSkill(id) { return (this.skills[id] || 0) > 0; }
+  canLearn(id) {
+    const node = SKILL_NODES[id];
+    if (!node || this.skillPoints <= 0) return false;
+    const rank = this.skills[id] || 0;
+    if (rank >= node.maxRank) return false;
+    if (node.requires && !this.hasSkill(node.requires)) return false;
+    if (node.requiresRank && (this.skills[node.requires] || 0) < node.requiresRank) return false;
+    return true;
+  }
+  learnSkill(id) {
+    if (!this.canLearn(id)) return false;
+    this.skills[id] = (this.skills[id] || 0) + 1;
+    this.skillPoints--;
+    return true;
   }
   /* ---- derived stats ---- */
   get equipStats() {
@@ -3326,15 +3611,37 @@ class Player {
     }
     return sum;
   }
-  get maxHp() { return Math.round(this.baseMaxHp + (this.level - 1) * 14 + this.equipStats.hp); }
-  get maxMana() { return Math.round(this.baseMaxMana + (this.level - 1) * 6 + this.equipStats.mana); }
-  get attackPower() { return Math.round(this.baseAtk + (this.level - 1) * 2.1 + this.equipStats.atk); }
-  get defense() { return Math.round(this.baseDef + (this.level - 1) * 1.15 + this.equipStats.def); }
-  get critChance() { return clamp(this.baseCrit + this.equipStats.crit, 0, 75); }
-  get moveSpeed() { return this.baseSpeed + this.equipStats.speed * 1.6; }
+  get maxHp() { return Math.round(this.baseMaxHp + (this.level - 1) * 14 + this.equipStats.hp + this.skillStats.hp); }
+  get maxMana() { return Math.round(this.baseMaxMana + (this.level - 1) * 6 + this.equipStats.mana + this.skillStats.mana); }
+  get attackPower() {
+    const base = this.baseAtk + (this.level - 1) * 2.1 + this.equipStats.atk;
+    /* Heavy Blow adds 6% of the raw base per rank, so it scales with the character */
+    return Math.round(base * (1 + this.skillStats.atk / 100));
+  }
+  /* the element your attacks carry — weapon wins over ring */
+  get element() {
+    const w = this.equipment.weapon, r = this.equipment.ring;
+    if (w && w.element && w.element !== 'physical') return w.element;
+    if (r && r.element && r.element !== 'physical') return r.element;
+    return 'physical';
+  }
+  /* elemental damage bonus, expressed as a multiplier on final damage */
+  get elementPower() { return this.element === 'physical' ? 0 : 0.18; }
+  get defense() { return Math.round(this.baseDef + (this.level - 1) * 1.15 + this.equipStats.def + this.skillStats.def); }
+  get critChance() { return clamp(this.baseCrit + this.equipStats.crit + this.skillStats.crit, 0, 75); }
+  get moveSpeed() {
+    const pct = this.skillStats.speed;            /* +5% per Fleet Foot rank */
+    return (this.baseSpeed + this.equipStats.speed * 1.6) * (1 + pct / 100);
+  }
+  get cleaveTargets() { return 3 + Math.round(this.skillStats.cleave); }
+  get swingReach() { return this.skillStats.reach; }
+  get magicPower() { return this.skillStats.magicPower; }
+  get manaCostMul() { return clamp(1 + this.skillStats.manaCostMul, 0.35, 1); }
+  get dodgeCdMul() { return clamp(1 + this.skillStats.dodgeCdMul, 0.4, 1); }
+  get skillRegen() { return this.skillStats.regen; }
   get lifesteal() { return clamp(this.equipStats.lifesteal, 0, 30); }
   get thorns() { return this.equipStats.thorns; }
-  get goldFind() { return clamp(this.equipStats.gold, 0, 200); }
+  get goldFind() { return clamp(this.equipStats.gold + this.skillStats.goldFind, 0, 200); }
   get hpPct() { return clamp(this.hp / this.maxHp, 0, 1); }
   get manaPct() { return clamp(this.mana / this.maxMana, 0, 1); }
   get xpPct() { return clamp(this.xp / this.xpNext, 0, 1); }
@@ -3478,6 +3785,33 @@ const FX = {
       });
     }
   },
+  /** A jagged lightning arc between two points (shock chain link). */
+  arcBolt(x1, y1, x2, y2, colour = '#c9a2ff') {
+    const segs = 5;
+    const pts = [];
+    for (let i = 0; i <= segs; i++) {
+      const t = i / segs;
+      const jitter = i === 0 || i === segs ? 0 : rand(11, -11);
+      const nx = x1 + (x2 - x1) * t;
+      const ny = y1 + (y2 - y1) * t;
+      /* offset perpendicular to the line, not in x/y independently */
+      const ang = Math.atan2(y2 - y1, x2 - x1) + Math.PI / 2;
+      pts.push({ x: nx + Math.cos(ang) * jitter, y: ny + Math.sin(ang) * jitter });
+    }
+    this.add({
+      kind: 'bolt', pts, life: 0.22, maxLife: 0.22,
+      color: colour, glow: true
+    });
+    /* a few sparks along the path */
+    for (let i = 0; i < 5; i++) {
+      const pt = pts[1 + (Math.random() * (pts.length - 2) | 0)];
+      this.add({
+        kind: 'spark', x: pt.x, y: pt.y,
+        vx: rand(80, -80), vy: rand(80, -80),
+        life: 0.3, maxLife: 0.3, size: 1.8, drag: 0.9, color: colour, glow: true
+      });
+    }
+  },
   shatter(x, y, count = 14, colors = ['#cfd6c4', '#9aa38c', '#e6e9dd']) {
     for (let i = 0; i < count; i++) {
       const a = rand(TAU), sp = rand(240, 50);
@@ -3511,6 +3845,20 @@ const FX = {
       });
     }
     this.rings.push({ x, y, r: 6, maxR: 90, life: 0.7, maxLife: 0.7, color: rgba(color, 0.7), width: 3 });
+  },
+  screenSparkle() {
+    const p = Game.player;
+    if (!p) return;
+    for (let i = 0; i < 26; i++) {
+      const a = Math.random() * TAU, r = rand(10, 90);
+      this.add({
+        kind: 'spark', x: p.x + Math.cos(a) * r, y: p.y - 20 + Math.sin(a) * r * 0.6,
+        vx: Math.cos(a) * rand(20, 70), vy: Math.sin(a) * rand(20, 70) - 40,
+        life: rand(0.5, 1.1), maxLife: 1.1, size: rand(1, 2.4),
+        color: ['#ffd88a', '#8fe0a8', '#8fb8ff'][i % 3], drag: 2.2, grav: -30
+      });
+    }
+    this.ring(p.x, p.y, 70, 'rgba(255,216,138,0.7)', 0.6, 3);
   },
   levelUpBurst(x, y) {
     for (let i = 0; i < 60; i++) {
@@ -3561,6 +3909,8 @@ const FX = {
       const p = this.particles[i];
       p.life -= dt;
       if (p.life <= 0) { this.particles.splice(i, 1); continue; }
+      /* bolts are static point lists: they only age, never integrate */
+      if (p.kind === 'bolt') continue;
       if (p.gravity) p.vy += p.gravity * dt;
       if (p.drag) { const d = Math.pow(p.drag, dt * 60); p.vx *= d; p.vy *= d; }
       p.x += p.vx * dt; p.y += p.vy * dt;
@@ -3609,6 +3959,23 @@ const FX = {
       if (layer === 'glow' && !p.glow) continue;
       if (layer === 'solid' && p.glow) continue;
       const a = clamp(p.life / p.maxLife, 0, 1);
+      /* bolts store a point list instead of a position */
+      if (p.kind === 'bolt') {
+        if (!p.pts || !p.pts.length) continue;
+        ctx.globalAlpha = a;
+        ctx.globalCompositeOperation = 'lighter';
+        ctx.strokeStyle = p.color;
+        ctx.shadowColor = p.color;
+        ctx.shadowBlur = 10 * a;
+        ctx.lineWidth = 2.4 * a + 0.6;
+        ctx.beginPath();
+        ctx.moveTo(p.pts[0].x - cam.x, p.pts[0].y - cam.y);
+        for (let i = 1; i < p.pts.length; i++) ctx.lineTo(p.pts[i].x - cam.x, p.pts[i].y - cam.y);
+        ctx.stroke();
+        ctx.shadowBlur = 0;
+        ctx.globalCompositeOperation = 'source-over';
+        continue;
+      }
       const x = p.x - cam.x, y = p.y - cam.y;
       ctx.globalAlpha = p.kind === 'smoke' ? a * 0.65 : a;
       if (p.glow) {
@@ -3738,6 +4105,14 @@ const Game = {
   dragFrom: null,
   invOpen: false,
   shopOpen: false,
+  skillOpen: false,
+  /* merchant haggling: a reroll budget that refills each floor, a one-time
+     welcome discount and a reputation track that nudges prices over a run */
+  shopRerolls: 2,
+  shopRerollCost: 20,
+  shopDiscountUsed: false,
+  shopRep: 0,
+  shopVisits: 0,
   exploredTiles: 0,
   totalTiles: 0,
   minimapCtx: null,
@@ -3801,6 +4176,12 @@ function startRun() {
   Game.elapsedRun = 0;
   FX.particles.length = 0; FX.texts.length = 0; FX.projectiles.length = 0;
   FX.decals.length = 0; FX.rings.length = 0;
+  Game.shopDiscountUsed = false;
+  Game.shopRep = 0;
+  Game.shopVisits = 0;
+  Game.shopRerolls = 2;
+  Game.shopRerollCost = 20;
+  Game.endlessAffixes = [];
   buildFloor(1, true);
   showBanner('Floor 1', THEMES[0].name, THEMES[0].sub);
   toast('You awaken at the mouth of the dungeon. Descend.', 'good');
@@ -4035,10 +4416,29 @@ function spawnMerchantStock(floorN) {
   const n = 4 + Math.min(4, Math.floor(floorN / 3));
   for (let i = 0; i < n; i++) {
     const it = rollItem(floorN, { luck: 3 });
-    it.price = Math.round(it.value * rand(1.5, 2.1));
+    it.basePrice = Math.round(it.value * rand(1.5, 2.1));
+    it.price = merchantPrice(it.basePrice, it);
     Game.shopStock.push(it);
   }
-  Game.shopStock.push(Object.assign(makePotion(floorN), { price: Math.round(28 + floorN * 4) }));
+  const potion = Object.assign(makePotion(floorN), { basePrice: Math.round(28 + floorN * 4) });
+  potion.price = merchantPrice(potion.basePrice, potion);
+  Game.shopStock.push(potion);
+  Game.shopRerolls = 2;
+  Game.shopRerollCost = 20 + floorN * 6;
+}
+/* Reputation lowers prices (max 18%), the welcome discount is a flat 25% off
+   and applies to exactly one purchase per run. */
+function merchantPrice(basePrice, item) {
+  let price = basePrice * (1 - clamp(Game.shopRep, 0, 9) * 0.02);
+  /* the welcome discount is for gear only — never burn it on a potion */
+  if (!Game.shopDiscountUsed && (!item || item.slot !== 'consumable')) price *= 0.75;
+  return Math.max(1, Math.round(price));
+}
+function reapplyMerchantPrices() {
+  for (const it of Game.shopStock) {
+    if (it.basePrice === undefined) it.basePrice = it.price;
+    it.price = merchantPrice(it.basePrice, it);
+  }
 }
 
 /* ---------- floor transitions ---------- */
@@ -4142,7 +4542,7 @@ const Combat = {
     p.swingDir = p.aimAngle;
     Sound.play('swing');
     /* arc hit detection — generous feel-good reach */
-    const reach = clamp(66 + p.attackPower * 0.24, 66, 100);
+    const reach = clamp(66 + p.attackPower * 0.24, 66, 100) + p.swingReach;
     const arc = Math.PI * 0.72;
     let hits = 0;
     for (const e of Game.enemies) {
@@ -4155,8 +4555,8 @@ const Combat = {
       if (Math.abs(diff) > arc / 2) continue;
       this.damageEnemy(e, p.attackPower * 2.0, p.aimAngle, { knockback: 230, source: 'melee' });
       hits++;
-      /* cleave: hit up to 3 */
-      if (hits >= 3) break;
+      /* cleave: skill ranks widen the arc's target cap */
+      if (hits >= p.cleaveTargets) break;
     }
     /* hit props */
     const propReach = reach;
@@ -4180,13 +4580,14 @@ const Combat = {
   playerMagic() {
     const p = Game.player;
     if (p.magicCd > 0 || p.dodging > 0 || Game.state !== 'playing' || Game.paused) return;
-    if (p.mana < 8) {
+    const cost = Math.max(1, Math.round(8 * p.manaCostMul));
+    if (p.mana < cost) {
       FX.text(p.x, p.y - 34, 'NO MANA', { color: '#7fb6e8', size: 12 });
       Sound.play('error', 0.6);
       p.magicCd = 0.3;
       return;
     }
-    p.spendMana(8);
+    p.spendMana(cost);
     p.magicCd = 0.34;
     p.castAnim = 0.28;
     Sound.play('magic');
@@ -4194,7 +4595,7 @@ const Combat = {
     FX.projectile({
       x: p.x + Math.cos(ang) * 22, y: p.y + Math.sin(ang) * 22,
       vx: Math.cos(ang) * 520, vy: Math.sin(ang) * 520,
-      radius: 7, life: 1.35, damage: Math.round(p.attackPower * 1.15 + 6),
+      radius: 7, life: 1.35, damage: Math.round((p.attackPower * 1.15 + 6) * (1 + p.magicPower)),
       color: '#7fd0ff', kind: 'orb', friendly: true, angle: ang, pierce: 0
     });
     FX.magicTrail(p.x + Math.cos(ang) * 20, p.y + Math.sin(ang) * 20, '#9fe4ff');
@@ -4202,12 +4603,13 @@ const Combat = {
   playerSlam() {
     const p = Game.player;
     if (p.slamCd > 0 || Game.state !== 'playing' || Game.paused) return;
-    if (p.mana < 18) {
+    const slamCost = Math.max(1, Math.round(18 * p.manaCostMul));
+    if (p.mana < slamCost) {
       FX.text(p.x, p.y - 34, 'NO MANA', { color: '#7fb6e8', size: 12 });
       Sound.play('error', 0.6);
       return;
     }
-    p.spendMana(18);
+    p.spendMana(slamCost);
     p.slamCd = 2.4;
     p.slamAnim = 0.4;
     Game.cam.shake = 9; Game.cam.shakeT = 0.3;
@@ -4221,7 +4623,7 @@ const Combat = {
       if (dd < 150 + e.radius) {
         const ang = angleTo(p.x, p.y, e.x, e.y);
         const falloff = 1 - dd / 190;
-        this.damageEnemy(e, p.attackPower * 1.25 * falloff, ang, { knockback: 340, source: 'slam' });
+        this.damageEnemy(e, p.attackPower * 1.25 * falloff * (1 + p.magicPower), ang, { knockback: 340, source: 'slam' });
         e.stunT = Math.max(e.stunT, 0.35);
       }
     }
@@ -4242,9 +4644,20 @@ const Combat = {
       return 0;
     }
     if (crit) dmg *= 1.75;
+    /* elemental attunement amplifies the hit slightly and applies status */
+    const el = opts.element || p.element;
+    if (el && el !== 'physical') dmg *= (1 + p.elementPower);
     const dealt = e.takeDamage(dmg, { crit, knockback: opts.knockback || 0, angle });
     e.aggro = true;
     if (e.state === 'idle' || e.state === 'patrol') e.state = 'chase';
+    if (el && el !== 'physical' && e.alive) {
+      applyElement(e, el, dealt, opts.source);
+      const ec = ELEMENTS[el].colour;
+      FX.text(e.x + rand(14, -14), e.y - e.radius - 28, ELEMENTS[el].name.toUpperCase(), { color: ec, size: 10, life: 0.7 });
+      if (el === 'fire') FX.ember(e.x, e.y, 5, '#ff7a2a');
+      else if (el === 'ice') FX.frost(e.x, e.y, 4);
+      else if (el === 'storm') FX.spark(e.x, e.y, { count: 5, color: '#c9a2ff', speed: 150 });
+    }
     /* numbers */
     FX.text(e.x, e.y - e.radius - 12, String(dealt), {
       color: crit ? '#ffcf4d' : '#fff0d8', size: crit ? 22 : 16, crit
@@ -4354,6 +4767,11 @@ const Combat = {
 function onLevelUp() {
   const p = Game.player;
   Sound.play('levelup');
+  /* every third level grants a talent point */
+  if (p.level % 3 === 0) {
+    p.skillPoints++;
+    p.pendingSkillChoice = true;
+  }
   FX.levelUpBurst(p.x, p.y);
   FX.ring(p.x, p.y, 190, 'rgba(255,225,150,0.7)', 1.1, 5);
   $('levelupSub').textContent = 'LEVEL ' + p.level;
@@ -4361,9 +4779,21 @@ function onLevelUp() {
   el.classList.remove('show');
   void el.offsetWidth;
   el.classList.add('show');
-  toast('You reached level ' + p.level + '! Health and mana restored.', 'good');
+  if (p.pendingSkillChoice) {
+    toast('Level ' + p.level + ' — a talent point awaits (T).', 'gold');
+  } else {
+    toast('You reached level ' + p.level + '! Health and mana restored.', 'good');
+  }
   Game.cam.shake = 5; Game.cam.shakeT = 0.3;
   updateHud();
+  if (p.pendingSkillChoice) {
+    /* small delay so the level banner finishes before the panel appears */
+    setTimeout(() => {
+      if (Game.player && Game.player.pendingSkillChoice && Game.state === 'playing' && !Game.paused) {
+        toggleSkills(true);
+      }
+    }, 900);
+  }
 }
 
 /* ============================== 13. AI & UPDATE ========================== */
@@ -4407,19 +4837,9 @@ function updateEnemy(e, dt) {
   }
   if (dd > t.aggro * 2.1) e.aggro = false;
 
-  /* status effects */
-  if (e.burnT > 0) {
-    e.burnT -= dt;
-    e.burnTick -= dt;
-    if (e.burnTick <= 0) {
-      e.burnTick = 0.5;
-      e.hp -= Math.max(1, Math.round(Game.player.attackPower * 0.12));
-      FX.text(e.x + rand(12, -12), e.y - e.radius, 'BURN', { color: '#ff9a3c', size: 10, life: 0.6 });
-      FX.ember(e.x, e.y, 3, '#ff9a3c');
-      if (e.hp <= 0 && e.alive) { e.die(); Combat.onEnemyDeath(e); }
-    }
-  }
-  if (e.chillT > 0) e.chillT -= dt;
+  /* elemental status effects */
+  tickStatus(e, dt);
+  if (!e.alive) return;
   const speedMul = (e.chillT > 0 ? 0.55 : 1) * (e.hp / e.maxHp < e.fleeThreshold ? 1.15 : 1);
 
   /* ------- state machine ------- */
@@ -7118,7 +7538,7 @@ function openShop() {
 }
 function closeShop() {
   Game.shopOpen = false;
-  Game.paused = Game.invOpen;
+  Game.paused = Game.invOpen || Game.skillOpen;
   $('shopOverlay').classList.remove('show');
   hideTooltip();
   Sound.play('ui');
@@ -7133,6 +7553,25 @@ function renderShop() {
   const p = Game.player;
   if (!p) return;
   $('shopGold').textContent = fmt(p.gold);
+  /* haggling state */
+  const rerollBtn = $('shopRerollBtn');
+  if (rerollBtn) {
+    const out = Game.shopRerolls <= 0;
+    rerollBtn.textContent = out ? 'No Rerolls Left' : 'Reroll Stock · ' + fmt(Game.shopRerollCost) + 'g';
+    rerollBtn.disabled = out || p.gold < Game.shopRerollCost;
+  }
+  const rollEl = $('shopRerolls');
+  if (rollEl) rollEl.textContent = Game.shopRerolls + ' reroll' + (Game.shopRerolls === 1 ? '' : 's') + ' left';
+  const moodEl = $('shopMood');
+  if (moodEl) {
+    const tiers = ['Openly hostile', 'Grudging', 'Wary', 'Civil', 'Friendly', 'Warm', 'Generous',
+                   'Delighted', 'Fond', 'Devoted'];
+    const tier = tiers[clamp(Game.shopRep, 0, 9)];
+    const pct = Math.round(clamp(Game.shopRep, 0, 9) * 2);
+    const disc = Game.shopDiscountUsed ? '' : ' · <span style="color:#8fe0a8">welcome discount active (−25%)</span>';
+    moodEl.innerHTML = 'Reputation: <b class="shopMoodWarm">' + tier + '</b> (' + pct + '% off)'
+      + disc + '. Click a name to inspect.';
+  }
   const stockEl = $('shopStock');
   stockEl.innerHTML = '';
   if (!Game.shopStock.length) {
@@ -7160,6 +7599,17 @@ function renderShop() {
     const btn = document.createElement('button');
     btn.className = 'buyBtn';
     btn.textContent = fmt(item.price) + 'g';
+    if (!Game.shopDiscountUsed && item.basePrice !== undefined && item.price < item.basePrice) {
+      const badge = document.createElement('span');
+      badge.className = 'discountBadge';
+      badge.textContent = '−25%';
+      const strike = document.createElement('span');
+      strike.className = 'priceTag';
+      strike.style.cssText = 'text-decoration:line-through;opacity:.5;margin-left:6px';
+      strike.textContent = fmt(item.basePrice) + 'g';
+      btn.appendChild(badge);
+      btn.appendChild(strike);
+    }
     btn.disabled = p.gold < item.price;
     btn.addEventListener('click', () => buyItem(item, idx));
     row.appendChild(btn);
@@ -7203,6 +7653,7 @@ function buyItem(item, idx) {
     shopMessage('Your satchel is full. Sell something first.');
     Sound.play('error', 0.7); return;
   }
+  const wasDiscounted = !Game.shopDiscountUsed;
   p.gold -= item.price;
   if (item.slot === 'consumable') {
     p.potions++;
@@ -7210,14 +7661,59 @@ function buyItem(item, idx) {
   } else {
     p.addItem(item);
     Game.shopStock.splice(idx, 1);
-    shopMessage('Bought ' + item.name + ' for ' + fmt(item.price) + ' gold.');
+    shopMessage('Bought ' + item.name + ' for ' + fmt(item.price) + ' gold.'
+      + (wasDiscounted ? ' The welcome discount is spent.' : ''));
     toast('Purchased ' + item.name + '.', 'loot');
   }
+  if (wasDiscounted && item.slot !== 'consumable') {
+    Game.shopDiscountUsed = true;
+    reapplyMerchantPrices();
+  }
+  Game.shopRep = Math.min(9, Game.shopRep + 1);
   Sound.play('buy');
   refreshInventoryUI();
   renderShop();
   updateHud();
 }
+/* Reroll the merchant's wares. The potion always stays, the gear is redrawn
+   and each reroll costs gold plus one of the run's limited reroll tokens. */
+function rerollShop() {
+  const p = Game.player;
+  if (!Game.shopStock) return;
+  if (Game.shopRerolls <= 0) {
+    shopMessage('The Quartermaster has nothing more in the back room.');
+    Sound.play('error', 0.7);
+    return;
+  }
+  const cost = Game.shopRerollCost;
+  if (p.gold < cost) {
+    shopMessage('A reroll costs ' + fmt(cost) + ' gold — come back richer.');
+    Sound.play('error', 0.7);
+    return;
+  }
+  p.gold -= cost;
+  Game.shopRerolls--;
+  Game.shopRerollCost = Math.round(Game.shopRerollCost * 1.5);
+  const potion = Game.shopStock.find(it => it.slot === 'consumable');
+  const gearCount = Math.max(1, Game.shopStock.length - (potion ? 1 : 0));
+  Game.shopStock = [];
+  for (let i = 0; i < gearCount; i++) {
+    const it = rollItem(Game.floor, { luck: 3 });
+    it.basePrice = Math.round(it.value * rand(1.5, 2.1));
+    it.price = merchantPrice(it.basePrice, it);
+    Game.shopStock.push(it);
+  }
+  if (potion) {
+    potion.price = merchantPrice(potion.basePrice !== undefined ? potion.basePrice : potion.price, potion);
+    Game.shopStock.push(potion);
+  }
+  Game.shopRep = Math.min(9, Game.shopRep + 1);
+  Sound.play('ui');
+  shopMessage('New stock laid out. The merchant warms to you a little.');
+  renderShop();
+  updateHud();
+}
+/* Buying a non-potion consumes the one-per-run welcome discount. */
 function sellShopInventoryItem(item) {
   const p = Game.player;
   const price = p.sellPrice(item);
@@ -7228,7 +7724,9 @@ function sellShopInventoryItem(item) {
   p.totalGold += price;
   Game.runStats.gold += price;
   Sound.play('sell');
-  shopMessage('Sold ' + item.name + ' for ' + fmt(price) + ' gold.');
+  Game.shopRep = Math.min(9, Game.shopRep + 1);
+  reapplyMerchantPrices();
+  shopMessage('Sold ' + item.name + ' for ' + fmt(price) + ' gold. Reputation +1.');
   refreshInventoryUI();
   renderShop();
   updateHud();
@@ -7241,11 +7739,120 @@ function toggleInventory(force) {
   const open = force !== undefined ? force : !Game.invOpen;
   if (open && Game.shopOpen) return;
   Game.invOpen = open;
-  Game.paused = open || Game.shopOpen;
+  Game.paused = open || Game.shopOpen || Game.skillOpen;
   if (Game.state === 'paused') Game.state = 'playing';
   $('inventoryOverlay').classList.toggle('show', open);
   if (open) { refreshInventoryUI(); Sound.play('ui'); }
   else { hideTooltip(); }
+  updateHud();
+}
+/* ---------------- skill tree UI ---------------- */
+/* Small procedural glyphs for each talent, drawn as inline SVG so the panel
+   needs no image assets. Each icon is a 24x24 path on a tinted plate. */
+function skillIconSvg(icon, colour) {
+  const paths = {
+    slash: '<path d="M5 19 L17 5" stroke="COL" stroke-width="2.6" stroke-linecap="round"/><path d="M13 5 h5 v5" stroke="COL" stroke-width="2.2" fill="none" stroke-linecap="round"/>',
+    fist: '<path d="M6 12 a2 2 0 0 1 2-2 h1 V8 a1.6 1.6 0 0 1 3.2 0 v2 h1 V7.2 a1.6 1.6 0 0 1 3.2 0 V10 h1 a1.6 1.6 0 0 1 3.2 0 v4.4 A6.6 6.6 0 0 1 12 21 h-1.4 A4.6 4.6 0 0 1 6 16.4 z" fill="COL"/>',
+    reach: '<path d="M4 12 h11" stroke="COL" stroke-width="2.4" stroke-linecap="round"/><path d="M12 7 l6 5 -6 5" stroke="COL" stroke-width="2.4" fill="none" stroke-linecap="round" stroke-linejoin="round"/>',
+    orb: '<circle cx="12" cy="12" r="6" stroke="COL" stroke-width="2.2" fill="none"/><circle cx="12" cy="12" r="2.2" fill="COL"/>',
+    mana: '<path d="M12 3 c4 5.4 6 8 6 11 a6 6 0 0 1-12 0 c0-3 2-5.6 6-11z" fill="COL" opacity=".92"/>',
+    spring: '<path d="M4 8 q4-3 8 0 t8 0" stroke="COL" stroke-width="2.2" fill="none" stroke-linecap="round"/><path d="M4 14 q4-3 8 0 t8 0" stroke="COL" stroke-width="2.2" fill="none" stroke-linecap="round" opacity=".6"/>',
+    boot: '<path d="M7 4 v8 l-2 4 a2 2 0 0 0 2 3 h10 a2 2 0 0 0 2-2 v-1 c0-1-1-1.6-2-2l-4-1.4V4z" fill="COL"/>',
+    dodge: '<path d="M4 12 a8 8 0 1 1 3 6.2" stroke="COL" stroke-width="2.2" fill="none" stroke-linecap="round"/><path d="M4 18 v-5 h5" stroke="COL" stroke-width="2.2" fill="none" stroke-linecap="round"/>',
+    coin: '<circle cx="12" cy="12" r="7" stroke="COL" stroke-width="2.2" fill="none"/><path d="M12 8.4 v7.2 M9.6 10.6 h4.8" stroke="COL" stroke-width="1.9" stroke-linecap="round"/>'
+  };
+  const body = (paths[icon] || paths.orb).replaceAll('COL', colour);
+  return '<svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">' + body + '</svg>';
+}
+/* Description text with {p} (percent per rank) and {n} (flat per rank) filled in. */
+function skillDesc(node, rank) {
+  const r = Math.max(1, rank);
+  let out = node.desc;
+  const first = node.effects;
+  for (const k in first) {
+    const v = first[k] * r;
+    let shown = Math.abs(Math.round(v * 100)) / 100;
+    if (k === 'magicPower') shown = Math.round(first[k] * r * 100) + '%';
+    else if (k === 'manaCostMul') shown = Math.round(Math.abs(first[k]) * r * 100);
+    else if (k === 'dodgeCdMul') shown = Math.round(Math.abs(first[k]) * r * 100);
+    out = out.replace('{p}', shown).replace('{n}', shown);
+  }
+  return out.replace('{p}', '0').replace('{n}', '0');
+}
+function refreshSkillUI() {
+  const p = Game.player;
+  if (!p) return;
+  $('skillPtsNum').textContent = p.skillPoints;
+  const body = $('skillBody');
+  const branchTotals = {};
+  for (const id in p.skills) {
+    const n = SKILL_NODES[id];
+    if (n) branchTotals[n.branch] = (branchTotals[n.branch] || 0) + p.skills[id];
+  }
+  let html = '';
+  for (const br of SKILL_BRANCHES) {
+    const nodes = Object.keys(SKILL_NODES).filter(k => SKILL_NODES[k].branch === br.key);
+    html += '<div class="skillBranch">';
+    html += '<div class="skillBranchHead">'
+          + '<span class="dot" style="color:' + br.colour + ';background:' + br.colour + '"></span>'
+          + '<span class="bname" style="color:' + br.colour + '">' + br.name + '</span>'
+          + '<span class="bpts">' + (branchTotals[br.key] || 0) + ' spent</span>'
+          + '</div>';
+    html += '<div class="bdesc" style="font-size:11px;color:#7c8698;margin:-4px 0 2px">' + br.desc + '</div>';
+    for (const id of nodes) {
+      const node = SKILL_NODES[id];
+      const rank = p.skills[id] || 0;
+      const maxed = rank >= node.maxRank;
+      const can = p.canLearn(id);
+      const locked = !maxed && !can && (rank === 0 ? (node.requires && !p.hasSkill(node.requires)) : false);
+      const cls = 'skillNode' + (maxed ? ' maxed' : can ? ' can' : (p.skillPoints <= 0 || locked ? ' locked' : ''));
+      const cost = maxed ? 0 : node.costs[rank] || 1;
+      html += '<div class="' + cls + '" data-skill="' + id + '" title="' + (maxed ? 'Fully trained' : 'Cost: ' + cost + ' point' + (cost > 1 ? 's' : '')) + '">'
+            + '<div class="sicon">' + skillIconSvg(node.icon, rank > 0 ? br.colour : '#6c7688') + '</div>'
+            + '<div class="smeta">'
+            + '<div class="sname">' + node.name + '<span class="rank">' + rank + '/' + node.maxRank + '</span></div>'
+            + '<div class="sdesc">' + skillDesc(node, maxed ? rank : Math.max(1, rank + 1)) + '</div>'
+            + '</div></div>';
+    }
+    html += '</div>';
+  }
+  body.innerHTML = html;
+  body.querySelectorAll('[data-skill]').forEach(el => {
+    el.addEventListener('click', () => {
+      const id = el.dataset.skill;
+      if (Game.player.learnSkill(id)) {
+        Sound.play('ui');
+        FX.screenSparkle();
+        refreshSkillUI();
+        updateHud();
+        if (Game.player.skillPoints <= 0) {
+          Game.player.pendingSkillChoice = false;
+          $('skillSub').textContent = 'Points spent. Every third level grants another.';
+        }
+      } else {
+        const node = SKILL_NODES[id];
+        if (node && (Game.player.skills[id] || 0) >= node.maxRank) $('skillSub').textContent = 'That talent is fully trained.';
+        else if (Game.player.skillPoints <= 0) $('skillSub').textContent = 'No talent points — level up to earn more.';
+        else $('skillSub').textContent = 'You must train the earlier talent in this branch first.';
+      }
+    });
+  });
+}
+function toggleSkills(force) {
+  if (Game.state !== 'playing' && Game.state !== 'paused') return;
+  const open = force !== undefined ? force : !Game.skillOpen;
+  if (open && (Game.shopOpen || Game.invOpen)) return;
+  Game.skillOpen = open;
+  Game.paused = open || Game.shopOpen || Game.invOpen;
+  if (Game.state === 'paused') Game.state = 'playing';
+  $('skillOverlay').classList.toggle('show', open);
+  if (open) {
+    $('skillSub').textContent = Game.player.pendingSkillChoice
+      ? 'A talent point awaits — choose wisely.'
+      : 'Spend a point to shape your build';
+    refreshSkillUI();
+    Sound.play('ui');
+  }
   updateHud();
 }
 function showDeath() {
@@ -7298,9 +7905,11 @@ function setupInput() {
       case 'KeyR': drinkPotion(); flashAbility('ab2'); break;
       case 'Space': dodgeRoll(); break;
       case 'KeyI': case 'Tab': toggleInventory(); break;
+      case 'KeyT': toggleSkills(); break;
       case 'Escape':
         if (Game.invOpen) toggleInventory(false);
         else if (Game.shopOpen) closeShop();
+        else if (Game.skillOpen) toggleSkills(false);
         else togglePause();
         break;
       case 'KeyF': if (!Game.paused) doInteract(); break;
@@ -7317,7 +7926,7 @@ function setupInput() {
   window.addEventListener('blur', () => {
     Game.input.up = Game.input.down = Game.input.left = Game.input.right = false;
     Game.input.mouseDown = false;
-    if (Game.state === 'playing' && !Game.invOpen && !Game.shopOpen) togglePause(true);
+    if (Game.state === 'playing' && !Game.invOpen && !Game.shopOpen && !Game.skillOpen) togglePause(true);
   });
   canvas.addEventListener('mousemove', (ev) => {
     Game.input.mx = ev.clientX;
@@ -7425,11 +8034,14 @@ function setupInput() {
       setTimeout(() => $('transition').classList.remove('black'), 80);
     }, 480);
   });
+  $('skillDoneBtn').addEventListener('click', () => toggleSkills(false));
+  $('shopRerollBtn').addEventListener('click', rerollShop);
   $$('[data-close-ov]').forEach(btn => {
     btn.addEventListener('click', () => {
       const id = btn.dataset.closeOv;
       if (id === 'inventoryOverlay') toggleInventory(false);
       else if (id === 'shopOverlay') closeShop();
+      else if (id === 'skillOverlay') toggleSkills(false);
     });
   });
 }
@@ -7674,7 +8286,7 @@ function dodgeRoll() {
   const moving = Game.input.up || Game.input.down || Game.input.left || Game.input.right;
   p.dodgeAngle = moving ? Math.atan2((Game.input.down ? 1 : 0) - (Game.input.up ? 1 : 0), (Game.input.right ? 1 : 0) - (Game.input.left ? 1 : 0)) : p.aimAngle;
   p.dodging = 0.22;
-  p.dodgeCd = 0.85;
+  p.dodgeCd = 0.85 * p.dodgeCdMul;
   p.invuln = Math.max(p.invuln, 0.3);
   Sound.play('dodge', 0.7);
   FX.dustPuff(p.x, p.y + 8, 8, 'rgba(180,170,150,0.35)');
@@ -7682,7 +8294,7 @@ function dodgeRoll() {
 function togglePause(force) {
   if (Game.state !== 'playing' && Game.state !== 'paused') return;
   const p = force !== undefined ? force : !Game.paused;
-  if (Game.invOpen || Game.shopOpen) {
+  if (Game.invOpen || Game.shopOpen || Game.skillOpen) {
     if (p) return;
   }
   Game.paused = p;
@@ -7714,8 +8326,14 @@ function restartRun() {
   $('inventoryOverlay').classList.remove('show');
   $('shopOverlay').classList.remove('show');
   $('pauseOverlay').classList.remove('show');
-  Game.invOpen = false; Game.shopOpen = false; Game.paused = false;
+  $('skillOverlay').classList.remove('show');
+  Game.invOpen = false; Game.shopOpen = false; Game.skillOpen = false; Game.paused = false;
   Game.endless = false;
+  Game.shopDiscountUsed = false;
+  Game.shopRep = 0;
+  Game.shopVisits = 0;
+  Game.shopRerolls = 2;
+  Game.shopRerollCost = 20;
   MAX_FLOOR_DYNAMIC = MAX_FLOOR;
   $('startFade').classList.add('black');
   setTimeout(() => {
@@ -7797,7 +8415,7 @@ function updatePlayer(dt) {
   if (p.regenAccum >= 0.25) {
     const tick = p.regenAccum;
     p.regenAccum = 0;
-    p.mana = clamp(p.mana + (1.2 + p.level * 0.16) * tick, 0, p.maxMana);
+    p.mana = clamp(p.mana + (1.2 + p.level * 0.16) * (1 + p.skillRegen) * tick, 0, p.maxMana);
     if (p.hp > 0 && p.hp < p.maxHp && !Game.inCombat) p.hp = clamp(p.hp + 0.35 * tick, 0, p.maxHp);
   }
   /* standing in lava */
