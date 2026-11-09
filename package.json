@@ -8,6 +8,7 @@
     "test:browser": "node tests/browser.mjs",
     "test:gameplay": "node tests/gameplay.mjs",
     "test:hero": "node tests/hero.mjs",
+    "test:vault": "node tests/vault.mjs",
     "test:perf": "node tests/perf.mjs",
     "test:save": "node tests/save.mjs"
   },

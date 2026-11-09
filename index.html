@@ -3735,104 +3735,220 @@ class Dungeon {
     }
   }
   lockVault(vault) {
-    /* Rather than walling the whole chamber (which severs corridors that pass
-       nearby), cut the corridor mouths that feed it and leave a single locked
-       door. The chamber interior stays intact and is only reachable through
-       the door. */
-    const entries = [];
-    for (let y = vault.y - 1; y <= vault.y + vault.h; y++) {
-      for (let x = vault.x - 1; x <= vault.x + vault.w; x++) {
-        const inside = x >= vault.x && x < vault.x + vault.w && y >= vault.y && y < vault.y + vault.h;
-        if (inside) continue;
-        if (!this.isWalkable(x, y)) continue;
-        let touches = false;
-        for (const d of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
-          const nx2 = x + d[0], ny2 = y + d[1];
-          if (nx2 >= vault.x && nx2 < vault.x + vault.w && ny2 >= vault.y && ny2 < vault.y + vault.h) touches = true;
-        }
-        if (!touches) continue;
-        entries.push([x, y]);
+    /* Seal the chamber from the INSIDE.
+       The original approach walled every exterior corridor mouth that fed the
+       chamber and left one as a door. That is the source of both reported
+       bugs and of a much bigger one: an exterior mouth is ordinary dungeon
+       corridor, so walling it can cut the level in half (worst case measured:
+       1760 stranded cells, and floors where the stairs became unreachable).
+       Sealing inward instead means the chamber is walled off using only its own
+       border ring, which nothing outside can need, and the single door is the
+       only hole in that ring. Anything the seal strands is picked up by
+       repairConnectivity(), which runs afterwards and may not dig back in. */
+    const inside = (x, y) => x >= vault.x && x < vault.x + vault.w && y >= vault.y && y < vault.y + vault.h;
+    const border = [];
+    for (let y = vault.y; y < vault.y + vault.h; y++) {
+      for (let x = vault.x; x < vault.x + vault.w; x++) {
+        const onEdge = x === vault.x || x === vault.x + vault.w - 1 ||
+                       y === vault.y || y === vault.y + vault.h - 1;
+        if (onEdge) border.push([x, y]);
       }
     }
-    if (!entries.length) return;   /* isolated chamber: leave it open */
-    /* the door goes on the mouth closest to the chamber's centre */
-    let best = entries[0], bestD = Infinity;
-    for (const [x, y] of entries) {
-      const dd = dist2(x, y, vault.cx, vault.cy);
-      if (dd < bestD) { bestD = dd; best = [x, y]; }
+    if (border.length < 8) return;   /* too small to ring: leave it open */
+
+    /* Candidate doors are the border cells that face walkable dungeon floor.
+       Try them all, walling the rest of the ring each time, and keep the first
+       one that leaves the level whole and the chamber airtight. */
+    const original = Uint8Array.from(this.tiles);
+    const candidates = border.filter(([x, y]) => {
+      for (const [ax, ay] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+        const nx = x + ax, ny = y + ay;
+        if (inside(nx, ny)) continue;
+        if (nx < 1 || ny < 1 || nx >= this.W - 1 || ny >= this.H - 1) continue;
+        if (this.isWalkable(nx, ny)) return true;
+      }
+      return false;
+    });
+    if (!candidates.length) { this.tiles.set(original); return; }
+
+    const order = candidates.slice().sort((a, b) =>
+      dist2(a[0], a[1], vault.cx, vault.cy) - dist2(b[0], b[1], vault.cx, vault.cy));
+
+    let winner = null;
+    for (const [dx2, dy2] of order) {
+      this.tiles.set(original);
+      this.vaultRoom = vault;
+      for (const [x, y] of border) this.set(x, y, WALL);
+      this.set(dx2, dy2, DOOR);
+      this.vaultDoor = { x: dx2, y: dy2, locked: true, room: vault };
+      /* the door needs somewhere to stand outside it */
+      const reach = this.spawnReach();
+      let usable = false;
+      for (const [ax, ay] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+        const nx = dx2 + ax, ny = dy2 + ay;
+        if (inside(nx, ny)) continue;
+        if (nx < 1 || ny < 1 || nx >= this.W - 1 || ny >= this.H - 1) continue;
+        if (this.isWalkable(nx, ny) && reach(ny, nx)) { usable = true; break; }
+      }
+      if (!usable) continue;
+      if (!this.vaultIsSealed(vault, dx2, dy2)) continue;
+      winner = [dx2, dy2];
+      break;
     }
-    for (const [x, y] of entries) {
-      if (x === best[0] && y === best[1]) continue;
-      this.set(x, y, WALL);
-    }
-    const [dx, dy] = best;
-    this.set(dx, dy, DOOR);
+    if (!winner) { this.tiles.set(original); return; }
+    this.tiles.set(original);
     this.vaultRoom = vault;
-    this.vaultDoor = { x: dx, y: dy, locked: true, room: vault };
+    for (const [x, y] of border) this.set(x, y, WALL);
+    this.set(winner[0], winner[1], DOOR);
+    this.vaultDoor = { x: winner[0], y: winner[1], locked: true, room: vault };
     this.needsKey = true;
+  }
+
+  /* Flood from the entrance, treating a locked vault door as solid, and report
+     whether a tile can be walked to. */
+  spawnReach() {
+    const W = this.W, H = this.H;
+    const seen = new Uint8Array(W * H);
+    const sx = this.entrance.x, sy = this.entrance.y;
+    if (sx < 0 || sy < 0 || sx >= W || sy >= H) return () => false;
+    const q = [sy * W + sx];
+    seen[sy * W + sx] = 1;
+    let head = 0;
+    while (head < q.length) {
+      const cur = q[head++];
+      const cx = cur % W, cy = (cur - cx) / W;
+      for (const [ddx, ddy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+        const nx = cx + ddx, ny = cy + ddy;
+        if (nx < 0 || ny < 0 || nx >= W || ny >= H) continue;
+        const n = ny * W + nx;
+        if (seen[n]) continue;
+        const t = this.tiles[n];
+        if (!(t === FLOOR || t === STAIRS || t === RUBBLE || t === LAVA || t === ICE || t === PIT)) continue;
+        seen[n] = 1; q.push(n);
+      }
+    }
+    return (ty, tx) => (tx < 0 || ty < 0 || tx >= W || ty >= H) ? false : !!seen[ty * W + tx];
+  }
+
+  /* Wall off every cell that still connects the outside world to the chamber
+     interior, so the door is the only way in. Seals against the whole chamber
+     rather than only the part reachable from the door: a chamber with a pillar
+     in it could otherwise be entered through an interior pocket. */
+  /* How many walkable non-vault cells the entrance can no longer reach. */
+  /* True when the chamber cannot be entered with the door treated as solid. */
+  vaultIsSealed(vault, doorX, doorY) {
+    const W = this.W, H = this.H;
+    const seen = new Uint8Array(W * H);
+    const sx = this.entrance.x, sy = this.entrance.y;
+    const q = [sy * W + sx];
+    seen[sy * W + sx] = 1;
+    let head = 0;
+    while (head < q.length) {
+      const cur = q[head++];
+      const cx = cur % W, cy = (cur - cx) / W;
+      if (cx >= vault.x && cx < vault.x + vault.w && cy >= vault.y && cy < vault.y + vault.h) {
+        return false;                      /* walked into the vault */
+      }
+      for (const [ax, ay] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+        const nx = cx + ax, ny = cy + ay;
+        if (nx < 0 || ny < 0 || nx >= W || ny >= H) continue;
+        if (nx === doorX && ny === doorY) continue;      /* shut door is solid */
+        const n = ny * W + nx;
+        if (seen[n]) continue;
+        if (!this.isWalkable(nx, ny)) continue;
+        seen[n] = 1; q.push(n);
+      }
+    }
+    return true;
   }
 
   /* Safety net: if a cut corridor (or packed pillars) disconnected part of the
      floor, carve an L-shaped service tunnel from the stranded tile back to the
      entrance. The sealed vault interior is deliberately left stranded. */
   repairConnectivity() {
+    /* Reconnect stranded regions with SHORTEST tunnels that route around the
+       locked vault, rather than the old horizontal-then-vertical L. The L
+       walked straight at the target and clipped the chamber, where carving is
+       refused, so it silently failed and left whole regions cut off. A BFS from
+       the stranded cell to the reachable set finds a way around any obstacle,
+       and the vault interior plus its sealed ring is impassable to it. */
     const W = this.W, H = this.H, total = W * H;
-    const visit = new Uint8Array(total);
+    const vd = this.vaultDoor;
+    const v = this.vaultRoom;
+    const sealedRing = (x, y) => {
+      if (!v || !vd || !vd.locked) return false;
+      /* the chamber itself, plus the wall ring lockVault() built around it */
+      return x >= v.x - 1 && x <= v.x + v.w && y >= v.y - 1 && y <= v.y + v.h;
+    };
+    const passable = (x, y, forCarving) => {
+      if (x < 1 || y < 1 || x >= W - 1 || y >= H - 1) return false;
+      if (sealedRing(x, y)) return false;              /* never dig back in */
+      if (vd && vd.locked && x === vd.x && y === vd.y) return false;
+      if (forCarving) return true;
+      return this.isWalkable(x, y);
+    };
     const flood = () => {
-      visit.fill(0);
+      const seen = new Uint8Array(total);
       const sx = this.entrance.x, sy = this.entrance.y;
-      if (sx < 1 || sy < 1 || sx >= W - 1 || sy >= H - 1) return;
-      const start = sy * W + sx;
-      visit[start] = 1;
-      const q = [start];
+      if (sx < 1 || sy < 1 || sx >= W - 1 || sy >= H - 1) return seen;
+      const q = [sy * W + sx];
+      seen[sy * W + sx] = 1;
       let head = 0;
       while (head < q.length) {
-        const idx = q[head++];
-        const x = idx % W, y = (idx / W) | 0;
-        for (let k = 0; k < 4; k++) {
-          const nx2 = x + (k === 0 ? 1 : k === 1 ? -1 : 0);
-          const ny2 = y + (k === 2 ? 1 : k === 3 ? -1 : 0);
-          if (nx2 < 1 || ny2 < 1 || nx2 >= W - 1 || ny2 >= H - 1) continue;
-          const ni = ny2 * W + nx2;
-          if (visit[ni]) continue;
-          if (!this.isWalkableTile(this.tiles[ni])) continue;
-          visit[ni] = 1;
-          q.push(ni);
+        const cur = q[head++];
+        const x = cur % W, y = (cur / W) | 0;
+        for (const [ax, ay] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+          const nx = x + ax, ny = y + ay;
+          if (!passable(nx, ny, false)) continue;
+          const ni = ny * W + nx;
+          if (seen[ni]) continue;
+          seen[ni] = 1; q.push(ni);
         }
       }
+      return seen;
     };
-    for (let pass = 0; pass < 12; pass++) {
-      flood();
+    for (let pass = 0; pass < 16; pass++) {
+      const seen = flood();
       let stranded = -1;
       for (let i = 0; i < total; i++) {
-        if (visit[i]) continue;
+        if (seen[i]) continue;
         if (!this.isWalkableTile(this.tiles[i])) continue;
         const x = i % W, y = (i / W) | 0;
-        if (this.isVaultInterior(x, y)) continue;      /* sealed on purpose */
+        if (this.isVaultInterior(x, y)) continue;
+        if (vd && vd.locked && x === vd.x && y === vd.y) continue;
+        if (sealedRing(x, y)) continue;
         stranded = i;
         break;
       }
       if (stranded < 0) return true;
-      let x = stranded % W, y = (stranded / W) | 0;
-      const tx = this.entrance.x, ty = this.entrance.y;
-      const carveTile = (cx, cy) => {
-        if (cx < 1 || cy < 1 || cx >= W - 1 || cy >= H - 1) return;
-        if (this.isVaultInterior(cx, cy)) return;
-        if (this.tiles[cy * W + cx] === WALL) this.tiles[cy * W + cx] = FLOOR;
-        else if (this.tiles[cy * W + cx] === PIT || this.tiles[cy * W + cx] === WATER) this.tiles[cy * W + cx] = FLOOR;
-      };
-      /* horizontal leg */
-      while (x !== tx) {
-        x += (tx > x ? 1 : -1);
-        carveTile(x, y);
+      /* BFS through solid rock from the stranded cell to anything reachable */
+      const sx2 = stranded % W, sy2 = (stranded / W) | 0;
+      const prev = new Int32Array(total).fill(-1);
+      const vis = new Uint8Array(total);
+      const q = [sy2 * W + sx2];
+      vis[sy2 * W + sx2] = 1;
+      let head = 0, hit = -1;
+      while (head < q.length && hit < 0) {
+        const cur = q[head++];
+        const x = cur % W, y = (cur / W) | 0;
+        for (const [ax, ay] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+          const nx = x + ax, ny = y + ay;
+          if (!passable(nx, ny, true)) continue;
+          const ni = ny * W + nx;
+          if (vis[ni]) continue;
+          vis[ni] = 1;
+          prev[ni] = cur;
+          if (seen[ni]) { hit = ni; break; }
+          q.push(ni);
+        }
       }
-      /* vertical leg */
-      while (y !== ty) {
-        y += (ty > y ? 1 : -1);
-        carveTile(x, y);
+      if (hit < 0) return false;   /* genuinely walled off; leave it */
+      for (let cur = prev[hit]; cur >= 0; cur = prev[cur]) {
+        const x = cur % W, y = (cur / W) | 0;
+        const t = this.tiles[cur];
+        if (t === WALL || t === PIT || t === WATER) this.tiles[cur] = FLOOR;
       }
     }
-    flood();
     return false;
   }
 
