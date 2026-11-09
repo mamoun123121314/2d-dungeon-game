@@ -28,10 +28,34 @@ const check = (name, ok, detail = '') => {
   if (!ok) failures++;
 };
 
+/* Record anything the page complains about, so a boot failure explains itself
+   instead of only saying that a 20s wait expired. */
+const pageProblems = [];
+page.on('pageerror', (e) => pageProblems.push('pageerror: ' + (e && e.message)));
+page.on('console', (m) => { if (m.type() === 'error') pageProblems.push('console: ' + m.text().slice(0, 160)); });
+page.on('requestfailed', (r) => pageProblems.push('requestfailed: ' + r.url().slice(-40) + ' ' + (r.failure() && r.failure().errorText)));
+
 try {
   await page.goto(server.url, { waitUntil: 'load' });
-  try { await waitForBoot(page); }
-  catch (e) { throw new Error(`boot never completed: ${e.message}`); }
+  /* Boot with a generous budget and one reload: on a loaded CI runner the first
+     navigation occasionally lands before the page's own boot work finishes, and
+     a 20s ceiling was not enough there while being ample locally. */
+  let booted = false;
+  for (let attempt = 1; attempt <= 2 && !booted; attempt++) {
+    try {
+      await page.waitForFunction(
+        () => typeof Game === 'object' && Game !== null && !!document.getElementById('game'),
+        { timeout: 45000 }
+      );
+      await page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))));
+      booted = true;
+    } catch (e) {
+      if (attempt === 2) {
+        throw new Error(`boot never completed after reload: ${e.message} | ${pageProblems.slice(0, 4).join(' | ') || 'no page errors captured'}`);
+      }
+      await page.reload({ waitUntil: 'load' });
+    }
+  }
   /* Begin a run without going through the start button.
      beginGame() (what #startBtn calls) shows window.confirm() when all three
      save slots are full — "starting a new run replaces the oldest". A confirm()

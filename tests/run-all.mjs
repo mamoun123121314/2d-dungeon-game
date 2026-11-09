@@ -35,7 +35,13 @@ const run = (name) => new Promise((resolve) => {
    the run summary page itself. */
 const annotate = (r) => {
   if (r.code === 0 || !process.env.GITHUB_ACTIONS) return;
-  const failed = r.output.split('\n').filter((l) => /FAIL|Error|error:|threw/i.test(l)).slice(0, 6);
+  /* keep the failing lines plus any diagnostic the suite printed */
+  const all = r.output.split('\n');
+  const failed = all.filter((l) => /FAIL|Error|error:|threw|diag/i.test(l)).slice(0, 6);
+  if (!failed.length) {
+    /* no marker: keep the tail, which is where a crash usually explains itself */
+    failed.push(...all.filter((l) => l.trim()).slice(-4));
+  }
   const body = (failed.length ? failed.join(' | ') : 'suite exited ' + r.code)
     .replace(/%/g, '%25').replace(/\r/g, '%0D').replace(/\n/g, '%0A');
   console.log(`::error title=${r.name} suite failed::${body.slice(0, 900)}`);
