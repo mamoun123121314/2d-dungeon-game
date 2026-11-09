@@ -3,7 +3,7 @@ name: Deploy to GitHub Pages
 # The single canonical GitHub Pages deployment workflow. Keep other Pages
 # deploy workflows out of this repository to avoid racing deployments.
 # Publishes index.html at:
-#   https://mamoun123121314.github.io/2d-dungeon-game/
+#   https://mamoun123121314.github.io/dungeon-rogue/
 on:
   push:
     branches: [main]
