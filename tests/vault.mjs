@@ -20,7 +20,10 @@ import { launch, serve, waitForBoot } from './harness.mjs';
 
 const SEEDS = Number(process.env.VAULT_SEEDS || 80);
 
-const server = await serve('/home/user/2d-dungeon-game');
+/* default root: the repo the harness lives in, resolved from the file
+   location. A hardcoded absolute path works only on the machine that wrote it
+   and 404s everywhere else. */
+const server = await serve();
 const { browser, page } = await launch({ width: 900, height: 600 });
 let failures = 0;
 const check = (name, ok, detail = '') => {
