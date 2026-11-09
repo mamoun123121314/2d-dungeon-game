@@ -393,6 +393,38 @@ body.is-phone .scTitle{font-size:clamp(26px,8vw,40px);}
 .ttBtn.ghost{flex:0 0 auto;min-width:64px;color:#9aa0ae;border-color:rgba(255,255,255,.16);}
 .up{color:#74d79a !important;}.down{color:#e37a74 !important;}
 
+/* ---------- phone action sheet ---------- */
+.actionSheet{display:none;}
+body.is-phone .actionSheet{
+  display:block;position:fixed;left:0;right:0;bottom:0;z-index:140;
+  padding:12px 14px calc(12px + env(safe-area-inset-bottom, 0px));
+  background:linear-gradient(180deg,rgba(16,12,24,.97),rgba(8,6,13,.99));
+  border-top:1px solid rgba(217,181,107,.34);
+  box-shadow:0 -10px 34px rgba(0,0,0,.7);
+}
+body.is-phone .actionSheet.hidden{display:none;}
+.actionSheet .asHead{display:flex;align-items:baseline;gap:8px;margin-bottom:4px;}
+.actionSheet .asName{font-family:var(--font-display);font-size:15px;line-height:1.25;
+  flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.actionSheet .asSub{font-family:var(--font-mono);font-size:9px;letter-spacing:.09em;
+  text-transform:uppercase;color:#8b8097;margin-bottom:9px;}
+.actionSheet .asStats{font-size:10.5px;color:#c8bcd4;line-height:1.5;margin-bottom:10px;
+  max-height:44px;overflow:hidden;}
+.actionSheet .asActions{display:flex;gap:8px;}
+.actionSheet .ttBtn{flex:1;}
+/* while the sheet is up, keep the inventory grid clear of it */
+body.is-phone #inventoryOverlay.sheet-open .invGrid{padding-bottom:150px;}
+body.is-phone #shopOverlay.sheet-open .shopList{padding-bottom:150px;}
+
+/* inline per-row actions, satchel in the shop (no sheet, no dialog) */
+.invRowActions{display:flex;gap:6px;flex:0 0 auto;}
+.invRowActions .miniBtn{font-family:var(--font-mono);font-size:10px;letter-spacing:.08em;
+  text-transform:uppercase;padding:9px 10px;border-radius:5px;cursor:pointer;
+  border:1px solid rgba(217,181,107,.4);color:#e8dcc4;background:rgba(255,255,255,.04);
+  min-height:38px;min-width:52px;touch-action:manipulation;}
+.invRowActions .miniBtn.buy{color:#ffd88a;border-color:rgba(255,200,110,.5);}
+.invRowActions .miniBtn:active{transform:scale(.97);}
+
 /* ---------- overlays ---------- */
 .overlay{
   position:fixed;inset:0;z-index:60;
@@ -800,10 +832,24 @@ body.is-phone #phoneRail{display:block;}
   color:#d8b978;text-shadow:0 1px 3px #000;margin-top:3px;justify-content:flex-end;}
 #phoneRail .pCur b{color:#f3e0b8;font-weight:600;}
 
-#rotateNudge{position:fixed;inset:0;z-index:200;display:none;
-  background:rgba(6,5,10,.97);color:#e8dcc4;font-family:var(--font-ui);
-  flex-direction:column;align-items:center;justify-content:center;gap:16px;text-align:center;padding:32px;}
+/* Was a full-screen opaque overlay at z-index 200 shown whenever a phone was
+   in portrait — it covered the entire display and swallowed every tap, which
+   is why the inventory and shop felt dead on a portrait phone. Portrait is
+   fully playable now; this is a small dismissible hint in the top corner that
+   never intercepts input. */
+#rotateNudge{position:fixed;left:50%;bottom:calc(12px + env(safe-area-inset-bottom, 0px));
+  transform:translateX(-50%);z-index:56;display:none;pointer-events:none;
+  max-width:calc(100vw - 24px);padding:7px 13px;border-radius:999px;
+  background:rgba(10,8,16,.9);border:1px solid rgba(217,181,107,.34);
+  color:#bdb1c8;font-family:var(--font-ui);font-size:10.5px;letter-spacing:.04em;
+  align-items:center;gap:8px;line-height:1.25;}
 #rotateNudge.show{display:flex;}
+body.is-phone.sheet-open #rotateNudge,
+body.is-phone .actionSheet:not(.hidden) ~ #rotateNudge{display:none;}
+#rotateNudge .rotIcon{width:16px;height:16px;border:1.5px solid var(--gold);
+  border-radius:4px;flex:0 0 auto;animation:rot 2.4s ease-in-out infinite;}
+#rotateNudge h3{display:none;}
+#rotateNudge p{font-size:10.5px;margin:0;max-width:none;color:#bdb1c8;}
 #rotateNudge .rotIcon{width:76px;height:76px;border:2px solid var(--gold);
   border-radius:14px;position:relative;animation:rot 2.4s ease-in-out infinite;}
 @keyframes rot{0%,40%{transform:rotate(0)}60%,100%{transform:rotate(90deg)}}
@@ -1382,8 +1428,8 @@ body.is-phone .affixChip{font-size:7.5px;padding:2px 6px;}
 
 <div id="rotateNudge">
   <div class="rotIcon"></div>
-  <h3>Turn your phone</h3>
-  <p>Dungeon Rogue plays in landscape — rotate sideways, then tap to continue.</p>
+  <h3>Tip</h3>
+  <p>Landscape gives you more room — portrait works too.</p>
 </div>
 
 <button class="soundBtn interactive" id="soundBtn" title="Toggle audio (M)">♪</button>
@@ -1437,14 +1483,23 @@ body.is-phone .affixChip{font-size:7.5px;padding:2px 6px;}
         <div class="invFooter">
           <div class="invFootDesk"><b>Left-click</b> equip · <b>Right-click</b> sell · <b>Drag</b> to move<br>
           Click an equipped item to unequip it · Hover for details</div>
-          <div class="invFootPhone"><b>Tap an item</b> to open it, then choose <b>Equip</b> or <b>Sell</b>.<br>
-          Tap an equipped slot to inspect or remove it.</div>
+          <div class="invFootPhone"><b>Tap an item</b> for Equip / Sell.<br>
+          <b>Tap a worn slot</b> to remove it.</div>
           <div class="invGold">Gold <span id="invGold2">0</span></div>
         </div>
       </div>
     </div>
   </div>
 </div>
+
+<!-- ========================= ACTION SHEET ===========================
+     Phone-only. A fixed panel pinned to the bottom of the screen, rendered
+     inside whichever overlay is open. The previous design used the floating
+     #tooltip card, which is positioned with transforms and a high z-index and
+     kept losing taps on real devices. This is a plain in-flow container at the
+     bottom edge: nothing can overlay it, and the buttons sit under the thumb.
+     =================================================================== -->
+<div class="actionSheet hidden" id="actionSheet"></div>
 
 <!-- ============================ SHOP ============================ -->
 <div class="overlay" id="shopOverlay">
@@ -6587,8 +6642,17 @@ function hasLineOfSight(x1, y1, x2, y2) {
    the blade can never sweep through a target the hit test refuses. Before this
    the blade was drawn across ±111° while only ±65° counted as a hit, which is
    exactly why the sword felt inaccurate. */
-const SWING_VIS_HALF = Math.PI * 0.62;        /* drawn sweep, either side of aim */
-const SWING_HIT_ARC  = SWING_VIS_HALF * 2.06; /* the drawn wedge, plus slack */
+/* The blade sweeps from -SWING_VIS_HALF to +SWING_VIS_HALF around the aim
+   line (see the arc in drawSwing), passing through the aim line mid-swing.
+   The hit test must therefore cover the WHOLE swept wedge, not one instant of
+   it, or the blade visibly crosses enemies without touching them.
+
+   This used to be PI*0.62 = +-111.6 degrees — a 223-degree cone, more than
+   half a circle — and reached 148px with reach talents, which is why the
+   sword felt like it hit everything. Tightened to +-40 degrees (80-degree
+   wedge) and ~100px. */
+const SWING_VIS_HALF = Math.PI * 0.222;       /* drawn sweep, +-40 degrees */
+const SWING_HIT_ARC  = SWING_VIS_HALF * 2;    /* exactly the swept wedge */
 
 const Combat = {
   /* melee arc swing */
@@ -6604,7 +6668,7 @@ const Combat = {
        little slack — otherwise the blade visibly passes through things without
        hitting them, which reads as "the sword is inaccurate". Reach likewise
        tracks the drawn radius, widened by the enemy's own body radius. */
-    const reach = clamp(84 + p.attackPower * 0.26, 84, 124) + p.swingReach;
+    const reach = clamp(72 + p.attackPower * 0.20, 72, 104) + p.swingReach;
     const arc = SWING_HIT_ARC;
     let hits = 0;
     for (const e of Game.enemies) {
@@ -8663,7 +8727,7 @@ function drawPlayer(ctx, p, cam, t) {
     ctx.save();
     ctx.translate(x, y);
     ctx.globalCompositeOperation = 'lighter';
-    const swingR = clamp(84 + p.attackPower * 0.26, 84, 124) + p.swingReach;
+    const swingR = clamp(72 + p.attackPower * 0.20, 72, 104) + p.swingReach;
     const grd = ctx.createRadialGradient(0, 0, 20, 0, 0, swingR);
     grd.addColorStop(0, 'rgba(255,245,210,0)');
     grd.addColorStop(0.62, `rgba(255,240,200,${0.30 * swingT})`);
@@ -10524,20 +10588,18 @@ function refreshInventoryUI() {
       cell.addEventListener('click', (ev) => {
         ev.stopPropagation();
         if (Game.isPhone) {
-          if (Game.touchItemSel !== item) {
-            Game.touchItemSel = item;
-            showTooltip(item, window.innerWidth / 2, window.innerHeight / 2, item.slot, true, true);
-            return;
-          }
-          Game.touchItemSel = null;
-          hideTooltip();
+          /* one tap opens the bottom sheet with explicit Equip / Sell */
+          showActionSheet(item, { from: 'inventory', overlay: 'inventoryOverlay' });
+          return;
         }
         equipFromInventory(item);
       });
       cell.addEventListener('contextmenu', (ev) => { ev.preventDefault(); sellItem(item); });
-      cell.addEventListener('mouseenter', (ev) => showTooltip(item, ev.clientX, ev.clientY, item.slot, true));
-      cell.addEventListener('mousemove', (ev) => positionTooltip(ev.clientX, ev.clientY));
-      cell.addEventListener('mouseleave', hideTooltip);
+      /* hover card is a desktop affordance only — on a phone it would fire
+         alongside the sheet and fight it */
+      cell.addEventListener('mouseenter', (ev) => { if (!Game.isPhone) showTooltip(item, ev.clientX, ev.clientY, item.slot, true); });
+      cell.addEventListener('mousemove', (ev) => { if (!Game.isPhone) positionTooltip(ev.clientX, ev.clientY); });
+      cell.addEventListener('mouseleave', () => { if (!Game.isPhone) hideTooltip(); });
       cell.draggable = true;
     }
     frag.appendChild(cell);
@@ -10571,12 +10633,11 @@ function refreshInventoryUI() {
       });
       slotEl.addEventListener('dragend', () => { Game.dragItem = null; Game.dragFrom = null; });
       slotEl.addEventListener('click', (ev) => {
-        /* Phone: a stray thumb must not strip your armour. Open the card and
+        /* Phone: a stray thumb must not strip your armour. Open the sheet and
            let the Unequip button be the deliberate action. */
         if (Game.isPhone) {
           ev.stopPropagation();
-          Game.touchItemSel = item;
-          showTooltip(item, ev.clientX, ev.clientY, slot, false, true);
+          showActionSheet(item, { from: 'equipped', overlay: 'inventoryOverlay' });
           return;
         }
         unequipSlot(slot);
@@ -10636,6 +10697,24 @@ function refreshInventoryUI() {
   $('dollLvl').textContent = 'LV ' + p.level;
   drawPaperdollBackdrop();
 }
+/* Drinking a draught straight out of the satchel. Consumables have no equip
+   slot, so without this the sheet's Use button had nothing to call. */
+function useConsumable(item) {
+  const p = Game.player;
+  if (!p || !item) return;
+  const idx = p.inventory.indexOf(item);
+  if (idx < 0) return;
+  p.inventory.splice(idx, 1);
+  const heal = Math.round(percentOf(p.maxHp, 38) + 20);
+  p.hp = Math.min(p.maxHp, p.hp + heal);
+  p.mana = Math.min(p.maxMana, p.mana + percentOf(p.maxMana, 20));
+  p.healT = 0.6;
+  FX.text(p.x, p.y - 34, '+' + heal, { color: '#7dffb0', size: 13 });
+  Sound.play('potion');
+  toast('Drank ' + item.name + '.', 'good');
+  refreshInventoryUI(); updateHud();
+}
+
 function equipFromInventory(item) {
   const p = Game.player;
   if (!p) return;
@@ -10819,6 +10898,88 @@ function showTooltip(item, x, y, slot, fromInventory, touchMode) {
     });
   }
 }
+/* ---------- phone action sheet -------------------------------------------
+   One shared bottom sheet for every item action on a phone. Replaces the
+   floating tooltip card, which was positioned with fixed/transform and kept
+   losing taps to other layers on real devices. This element lives inside the
+   overlay that owns the interaction, sits at the bottom edge, and every
+   button is a >=44px target directly under the thumb. */
+let _sheetItem = null, _sheetCtx = null;
+function showActionSheet(item, ctx) {
+  _sheetItem = item; _sheetCtx = ctx || {};
+  const el = $('actionSheet');
+  if (!el || !item) return;
+  const p = Game.player;
+  const rar = RARITIES[item.rarity] || RARITIES[0];
+  const color = RARITY_COLOR[item.rarity] || '#d9b56b';
+  const lines = item.slot === 'consumable' ? []
+    : (typeof statLines === 'function' ? statLines(item) : []).slice(0, 3);
+  const statTxt = lines.map(l =>
+    `<span style="color:#8fd6a0">${l.value > 0 ? '+' : ''}${l.value}${l.suffix}</span> ${l.label}`
+  ).join(' · ');
+  const from = _sheetCtx.from;
+
+  let html = `<div class="asHead"><span class="asName" style="color:${color}">${escapeHtml(item.name)}</span>
+    <button class="ttBtn ghost" data-as="close">Close</button></div>
+    <div class="asSub">${item.slot === 'consumable' ? 'Consumable' : rar.name + ' ' + SLOT_LABEL[item.slot] + ' · iLvl ' + item.level}</div>`;
+  if (statTxt) html += `<div class="asStats">${statTxt}</div>`;
+  html += '<div class="asActions">';
+
+  if (item.slot === 'consumable') {
+    html += `<button class="ttBtn primary" data-as="use">Use</button>`;
+    if (from === 'inventory') html += `<button class="ttBtn sell" data-as="sell">Sell ${fmt(p.sellPrice(item))}g</button>`;
+  } else if (from === 'equipped') {
+    html += `<button class="ttBtn primary" data-as="unequip">Unequip</button>`;
+  } else if (from === 'shopbuy') {
+    const can = p.gold >= item.price;
+    html += `<button class="ttBtn primary" data-as="buy" ${can ? '' : 'disabled style="opacity:.4"'}>Buy ${fmt(item.price)}g</button>`;
+  } else {
+    /* inventory or shop-sell list — both need sell, both can equip */
+    const sellFirst = from === 'shopsell';
+    const sellBtn = `<button class="ttBtn sell" data-as="sell">Sell ${fmt(p.sellPrice(item))}g</button>`;
+    const equipBtn = `<button class="ttBtn primary" data-as="equip">Equip</button>`;
+    html += sellFirst ? sellBtn + equipBtn : equipBtn + sellBtn;
+  }
+  html += '</div>';
+  el.innerHTML = html;
+  el.classList.remove('hidden');
+
+  el.querySelectorAll('[data-as]').forEach(b => {
+    b.addEventListener('click', (ev) => {
+      ev.preventDefault(); ev.stopPropagation();
+      const act = b.dataset.as;
+      if (act === 'close') { hideActionSheet(); return; }
+      /* Capture the item before anything can re-render and drop the reference */
+      const it = _sheetItem;
+      hideActionSheet();
+      if (!it) return;
+      if (act === 'equip') equipFromInventory(it);
+      else if (act === 'unequip') unequipSlot(it.slot);
+      else if (act === 'sell') {
+        if (_sheetCtx && _sheetCtx.shop) sellShopInventoryItem(it);
+        else sellItem(it);
+      } else if (act === 'use') useConsumable(it);
+      else if (act === 'buy') {
+        const idx = Game.shopStock.indexOf(it);
+        if (idx >= 0) buyItem(it, idx);
+      }
+      refreshInventoryUI();
+      if (Game.shopOpen) renderShop();
+    }, { passive: false });
+  });
+  /* keep the list clear of the sheet */
+  const ov = _sheetCtx.overlay && $( _sheetCtx.overlay);
+  if (ov) ov.classList.add('sheet-open');
+}
+function hideActionSheet() {
+  const el = $('actionSheet');
+  if (el) { el.classList.add('hidden'); el.innerHTML = ''; }
+  ['inventoryOverlay', 'shopOverlay'].forEach(id => {
+    const o = $(id); if (o) o.classList.remove('sheet-open');
+  });
+  _sheetItem = null; _sheetCtx = null;
+}
+
 function positionTooltip(x, y) {
   const el = $('tooltip');
   if (el.classList.contains('hidden')) return;
@@ -10887,7 +11048,7 @@ function openShop() {
 function closeShop() {
   Game.shopOpen = false;
   Game.paused = Game.invOpen || Game.skillOpen;
-  $('shopOverlay').classList.remove('show'); syncMenuOpen();
+  $('shopOverlay').classList.remove('show'); syncMenuOpen(); hideActionSheet();
   hideTooltip();
   Sound.play('ui');
 }
@@ -10909,8 +11070,8 @@ function setShopTab(tab) {
   document.querySelectorAll('#shopTabs .shopTab').forEach(b => {
     b.classList.toggle('active', b.dataset.shoptab === Game.shopTab);
   });
-  /* a tooltip opened from the other tab is stale the moment we switch */
-  hideTooltip();
+  /* a card or sheet opened from the other tab is stale the moment we switch */
+  hideTooltip(); hideActionSheet();
 }
 document.querySelectorAll('#shopTabs .shopTab').forEach(b => {
   b.addEventListener('click', () => setShopTab(b.dataset.shoptab));
@@ -10966,12 +11127,11 @@ function renderShop() {
     info.innerHTML = `<div class="sname" style="color:${RARITY_COLOR[item.rarity]}">${escapeHtml(item.name)}</div>
       <div class="ssub">${isPotion ? 'Consumable' : RARITIES[item.rarity].name + ' · ' + SLOT_LABEL[item.slot] + ' · iLvl ' + item.level}</div>`;
     info.addEventListener('click', (ev) => {
-      /* phone has no hover: open the card as a centred touch card */
-      if (Game.isPhone) { Game.touchItemSel = item; showTooltip(item, ev.clientX, ev.clientY, item.slot, false, true); return; }
+      if (Game.isPhone) { showActionSheet(item, { from: 'shopbuy', overlay: 'shopOverlay' }); return; }
       showTooltip(item, ev.clientX, ev.clientY, item.slot, false);
     });
-    info.addEventListener('mousemove', (ev) => positionTooltip(ev.clientX, ev.clientY));
-    info.addEventListener('mouseleave', hideTooltip);
+    info.addEventListener('mousemove', (ev) => { if (!Game.isPhone) positionTooltip(ev.clientX, ev.clientY); });
+    info.addEventListener('mouseleave', () => { if (!Game.isPhone) hideTooltip(); });
     row.appendChild(info);
     const btn = document.createElement('button');
     btn.className = 'buyBtn';
@@ -11012,19 +11172,21 @@ function renderShop() {
     info.innerHTML = `<div class="sname" style="color:${RARITY_COLOR[item.rarity]}">${escapeHtml(item.name)}</div>
       <div class="ssub">${RARITIES[item.rarity].name} · ${SLOT_LABEL[item.slot]} · iLvl ${item.level}</div>`;
     info.addEventListener('click', (ev) => {
-      Game.ttFromShopSell = true;                 /* sell is the primary action here */
-      try {
-        if (Game.isPhone) { Game.touchItemSel = item; showTooltip(item, ev.clientX, ev.clientY, item.slot, true, true); return; }
-        showTooltip(item, ev.clientX, ev.clientY, item.slot, true);
-      } finally { /* cleared in showTooltip after it has been read */ }
+      /* One handler, two behaviours. On desktop hover shows the card and the
+         row is just an inspect target. On a phone the row itself sells —
+         there is no hover, and making the player hit a small button is what
+         kept failing. The button is still there and still works. */
+      if (Game.isPhone) { ev.stopPropagation(); sellShopInventoryItem(item); return; }
+      Game.ttFromShopSell = true;
+      showTooltip(item, ev.clientX, ev.clientY, item.slot, true);
     });
-    info.addEventListener('mousemove', (ev) => positionTooltip(ev.clientX, ev.clientY));
-    info.addEventListener('mouseleave', hideTooltip);
+    info.addEventListener('mousemove', (ev) => { if (!Game.isPhone) positionTooltip(ev.clientX, ev.clientY); });
+    info.addEventListener('mouseleave', () => { if (!Game.isPhone) hideTooltip(); });
     row.appendChild(info);
     const btn = document.createElement('button');
     btn.className = 'buyBtn';
     btn.textContent = '+' + fmt(p.sellPrice(item)) + 'g';
-    btn.addEventListener('click', () => { sellShopInventoryItem(item); });
+    btn.addEventListener('click', (ev) => { ev.stopPropagation(); sellShopInventoryItem(item); });
     row.appendChild(btn);
     sellEl.appendChild(row);
   });
@@ -11125,6 +11287,7 @@ function toggleInventory(force) {
   Game.paused = open || Game.shopOpen || Game.skillOpen;
   if (Game.state === 'paused') Game.state = 'playing';
   $('inventoryOverlay').classList.toggle('show', open); syncMenuOpen();
+  if (!open) hideActionSheet();
   if (open) { refreshInventoryUI(); Sound.play('ui'); }
   else { hideTooltip(); }
   updateHud();
