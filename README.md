@@ -321,7 +321,9 @@ and eases out afterwards instead of switching on and off.
 
 ## Verification
 
-Run the dependency-free repository checks with:
+Two layers of checks, both runnable from a clean checkout.
+
+**1. Structure** — dependency-free, runs on any machine with Python 3:
 
 ```sh
 python3 scripts/check_site.py
@@ -329,15 +331,39 @@ python3 scripts/check_site.py
 
 This validates the self-contained page structure, duplicate IDs, local
 references, JavaScript syntax, and CSS brace balance. The GitHub Pages workflow
-runs these checks before deploying. A headless jsdom smoke check in the current
-audit also booted the game, opened inventory and settings, purchased and
-persisted companion upgrades, tested the shrine-choice flow and its save/load
-behavior, built ten seeded floors, and ran update/render frames in desktop and
-simulated-phone modes without runtime errors.
+runs it before deploying.
 
-These structural and headless checks are not a substitute for testing actual
-Canvas rendering, audio, and touch behavior in each target browser. Local saves
-are device/browser-specific.
+**2. Behaviour** — a real Chromium, real Canvas, real Web Audio:
+
+```sh
+npm install          # puppeteer-core + a Chromium binary
+npm test             # all six suites
+npm run test:browser # or run one at a time
+```
+
+| Suite | What it proves |
+| --- | --- |
+| `tests/browser.mjs` | The page boots in a browser, the canvas actually paints, a run starts, every menu opens and closes, the game saves, the page reloads, the run resumes with its floor/gold/level intact, and not one console error is logged. |
+| `tests/save.mjs` | Save recovery. Truncated JSON, non-objects, wrong versions, missing players, blocked storage, quota failures. A corrupt slot never overwrites a good one, is never deleted, and always produces a message the player can act on. |
+| `tests/mobile.mjs` | Four phone viewports (iPhone SE / 14 Pro, Pixel 7, small Android) with touch and coarse pointer: joystick drag moves the hero, ability taps fire, safe-area insets are respected, rotation keeps the controls on screen, and a desktop window never grows the touch UI. |
+| `tests/gameplay.mjs` | Seeded floors rebuild identically, `descend()` reaches the next floor, hp/mana stay inside their bounds, gold never goes negative, gear swaps never destroy items, xp and skill points only move forward. |
+| `tests/audio.mjs` | Audio stays silent-but-safe before a gesture, plays after one, mute and volume survive a reload, a backgrounded tab resumes, and a dead audio device never throws or stops the game. |
+| `tests/perf.mjs` | Frame-time profile for quiet, crowded, effect-heavy and boss scenes on desktop and phone viewports, plus a relative check that the cached vignette beats rebuilding its gradients. |
+
+`npm run test:browser` and friends run individually. Screenshots land in
+`tests/screens/` (git-ignored).
+
+Note on the Chromium binary: the suite uses `@sparticuz/chromium` from npm,
+because normal browser-download hosts are not reachable from the development
+sandbox. Set `BROWSER_PATH` to use a Chrome you already have instead.
+
+**What these tests still cannot tell you.** They drive one browser engine
+(Chromium) on one OS. They do not cover Safari's WebKit quirks, iOS safe-area
+behaviour on a physical notch, or how a joystick feels under a real thumb.
+Frame-time numbers come from a software rasteriser with no GPU, so they are far
+worse in absolute terms than any real device; they are useful for comparing
+builds against each other, not for predicting the frame rate a phone will show.
+Local saves are still device/browser-specific.
 
 ## Layout
 
