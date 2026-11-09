@@ -193,22 +193,31 @@ hit. Charge hits knock the player back with a proper decaying impulse.
   contract even if you change the next-run selection.
 
 ### Saving
-A Minecraft-style autosave keeps a single run slot:
+A Minecraft-style autosave keeps **three independent run slots** — *Hall of
+Ashes*, *Cinder Vault* and *Reliquary* — listed in **Profile & Backup**:
 
+- A new run claims a free slot instead of destroying the previous save. When all
+  three are full the game names the oldest run and asks before replacing it.
 - Autosaves every 5 seconds while playing, on every floor change, when the tab
-  is hidden or closed, on `Ctrl`/`Cmd` + `S`, and from the pause menu.
+  is hidden or closed, on `Ctrl`/`Cmd` + `S`, and from the pause menu. The
+  sealed notice shows which slot and what time.
+- **Continue** resumes the newest slot and names it. Each slot has its own
+  **Load** and **Delete** button, and a failed load keeps the slot intact (a
+  copy is parked under `dungeonRogue.save.unreadable`) instead of wiping it.
+- Death clears only the slot the run was using.
 - Stores the **floor seed**, so the dungeon rebuilds identically. Player level,
   XP, HP, mana, gold, potions, keys, every talent rank, all six equipped items,
   the whole satchel, shop reputation and the current affixes all persist.
-- **Continue** on the title screen resumes the saved run and shows the floor,
-  level and how long ago it was saved. **Delete saved run** clears it.
 - Loading is defensive: ratings, ranks, item fields and slot names are all
   clamped and validated, and invalid run data is rejected rather than crashing
-  the game.
+  the game. A failed or blocked write reports itself instead of failing silently.
 - Settings and profile name are stored locally. Settings include master volume,
   sound, screen shake, reduced motion/flash, floating combat text, high contrast,
-  larger interface, and the next-run contract. The utility menu can export or
-  import a JSON backup containing the run, meta progression, profile, and settings.
+  larger interface, and the next-run contract. Lists and toggles are drawn by
+  the game — never as a white system picker — so the menu keeps its palette.
+  **Export Backup** writes every slot plus profile, rewards and visuals into one
+  JSON file; **Import Backup** restores them, and still reads single-run
+  backups made by earlier versions.
 - Visual options include *Cinder*, *Moon-tide* and *Verdant* colourways,
   three hero mantles (*Ashen Wayfarer*, *Moonblade*, *Thornbound*), and
   selectable Foxfire or Moon Sigil trails around Ember. The reward screen uses

@@ -614,14 +614,49 @@ body.is-phone .invFooter{font-size:10px;}
 /* Settings, profile, rewards and the permanent cosmetic shop share one clear,
    scrollable shell. Buttons stay large enough for touch and keyboard users. */
 #settingsOverlay,#profileOverlay,#rewardsOverlay,#sanctuaryOverlay{z-index:80;}
-.menuPage{width:min(620px,94vw);max-height:min(88vh,780px);overflow:auto;padding:0 0 18px;}
+.menuPage{width:min(620px,94vw);max-height:min(88vh,780px);overflow:auto;padding:0 0 18px;
+  background:
+    radial-gradient(120% 60% at 50% 0,rgba(217,181,107,.055),transparent 62%),
+    linear-gradient(165deg,rgba(34,28,43,.97),rgba(13,11,18,.98) 46%,rgba(8,7,12,.99));
+  scrollbar-width:thin;scrollbar-color:rgba(217,181,107,.45) transparent;}
+.menuPage::-webkit-scrollbar{width:7px;}
+.menuPage::-webkit-scrollbar-thumb{background:rgba(217,181,107,.4);border-radius:9px;}
+.menuPage::-webkit-scrollbar-track{background:rgba(255,255,255,.03);}
 .menuPage .panelHead{position:sticky;top:0;z-index:1;background:rgba(13,10,18,.98);}
 .menuPageBody{padding:18px 22px 8px;display:flex;flex-direction:column;gap:13px;text-align:left;}
 .menuLead{font-size:12px;color:#a99caf;line-height:1.65;margin:0;}
 .menuNote{font-size:10px;line-height:1.6;color:#887e91;padding:10px 12px;border-left:2px solid rgba(217,181,107,.4);background:rgba(255,255,255,.025);}
+.menuNote.warn{border-left-color:#e0554d;color:#f0b3ad;background:rgba(224,85,77,.07);}
+.menuSection{margin:6px 0 -4px;color:#d9b56b;font:9.5px var(--font-mono);letter-spacing:.2em;text-transform:uppercase;display:flex;align-items:center;gap:9px;}
+.menuSection::after{content:"";flex:1;height:1px;background:linear-gradient(90deg,rgba(217,181,107,.34),transparent);}
 .menuField{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:10px 12px;border:1px solid rgba(217,181,107,.16);border-radius:5px;background:rgba(255,255,255,.025);color:#d5c9da;font-size:12px;}
 .menuField input[type=range]{width:min(220px,45%);accent-color:#d9b56b;}
-.menuField select{width:min(240px,58%);padding:9px 10px;background:#100d15;border:1px solid rgba(217,181,107,.28);border-radius:4px;color:#f3e6c7;font:inherit;}
+/* The previous UI used a bare native <select>, which iOS renders as a white
+   system popover stacked over the panel and checkboxes as blue system boxes.
+   Neither honours the game's palette, so every list and toggle is drawn by the
+   game itself: the native control stays in the DOM (hidden) as the value store
+   and keeps its id for existing wiring, backups and keyboard users. */
+.menuField select.nativeSelect{position:absolute;opacity:0;width:1px;height:1px;pointer-events:none;overflow:hidden;}
+.menuField.selectField{padding:0;border:none;background:none;display:block;}
+.fieldLabel{display:block;font:9px var(--font-mono);letter-spacing:.16em;text-transform:uppercase;color:#9d90a6;margin:0 0 5px 2px;}
+.selectTrigger{display:flex;align-items:center;justify-content:space-between;gap:10px;width:100%;min-height:44px;padding:11px 13px;text-align:left;font-family:var(--font-ui);font-size:12.5px;color:#f0e2c4;background:linear-gradient(168deg,rgba(43,34,52,.94),rgba(14,11,21,.96));border:1px solid rgba(217,181,107,.3);border-left:2px solid var(--gold-dim);border-radius:4px;box-shadow:inset 0 1px 0 rgba(255,255,255,.05);transition:border-color .16s,box-shadow .16s,transform .16s;}
+.selectTrigger:hover,.selectTrigger:focus-visible{outline:none;border-color:rgba(243,217,154,.62);box-shadow:0 0 16px rgba(217,181,107,.14),inset 0 1px 0 rgba(255,255,255,.08);}
+.selectTrigger .stValue{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.selectTrigger .stGlyph{flex:0 0 auto;width:20px;height:20px;display:grid;place-items:center;font-size:10px;color:var(--sigil);border:1px solid rgba(217,181,107,.38);border-radius:50%;background:radial-gradient(circle,var(--sigil-glow),transparent 72%);transition:transform .2s;}
+.selectTrigger[aria-expanded="true"] .stGlyph{transform:rotate(180deg);}
+body.palette-moon .selectTrigger{border-color:rgba(98,207,219,.34);}
+body.palette-moss .selectTrigger{border-color:rgba(151,207,111,.32);}
+/* toggle rows: the input is hidden, the label paints a rune-lit switch */
+.menuField input[type=checkbox]{appearance:none;-webkit-appearance:none;width:26px;height:26px;flex:0 0 auto;margin:0;border:1px solid rgba(217,181,107,.38);border-radius:5px;background:linear-gradient(160deg,rgba(48,38,58,.9),rgba(13,10,19,.95));box-shadow:inset 0 1px 0 rgba(255,255,255,.06);display:grid;place-items:center;cursor:pointer;transition:border-color .16s,box-shadow .16s,background .16s;}
+.menuField input[type=checkbox]::after{content:"✦";font:13px/1 var(--font-ui);color:#1a1220;opacity:0;transform:scale(.4) rotate(-30deg);transition:opacity .16s,transform .18s;}
+.menuField input[type=checkbox]:checked{border-color:rgba(243,217,154,.85);background:radial-gradient(circle at 50% 45%,#f6e2ae,#c79a45 72%);box-shadow:0 0 14px rgba(217,181,107,.4),inset 0 1px 0 rgba(255,255,255,.5);}
+.menuField input[type=checkbox]:checked::after{opacity:1;transform:scale(1) rotate(0);}
+.menuField input[type=checkbox]:focus-visible{outline:2px solid rgba(243,217,154,.55);outline-offset:2px;}
+.menuField input[type=range]{-webkit-appearance:none;appearance:none;height:26px;background:none;}
+.menuField input[type=range]::-webkit-slider-runnable-track{height:4px;border-radius:3px;background:linear-gradient(90deg,#c79a45,rgba(255,255,255,.14));}
+.menuField input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:18px;height:18px;margin-top:-7px;border-radius:50%;background:radial-gradient(circle at 42% 38%,#fdf0cd,#caa052);border:1px solid rgba(255,240,200,.7);box-shadow:0 0 10px rgba(217,181,107,.5);}
+.menuField input[type=range]::-moz-range-track{height:4px;border-radius:3px;background:rgba(255,255,255,.14);}
+.menuField input[type=range]::-moz-range-thumb{width:17px;height:17px;border-radius:50%;background:#e6c377;border:1px solid rgba(255,240,200,.7);}
 body.high-contrast{--world-contrast:1.24;--world-saturation:1.12}
 body.palette-moon{--world-hue:155deg;--world-saturation:1.18;--sigil:#80eced;--sigil-glow:rgba(66,220,227,.28)}
 body.palette-moon .panel{border-color:rgba(112,225,232,.42);box-shadow:0 0 0 1px rgba(0,0,0,.75),0 10px 34px rgba(0,0,0,.65),inset 0 1px 0 rgba(255,255,255,.07),inset 0 0 42px rgba(20,110,128,.12)}
@@ -632,8 +667,22 @@ body.palette-moss .panel{border-color:rgba(165,210,111,.42)}
 body.palette-moss .panelHead h2,body.palette-moss .sanctuarySection{color:#c4eb9a}
 body.palette-moss .menuField,body.palette-moss .rewardCard{border-color:rgba(151,207,111,.27)}
 body.large-ui #hud{font-size:1.15em}
-.menuField input[type=text]{width:min(240px,58%);padding:9px 10px;background:#100d15;border:1px solid rgba(217,181,107,.28);border-radius:4px;color:#f3e6c7;font:inherit;}
+.menuField input[type=text]{width:min(240px,58%);padding:9px 10px;background:linear-gradient(168deg,rgba(43,34,52,.94),rgba(14,11,21,.96));border:1px solid rgba(217,181,107,.3);border-radius:4px;color:#f3e6c7;font:inherit;}
+.menuField input[type=text]:focus-visible{outline:none;border-color:rgba(243,217,154,.62);}
+.menuField input[type=checkbox]:active{transform:scale(.94);}
 .menuActions{display:flex;gap:9px;flex-wrap:wrap;justify-content:center;margin-top:4px;}
+/* The last action row stays reachable while the page scrolls: on a phone the
+   settings list is taller than the viewport and Done used to sit below the
+   fold, so the menu looked like it had no way out. */
+.menuPageBody>.menuActions:last-child{position:sticky;bottom:-1px;margin:4px -22px 0;padding:11px 22px calc(11px + env(safe-area-inset-bottom,0px));
+  background:linear-gradient(180deg,rgba(10,8,15,0),rgba(10,8,15,.93) 34%,rgba(8,7,12,.99));
+  border-top:1px solid rgba(217,181,107,.16);z-index:2;}
+.menuField.toggleField{cursor:pointer;}
+@media(max-width:520px){
+  .menuField.toggleField{flex-direction:row;align-items:center;justify-content:space-between;padding:12px;}
+  .menuField.toggleField span{flex:1;min-width:0;line-height:1.4;}
+  .menuPageBody>.menuActions:last-child{margin-left:-13px;margin-right:-13px;padding-left:13px;padding-right:13px;}
+}
 .menuActions .bigBtn{flex:1 1 190px;min-height:44px;}
 .menuPage .panelHead h2{font-size:15px;}
 #rewardList{display:grid;gap:9px;}
@@ -675,6 +724,51 @@ body.reduced-motion *,body.reduced-motion *::before,body.reduced-motion *::after
 .menuIdentity b{color:#e2c98e;font-weight:500;}
 .menuHub{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin:6px auto 12px;}
 .menuHub .bigBtn{width:auto;max-width:none;flex:1 1 155px;padding:11px 12px;font-size:10px;letter-spacing:.12em;}
+/* ---------- saved-run shelf ---------- */
+.saveShelf{display:flex;flex-direction:column;gap:8px;}
+.saveSlot{display:grid;grid-template-columns:38px minmax(0,1fr) auto;align-items:center;gap:5px 11px;
+  padding:11px 12px;border:1px solid rgba(217,181,107,.2);border-radius:8px;
+  background:linear-gradient(120deg,rgba(255,255,255,.045),rgba(255,255,255,.012) 55%,rgba(217,181,107,.03));}
+.saveSlot.active{border-color:rgba(243,217,154,.55);box-shadow:inset 0 0 20px rgba(217,181,107,.06);}
+.saveSlot.empty{grid-template-columns:38px minmax(0,1fr);border-style:dashed;opacity:.72;}
+.slotSigil{grid-row:1 / span 3;display:grid;place-items:center;width:34px;height:34px;
+  font:15px var(--font-display);color:var(--sigil);border:1px solid currentColor;
+  border-radius:10px 4px 10px 4px;background:radial-gradient(circle,var(--sigil-glow),rgba(0,0,0,.05) 74%);}
+.saveSlot strong{color:#ecd9b6;font-size:12px;font-weight:600;}
+.saveSlot small{color:#9b91a4;font-size:10px;line-height:1.5;}
+.saveSlot .slotBtns{grid-column:3;grid-row:1 / span 3;display:flex;flex-direction:column;gap:5px;}
+.saveSlot .slotBtns .bigBtn{min-height:36px;min-width:104px;width:auto;padding:7px 11px;font-size:9px;letter-spacing:.1em;margin:0;}
+.saveSlot .slotBtns .bigBtn[disabled]{opacity:.4;}
+@media(max-width:520px){.saveSlot{grid-template-columns:32px minmax(0,1fr);}.slotSigil{width:30px;height:30px;font-size:13px}
+  .saveSlot .slotBtns{grid-column:1 / -1;grid-row:auto;flex-direction:row;}.saveSlot .slotBtns .bigBtn{flex:1;min-width:0;min-height:40px;}}
+/* ---------- in-game listbox (replaces the white iOS popover) ---------- */
+#selectMenu{position:fixed;inset:0;z-index:130;display:none;align-items:flex-end;justify-content:center;
+  padding:10px;background:radial-gradient(ellipse at 50% 50%,rgba(6,5,10,.5),rgba(3,2,6,.84));
+  backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);}
+#selectMenu.show{display:flex;animation:overlayIn .16s ease-out;}
+.smPanel{width:min(470px,100%);max-height:min(76vh,560px);display:flex;flex-direction:column;overflow:hidden;
+  border-radius:14px 14px 6px 6px;border:1px solid rgba(217,181,107,.4);
+  background:linear-gradient(168deg,#2a2235 0%,#120f1b 46%,#08070d 100%);
+  box-shadow:0 0 0 1px rgba(0,0,0,.8),0 -8px 44px rgba(0,0,0,.72),inset 0 1px 0 rgba(255,255,255,.07);
+  animation:smRise .22s cubic-bezier(.2,.8,.3,1);}
+@keyframes smRise{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
+.smHead{display:flex;align-items:center;gap:10px;padding:12px 14px;border-bottom:1px solid rgba(217,181,107,.17);
+  background:linear-gradient(180deg,rgba(58,46,35,.24),transparent);}
+.smHead h3{margin:0;font:400 12.5px/1.3 var(--font-display);letter-spacing:.2em;text-transform:uppercase;color:var(--gold-bright);}
+.smHead .smDone{margin-left:auto;min-height:36px;padding:8px 14px;font-size:9.5px;border-radius:4px;}
+.smBody{overflow:auto;padding:8px;display:flex;flex-direction:column;gap:5px;-webkit-overflow-scrolling:touch;}
+.smOption{display:flex;align-items:center;gap:11px;width:100%;min-height:46px;padding:11px 12px;text-align:left;
+  border:1px solid transparent;border-radius:5px;background:rgba(255,255,255,.022);color:#ded3e6;
+  font:12.5px/1.35 var(--font-ui);transition:background .14s,border-color .14s,color .14s;}
+.smOption:hover,.smOption:focus-visible{outline:none;background:rgba(217,181,107,.11);border-color:rgba(217,181,107,.4);color:#fff3d8;}
+.smOption .smRune{flex:0 0 auto;width:22px;height:22px;display:grid;place-items:center;font-size:10px;
+  color:rgba(217,181,107,.5);border:1px solid rgba(217,181,107,.24);border-radius:50%;}
+.smOption .smText{flex:1;min-width:0;}
+.smOption[aria-selected="true"]{background:linear-gradient(100deg,rgba(217,181,107,.19),rgba(217,181,107,.05));border-color:rgba(243,217,154,.6);color:#fff6e0;}
+.smOption[aria-selected="true"] .smRune{color:#1b1324;border-color:transparent;background:radial-gradient(circle,#f8e6b4,#c99f4d);box-shadow:0 0 12px rgba(217,181,107,.45);}
+body.palette-moon .smOption[aria-selected="true"]{background:linear-gradient(100deg,rgba(98,207,219,.2),rgba(98,207,219,.05));border-color:rgba(140,235,240,.6);}
+body.palette-moss .smOption[aria-selected="true"]{background:linear-gradient(100deg,rgba(151,207,111,.2),rgba(151,207,111,.05));border-color:rgba(186,236,150,.58);}
+@media(min-width:560px){#selectMenu{align-items:center}.smPanel{border-radius:8px}}
 @media(max-width:520px){.menuPageBody{padding:14px 12px 8px}.menuField{align-items:flex-start;flex-direction:column}.menuField input[type=range],.menuField input[type=text],.menuField select{width:100%}.menuHub .bigBtn{flex-basis:42%;}.rewardCard{grid-template-columns:38px minmax(0,1fr);gap:7px 10px;padding:11px}.rewardSigil{grid-column:1;grid-row:1 / span 3;width:34px;height:34px;font-size:17px}.rewardCard strong,.rewardCard small,.rewardProgress{grid-column:2}.rewardCard .bigBtn{grid-column:1 / -1;grid-row:auto;width:100%;min-height:42px}.storeCard{grid-template-columns:1fr}.storeCard small,.storeCard .bigBtn{grid-column:1;grid-row:auto}.storeCard .bigBtn{width:100%;}.shrineChoices{grid-template-columns:1fr}.shrineCard{min-height:0}.shrineCard p{min-height:32px}}
 
 .pausePanel .panelHead,.deathPanel .panelHead,.victoryPanel .panelHead{justify-content:center;}
@@ -940,6 +1034,12 @@ body.is-phone #pauseOverlay .pausePanel,
 body.is-phone #deathOverlay .deathPanel,
 body.is-phone #victoryOverlay .victoryPanel{width:calc(100% - 16px);max-height:calc(100% - 16px);overflow-y:auto;}
 body.is-phone #startScreen .startWrap{width:calc(100% - 20px);padding:20px 16px;}
+body.is-phone #settingsOverlay .menuPage,body.is-phone #profileOverlay .menuPage,
+body.is-phone #rewardsOverlay .menuPage,body.is-phone #sanctuaryOverlay .menuPage{
+  width:100%;max-height:calc(100% - 8px);}
+body.is-phone .menuPageBody{gap:11px;padding:15px 13px 18px;}
+body.is-phone .menuField{font-size:12.5px;padding:11px 12px;}
+body.is-phone .selectTrigger{font-size:13px;}
 body.is-phone .invBody{flex-direction:column;overflow-y:auto;}
 body.is-phone .invLeft{width:100%;border-right:none;border-bottom:1px solid rgba(217,181,107,.14);}
 body.is-phone .dollWrap{height:170px;}
@@ -1675,19 +1775,22 @@ body.is-phone .affixChip{font-size:7.5px;padding:2px 6px;}
   <section class="panel menuPage" role="dialog" aria-modal="true" aria-labelledby="settingsTitle">
     <div class="panelHead"><h2 id="settingsTitle">Settings</h2></div>
     <div class="menuPageBody">
-      <p class="menuLead">Tune the descent to your screen and your ears. Choices are saved on this device.</p>
+      <p class="menuLead">Tune the descent to your screen and your ears. Choices are sealed on this device.</p>
+      <h3 class="menuSection">Sound &amp; feedback</h3>
       <label class="menuField" for="volumeSetting"><span>Master volume <b id="volumeValue">85%</b></span><input id="volumeSetting" type="range" min="0" max="100" value="85"></label>
-      <label class="menuField" for="shakeSetting"><span>Screen shake</span><input id="shakeSetting" type="checkbox" checked></label>
-      <label class="menuField" for="motionSetting"><span>Reduced motion &amp; flashes</span><input id="motionSetting" type="checkbox"></label>
-      <label class="menuField" for="soundSetting"><span>Sound effects &amp; music</span><input id="soundSetting" type="checkbox" checked></label>
-      <label class="menuField" for="numbersSetting"><span>Floating combat text</span><input id="numbersSetting" type="checkbox" checked></label>
-      <label class="menuField" for="contrastSetting"><span>High-contrast dungeon</span><input id="contrastSetting" type="checkbox"></label>
-      <label class="menuField" for="largeUISetting"><span>Larger interface</span><input id="largeUISetting" type="checkbox"></label>
-      <label class="menuField" for="paletteSetting"><span>Dungeon colourway</span><select id="paletteSetting"><option value="cinder">Cinder &amp; gold</option><option value="moon">Moon-tide teal</option><option value="moss">Verdant relic</option></select></label>
-      <label class="menuField" for="auraSetting"><span>Ember’s spirit trail</span><select id="auraSetting"><option value="none">Quiet paws</option><option value="ember">Foxfire orbit</option><option value="moon">Moon sigils</option></select></label>
-      <label class="menuField" for="heroAspectSetting"><span>Hero mantle</span><select id="heroAspectSetting"><option value="wayfarer">Ashen Wayfarer</option><option value="moonblade">Moonblade · silver orbit</option><option value="thornbound">Thornbound · leaf armor</option></select></label>
-      <label class="menuField" for="contractSetting"><span>Next expedition contract</span><select id="contractSetting"><option value="standard">Unbound — standard descent</option><option value="pilgrim">Pilgrim’s Mercy — fewer foes, softer hits, less gold</option><option value="reclaimer">The Reclaimer — crowded floors, richer gold</option><option value="glass">Glass Covenant — fewer foes, harder hits, stronger strikes</option></select></label>
-      <p class="menuLead">Contracts change the rules of a fresh run. Your current run keeps its original contract.</p>
+      <label class="menuField toggleField" for="shakeSetting"><span>Screen shake</span><input id="shakeSetting" type="checkbox" checked></label>
+      <label class="menuField toggleField" for="motionSetting"><span>Reduced motion &amp; flashes</span><input id="motionSetting" type="checkbox"></label>
+      <label class="menuField toggleField" for="soundSetting"><span>Sound effects &amp; music</span><input id="soundSetting" type="checkbox" checked></label>
+      <h3 class="menuSection">Readability</h3>
+      <label class="menuField toggleField" for="numbersSetting"><span>Floating combat text</span><input id="numbersSetting" type="checkbox" checked></label>
+      <label class="menuField toggleField" for="contrastSetting"><span>High-contrast dungeon</span><input id="contrastSetting" type="checkbox"></label>
+      <label class="menuField toggleField" for="largeUISetting"><span>Larger interface</span><input id="largeUISetting" type="checkbox"></label>
+      <h3 class="menuSection">Appearance &amp; expedition</h3>
+      <div class="menuField selectField"><span class="fieldLabel" id="paletteSettingLabel">Dungeon colourway</span><select id="paletteSetting" class="nativeSelect" tabindex="-1" aria-hidden="true"><option value="cinder">Cinder &amp; gold</option><option value="moon">Moon-tide teal</option><option value="moss">Verdant relic</option></select></div>
+      <div class="menuField selectField"><span class="fieldLabel" id="auraSettingLabel">Ember’s spirit trail</span><select id="auraSetting" class="nativeSelect" tabindex="-1" aria-hidden="true"><option value="none">Quiet paws</option><option value="ember">Foxfire orbit</option><option value="moon">Moon sigils</option></select></div>
+      <div class="menuField selectField"><span class="fieldLabel" id="heroAspectSettingLabel">Hero mantle</span><select id="heroAspectSetting" class="nativeSelect" tabindex="-1" aria-hidden="true"><option value="wayfarer">Ashen Wayfarer</option><option value="moonblade">Moonblade · silver orbit</option><option value="thornbound">Thornbound · leaf armor</option></select></div>
+      <div class="menuField selectField"><span class="fieldLabel" id="contractSettingLabel">Next expedition contract</span><select id="contractSetting" class="nativeSelect" tabindex="-1" aria-hidden="true"><option value="standard">Unbound — standard descent</option><option value="pilgrim">Pilgrim’s Mercy — fewer foes, softer hits, less gold</option><option value="reclaimer">The Reclaimer — crowded floors, richer gold</option><option value="glass">Glass Covenant — fewer foes, harder hits, stronger strikes</option></select></div>
+      <p class="menuNote">Contracts change the rules of a fresh run. Your current run keeps its original contract.</p>
       <div class="menuActions"><button class="bigBtn secondary" data-close-page="settingsOverlay">Done</button></div>
     </div>
   </section>
@@ -1698,9 +1801,14 @@ body.is-phone .affixChip{font-size:7.5px;padding:2px 6px;}
     <div class="menuPageBody">
       <p class="menuLead">Your optional local profile labels this device's progress. No email, password or personal details are needed.</p>
       <label class="menuField" for="profileName"><span>Adventurer name</span><input id="profileName" type="text" maxlength="24" autocomplete="nickname" placeholder="Wanderer"></label>
-      <div class="menuNote"><b>Protect your progress:</b> progress is stored in this browser. Export a backup file and keep it somewhere safe, then import it on another device to move your save. This static game has no account server or automatic cloud sync, so clearing browser data can erase local progress.</div>
+      <div id="saveStatusLine" class="menuNote" aria-live="polite">Autosaves every few seconds while you play.</div>
+      <h3 class="menuSection">Saved runs</h3>
+      <div class="saveShelf" id="saveShelf" aria-live="polite"></div>
+      <div class="menuActions"><button class="bigBtn secondary" id="saveNowBtn">Save Run Now</button><button class="bigBtn secondary" id="deleteSaveBtn">Delete Latest Run</button></div>
+      <h3 class="menuSection">Backup file</h3>
+      <div class="menuNote"><b>Protect your progress:</b> runs live in this browser only. Export a backup and keep it somewhere safe, then import it on another device to move your saves. There is no account server or automatic cloud sync, so clearing browser data erases local progress.</div>
       <div class="menuActions"><button class="bigBtn" id="exportBackupBtn">Export Backup</button><button class="bigBtn secondary" id="importBackupBtn">Import Backup</button><input id="backupFileInput" type="file" accept="application/json,.json" hidden></div>
-      <div id="backupStatus" class="menuNote" aria-live="polite">Backups include this device's run, profile and permanent rewards.</div>
+      <div id="backupStatus" class="menuNote" aria-live="polite">Backups include every saved run, your profile, permanent rewards and visuals.</div>
       <div class="menuActions"><button class="bigBtn secondary" data-close-page="profileOverlay">Done</button></div>
     </div>
   </section>
@@ -1835,7 +1943,6 @@ body.is-phone .affixChip{font-size:7.5px;padding:2px 6px;}
       <button class="bigBtn secondary" id="menuRewardsBtn">Progress &amp; Rewards</button>
       <button class="bigBtn secondary" id="menuShopBtn">Sanctuary Shop</button>
     </div>
-    <button class="linkBtn hidden" id="deleteSaveBtn">Delete saved run</button>
     <div class="startMeta">
       <span>Single-file · <b>0 KB</b> assets</span>
       <span>Canvas 2D · <b>Web Audio</b></span>
@@ -1844,6 +1951,9 @@ body.is-phone .affixChip{font-size:7.5px;padding:2px 6px;}
   </div>
 </div>
 
+<!-- Top level so it paints above the menu pages (z-index 80) and
+     receives taps; #hud is pointer-events:none and only z-index 10. -->
+<div id="selectMenu" aria-hidden="true"></div>
 <div id="transition"></div>
 <div id="startFade"></div>
 
@@ -5534,9 +5644,19 @@ const STORY = {
 const Save = {
   KEY: 'dungeonRogue.save.v1',
   META_KEY: 'dungeonRogue.meta.v1',
+  /* Three run slots instead of one. The old single slot meant that pressing
+     "Enter The Dungeon" while a saved run existed silently destroyed it, and a
+     run that failed to load called clear() and erased it too. Slots are named
+     so an interrupted run is never the only copy of the player's progress. */
+  SLOTS: [
+    { id: 'a', name: 'Hall of Ashes', key: 'dungeonRogue.save.v2.a' },
+    { id: 'b', name: 'Cinder Vault', key: 'dungeonRogue.save.v2.b' },
+    { id: 'c', name: 'Reliquary', key: 'dungeonRogue.save.v2.c' }
+  ],
   AUTOSAVE_MS: 5000,
   _timer: null,
   _lastWrite: 0,
+  _activeSlot: 'a',
 
   available() {
     try {
@@ -5665,26 +5785,110 @@ const Save = {
     };
   },
 
+  /* ---- slots ---- */
+  slot(id) { return this.SLOTS.find(sl => sl.id === id) || this.SLOTS[0]; },
+  activeSlot() { return this.slot(this._activeSlot); },
+  setActiveSlot(id) { this._activeSlot = this.slot(id).id; return this._activeSlot; },
+  readSlot(id) {
+    if (!this.available()) return null;
+    try {
+      const raw = JSON.parse(window.localStorage.getItem(this.slot(id).key));
+      if (!raw || raw.v !== 1 || !raw.player) return null;
+      return raw;
+    } catch (e) { return null; }
+  },
+  rawSlot(id) {
+    if (!this.available()) return null;
+    try { return JSON.parse(window.localStorage.getItem(this.slot(id).key)); } catch (e) { return null; }
+  },
+  slotList() {
+    return this.SLOTS.map(sl => {
+      const snap = this.readSlot(sl.id);
+      return { id: sl.id, name: sl.name, key: sl.key, snap: snap,
+               active: sl.id === this.activeSlot().id };
+    });
+  },
+  /* newest readable snapshot across every slot — what "Continue" resumes */
+  newest() {
+    let best = null;
+    for (const sl of this.SLOTS) {
+      const snap = this.readSlot(sl.id);
+      if (snap && (!best || Number(snap.savedAt || 0) > Number(best.snap.savedAt || 0))) best = { id: sl.id, snap: snap };
+    }
+    return best;
+  },
+  /* pick a free slot for a new run, else recycle the oldest one */
+  slotForNewRun() {
+    for (const sl of this.SLOTS) if (!this.readSlot(sl.id)) return sl.id;
+    let oldest = this.SLOTS[0];
+    for (const sl of this.SLOTS) {
+      const a = this.readSlot(sl.id), b = this.readSlot(oldest.id);
+      if (a && (!b || Number(a.savedAt || 0) < Number(b.savedAt || 0))) oldest = sl;
+    }
+    return oldest.id;
+  },
+  /* one-line description used by the menu and the saved-run shelf */
+  describe(snap) {
+    if (!snap || !snap.player) return 'Empty';
+    const p = snap.player;
+    const when = Number(snap.savedAt) || 0;
+    const mins = when ? Math.max(0, Math.round((Date.now() - when) / 60000)) : 0;
+    const ago = !when ? 'unknown' : mins < 1 ? 'just now' : mins < 60 ? mins + 'm ago' : mins < 1440 ? Math.round(mins / 60) + 'h ago' : Math.round(mins / 1440) + 'd ago';
+    return { floor: snap.floor, level: p.level, hp: Math.round(Number(p.hp) || 0), gold: Number(p.gold) || 0,
+             ago: ago, savedAt: when, expedition: snap.expedition || 'standard',
+             seconds: Math.max(0, Number(snap.elapsedRun) || 0) };
+  },
+
   /* ---- run save/load ---- */
-  save() {
+  save(slotId) {
     if (!this.available()) return false;
     const snap = this.snapshotRun();
     if (!snap) return false;
+    const id = slotId || this.activeSlot().id;
+    const target = this.slot(id);
     try {
-      window.localStorage.setItem(this.KEY, JSON.stringify(snap));
+      window.localStorage.setItem(target.key, JSON.stringify(snap));
+      /* keep the legacy key pointing at the newest save so a downgraded build,
+         and any backup exported by an older version, still finds a run */
+      try { window.localStorage.setItem(this.KEY, JSON.stringify(snap)); } catch (e2) { /* quota */ }
+      this._activeSlot = target.id;
       this._lastWrite = Date.now();
+      this._lastError = null;
       this.flashSaveIcon();
       return true;
-    } catch (e) { return false; }
+    } catch (e) {
+      /* A full or blocked storage quota used to fail silently and the player
+         only found out when Continue vanished. Trim, retry once, then say so. */
+      try {
+        window.localStorage.removeItem(this.KEY);
+        window.localStorage.setItem(target.key, JSON.stringify(snap));
+        this._lastWrite = Date.now();
+        this.flashSaveIcon();
+        return true;
+      } catch (e2) {
+        this._lastError = 'Storage is full — export a backup and delete a run.';
+        this.refreshMenuControls();
+        return false;
+      }
+    }
   },
 
   has() {
+    if (this.newest()) return true;
+    /* saves written before slots existed */
     if (!this.available()) return false;
     try { return !!window.localStorage.getItem(this.KEY); } catch (e) { return false; }
   },
 
   peek() {
-    if (!this.has()) return null;
+    const newest = this.newest();
+    if (newest) return newest.snap;
+    /* migrate a pre-slot save into the first slot on first read */
+    return this.legacySnap();
+  },
+
+  legacySnap() {
+    if (!this.available()) return null;
     try {
       const raw = JSON.parse(window.localStorage.getItem(this.KEY));
       if (!raw || raw.v !== 1 || !raw.player) return null;
@@ -5692,16 +5896,43 @@ const Save = {
     } catch (e) { return null; }
   },
 
-  clear() {
-    try { window.localStorage.removeItem(this.KEY); } catch (e) { /* ignore */ }
+  /* Clears only the run that was asked for. Delete used to wipe whichever
+     snapshot existed even when the player meant a different slot. */
+  clear(slotId) {
+    try {
+      if (slotId) window.localStorage.removeItem(this.slot(slotId).key);
+      else for (const sl of this.SLOTS) window.localStorage.removeItem(sl.key);
+      window.localStorage.removeItem(this.KEY);
+      /* keep the downgrade-compatible copy pointing at a run that still exists */
+      const newest = this.newest();
+      if (newest) window.localStorage.setItem(this.KEY, JSON.stringify(newest.snap));
+    } catch (e) { /* ignore */ }
     this.refreshMenuControls();
   },
 
   /* Restore a saved run into the live game. Rebuilds the floor from the stored
      seed first, then overlays the saved player so nothing is left stale. */
-  load() {
-    const snap = this.peek();
+  load(slotId) {
+    let snap, fromSlot = null;
+    if (slotId) {
+      fromSlot = this.slot(slotId).id;
+      /* An explicit slot is authoritative. Falling back to another slot here
+         meant "Load" could quietly resume a different run than the one tapped. */
+      snap = this.readSlot(slotId) || this.rawSlot(slotId);
+      if (!snap || snap.v !== 1 || !snap.player) {
+        /* keep a copy of the raw payload even though the slot is left alone,
+           so a later overwrite of that slot cannot destroy the evidence */
+        try { if (snap) window.localStorage.setItem('dungeonRogue.save.unreadable', JSON.stringify(snap)); } catch (e) { /* ignore */ }
+        this._lastError = 'That saved run is unreadable. It has been kept.';
+        return false;
+      }
+    } else {
+      const newest = this.newest();
+      if (newest) { snap = newest.snap; fromSlot = newest.id; }
+      if (!snap) { snap = this.legacySnap(); fromSlot = this.slotForNewRun(); }
+    }
     if (!snap) return false;
+    if (fromSlot) this._activeSlot = fromSlot;
     try {
       const pdata = snap.player;
       Game.endless = !!snap.endless;
@@ -5836,9 +6067,16 @@ const Save = {
       if(typeof COMPANION!=='undefined') COMPANION.coat=this.meta().activeCoat||'ember';
       return true;
     } catch (e) {
-      /* a broken save must never brick the game */
+      /* A broken save must never brick the game — but it must not be deleted
+         either. The old code called clear() here, so one bad snapshot silently
+         destroyed the player's run with no way to recover it. Park the payload
+         under a quarantine key and leave the slot untouched. */
       console.warn('Save load failed:', e && e.message);
-      this.clear();
+      try {
+        const raw = JSON.stringify(snap);
+        window.localStorage.setItem('dungeonRogue.save.unreadable', raw);
+      } catch (e2) { /* ignore */ }
+      this._lastError = 'That saved run could not be read. A copy was kept; try another slot.';
       return false;
     }
   },
@@ -5858,6 +6096,10 @@ const Save = {
   flashSaveIcon() {
     const el = $('saveToast');
     if (!el) return;
+    const stamp = new Date();
+    const hh = String(stamp.getHours()).padStart(2, '0');
+    const mm = String(stamp.getMinutes()).padStart(2, '0');
+    el.innerHTML = '<span class="svDot"></span>SEALED · ' + this.activeSlot().name + ' · ' + hh + ':' + mm;
     el.classList.remove('pop');
     void el.offsetWidth;
     el.classList.add('pop');
@@ -5933,14 +6175,14 @@ const Save = {
   refreshMenuControls() {
     const cont = $('continueBtn');
     if (!cont) return;
-    const snap = this.peek();
+    const newest = this.newest();
+    const snap = newest ? newest.snap : this.peek();
+    const slotName = newest ? this.slot(newest.id).name : this.activeSlot().name;
     if (snap) {
       cont.classList.remove('hidden');
-      const when = new Date(snap.savedAt || Date.now());
-      const mins = Math.max(0, Math.round((Date.now() - (snap.savedAt || Date.now())) / 60000));
-      const ago = mins < 1 ? 'just now' : mins < 60 ? mins + 'm ago' : Math.round(mins / 60) + 'h ago';
-      cont.innerHTML = 'Continue · Floor ' + snap.floor + ' · Lv ' + snap.player.level
-        + ' <span class="contMeta">saved ' + ago + '</span>';
+      const info = this.describe(snap);
+      cont.innerHTML = 'Continue · Floor ' + info.floor + ' · Lv ' + info.level
+        + ' <span class="contMeta">' + escapeHtml(slotName) + ' · ' + info.ago + '</span>';
     } else {
       cont.classList.add('hidden');
     }
@@ -5959,9 +6201,45 @@ const Save = {
         best.classList.add('hidden');
       }
     }
-    /* delete-save affordance only makes sense when a save exists */
     const del = $('deleteSaveBtn');
-    if (del) del.classList.toggle('hidden', !snap);
+    if (del) del.disabled = !snap;
+    const nowBtn = $('saveNowBtn');
+    if (nowBtn) nowBtn.disabled = !(Game.state === 'playing' && Game.player && !Game.player.dead);
+    this.renderSaveShelf();
+    const status = $('saveStatusLine');
+    if (status) {
+      status.textContent = this._lastError ? this._lastError
+        : snap ? 'Autosaves every few seconds while you play. Three slots keep old runs until you overwrite them.'
+        : 'No run saved yet. Autosaves start when you enter the dungeon.';
+      status.classList.toggle('warn', !!this._lastError);
+    }
+  },
+
+  /* The saved-run shelf in Profile & Backup. Rebuilt on every refresh so a
+     slot never shows stale floor/level numbers after a save or a load. */
+  renderSaveShelf() {
+    const shelf = $('saveShelf');
+    if (!shelf) return;
+    shelf.innerHTML = this.slotList().map((slot, i) => {
+      const mark = ['I', 'II', 'III'][i] || '✦';
+      if (!slot.snap) {
+        return '<div class="saveSlot empty"><span class="slotSigil" aria-hidden="true">' + mark + '</span>'
+          + '<strong>' + escapeHtml(slot.name) + '</strong>'
+          + '<small>Empty — a new run will seal itself here.</small></div>';
+      }
+      const info = this.describe(slot.snap);
+      return '<div class="saveSlot' + (slot.active ? ' active' : '') + '"><span class="slotSigil" aria-hidden="true">' + mark + '</span>'
+        + '<strong>' + escapeHtml(slot.name) + (slot.active ? ' · current' : '') + '</strong>'
+        + '<small>Floor ' + info.floor + ' · Level ' + info.level + ' · ' + fmt(info.gold) + 'g · ' + info.ago
+        + ' · ' + (this.slotInfo(slot.snap)) + '</small>'
+        + '<span class="slotBtns"><button class="bigBtn secondary" data-load-slot="' + slot.id + '">Load</button>'
+        + '<button class="bigBtn secondary" data-delete-slot="' + slot.id + '">Delete</button></span></div>';
+    }).join('');
+  },
+
+  slotInfo(snap) {
+    const p = snap.player || {};
+    return 'HP ' + Math.round(Number(p.hp) || 0) + ' · ' + (snap.expedition === 'standard' ? 'Unbound' : 'Oath-sworn');
   }
 };
 
@@ -5995,8 +6273,15 @@ function openPage(id) {
   if(id==='rewardsOverlay'||id==='sanctuaryOverlay') refreshMetaPages();
   const first=el.querySelector('button:not([disabled]),input:not([type=hidden])'); if(first) setTimeout(()=>first.focus(),0);
 }
+/* Escape should peel back one layer at a time: listbox first, then the page. */
+document.addEventListener('keydown', (ev) => {
+  if (ev.key !== 'Escape') return;
+  const menu = $('selectMenu');
+  if (menu && menu.classList.contains('show')) { ev.preventDefault(); ev.stopPropagation(); closeSelectMenu(); }
+}, true);
 function closePage(id) {
   const el=$(id); if(!el) return;
+  closeSelectMenu();
   el.classList.remove('show'); el.setAttribute('aria-hidden','true'); syncMenuOpen();
   if(id==='shrineOverlay'){
     Game.shrineOpen=false;
@@ -6011,7 +6296,133 @@ function refreshSettingsPage() {
   $('volumeSetting').value=Math.round(v.volume*100); $('volumeValue').textContent=Math.round(v.volume*100)+'%';
   $('shakeSetting').checked=v.screenShake; $('motionSetting').checked=v.reducedMotion; $('soundSetting').checked=!v.muted;
   $('numbersSetting').checked=v.damageNumbers; $('contrastSetting').checked=v.highContrast; $('largeUISetting').checked=v.largeUI; $('paletteSetting').value=v.palette; $('auraSetting').value=v.companionAura; $('heroAspectSetting').value=v.heroAspect; $('contractSetting').value=v.contract;
+  syncSelectTriggers();
 }
+/* ---------- themed list + toggle controls -------------------------------
+   Native selects and checkboxes are drawn by the operating system: on iOS a
+   white popover sits on top of this dark panel and the checkboxes are blue
+   system squares, so the menu stopped looking like part of the game. Each
+   select is now paired with a rune-lit trigger that opens an in-game listbox.
+   The hidden select stays the single source of truth, so Settings.set,
+   backups, saved runs and the existing change listeners keep working. */
+const SELECT_KEYS = {
+  paletteSetting: 'palette',
+  auraSetting: 'companionAura',
+  heroAspectSetting: 'heroAspect',
+  contractSetting: 'contract'
+};
+let _menuSelectId = null, _menuReturnFocus = null;
+
+function syncSelectTriggers() {
+  $$('.selectField').forEach(field => {
+    const sel = field.querySelector('select[data-triggered]');
+    if (!sel) return;
+    const label = field.querySelector('.fieldLabel');
+    const title = label ? label.textContent.trim() : '';
+    sel.setAttribute('aria-label', title);
+    const chosen = sel.options[sel.selectedIndex];
+    const trigger = field.querySelector('.selectTrigger');
+    if (trigger) {
+      trigger.querySelector('.stValue').textContent = chosen ? chosen.textContent : '—';
+      trigger.setAttribute('aria-label', title + ': ' + (chosen ? chosen.textContent : ''));
+    }
+  });
+}
+
+function selectTriggerFor(id) {
+  const sel = $(id);
+  return sel && sel.closest('.selectField') ? sel.closest('.selectField').querySelector('.selectTrigger') : null;
+}
+
+/* open the in-game listbox for one of the four settings selects */
+function openSelectMenu(id) {
+  const sel = $(id);
+  const menu = $('selectMenu');
+  if (!sel || !menu) return;
+  _menuSelectId = id;
+  _menuReturnFocus = document.activeElement;
+  const title = sel.getAttribute('aria-label') || 'Choose';
+  const options = Array.prototype.map.call(sel.options, (opt, i) => {
+    const selected = i === sel.selectedIndex;
+    return '<button type="button" class="smOption" role="option" aria-selected="' + selected + '" data-option-index="' + i + '">' +
+      '<span class="smRune" aria-hidden="true">' + (selected ? '✦' : '◌') + '</span>' +
+      '<span class="smText">' + escapeHtml(opt.textContent) + '</span></button>';
+  }).join('');
+  menu.innerHTML = '<div class="smPanel" role="dialog" aria-modal="true" aria-label="' + escapeHtml(title) + '">' +
+    '<div class="smHead"><h3>' + escapeHtml(title) + '</h3>' +
+    '<button type="button" class="bigBtn secondary smDone" data-sm-close>Done</button></div>' +
+    '<div class="smBody" role="listbox" aria-label="' + escapeHtml(title) + '">' + options + '</div></div>';
+  menu.classList.add('show');
+  menu.setAttribute('aria-hidden', 'false');
+  const trigger = selectTriggerFor(id);
+  if (trigger) trigger.setAttribute('aria-expanded', 'true');
+  Sound.play('ui');
+  const checked = menu.querySelector('.smOption[aria-selected="true"]') || menu.querySelector('.smOption');
+  if (checked) setTimeout(() => checked.focus(), 30);
+}
+
+function closeSelectMenu() {
+  const menu = $('selectMenu');
+  if (!menu || !menu.classList.contains('show')) return;
+  menu.classList.remove('show');
+  menu.setAttribute('aria-hidden', 'true');
+  menu.innerHTML = '';
+  const trigger = _menuSelectId ? selectTriggerFor(_menuSelectId) : null;
+  if (trigger) { trigger.setAttribute('aria-expanded', 'false'); if (_menuReturnFocus === document.body) trigger.focus(); }
+  _menuSelectId = null; _menuReturnFocus = null;
+}
+
+function chooseSelectOption(index) {
+  const id = _menuSelectId, sel = id ? $(id) : null;
+  if (!sel || !Number.isInteger(index) || !sel.options[index]) return;
+  if (sel.selectedIndex !== index) {
+    sel.selectedIndex = index;
+    sel.dispatchEvent(new Event('change', { bubbles: true }));
+  }
+  syncSelectTriggers();
+  closeSelectMenu();
+  const t = selectTriggerFor(id);
+  if (t) t.focus();
+}
+
+function setupMenuControls() {
+  $$('.selectField').forEach(field => {
+    const sel = field.querySelector('select');
+    if (!sel || field.querySelector('.selectTrigger')) return;
+    const trigger = document.createElement('button');
+    trigger.type = 'button';
+    trigger.className = 'selectTrigger';
+    trigger.setAttribute('aria-haspopup', 'listbox');
+    trigger.setAttribute('aria-expanded', 'false');
+    trigger.innerHTML = '<span class="stValue"></span><span class="stGlyph" aria-hidden="true">▾</span>';
+    trigger.addEventListener('click', () => openSelectMenu(sel.id));
+    field.appendChild(trigger);
+    sel.dataset.triggered = '1';
+  });
+  syncSelectTriggers();
+  const menu = $('selectMenu');
+  if (menu) {
+    menu.addEventListener('click', (ev) => {
+      if (ev.target === menu) { closeSelectMenu(); return; }
+      const close = ev.target.closest('[data-sm-close]');
+      if (close) { closeSelectMenu(); return; }
+      const opt = ev.target.closest('[data-option-index]');
+      if (opt) chooseSelectOption(Number(opt.dataset.optionIndex));
+    });
+    menu.addEventListener('keydown', (ev) => {
+      if (ev.key === 'Escape') { ev.preventDefault(); closeSelectMenu(); return; }
+      const list = menu.querySelectorAll('.smOption');
+      if (!list.length) return;
+      const at = Array.prototype.indexOf.call(list, document.activeElement);
+      if (ev.key === 'ArrowDown' || ev.key === 'ArrowUp') {
+        ev.preventDefault();
+        const next = Math.max(0, Math.min(list.length - 1, (at < 0 ? 0 : at) + (ev.key === 'ArrowDown' ? 1 : -1)));
+        list[next].focus();
+      }
+    });
+  }
+}
+
 function refreshMetaPages() {
   if(typeof COMPANION!=='undefined') COMPANION.coat=Save.meta().activeCoat||'ember';
   const m=Save.meta(), claimed=new Set(m.claimedRewards||[]);
@@ -6071,11 +6482,16 @@ function buyCompanionUpgrade(id) {
 function exportBackup() {
   let freshRun=true;
   if(Game.state==='playing'&&Game.player&&!Game.player.dead) freshRun=Save.save();
-  const payload={app:'dungeon-rogue-backup',version:1,exportedAt:new Date().toISOString(),run:Save.peek(),meta:Save.meta(),profile:Profile.get(),settings:Settings.get()};
+  const slots={};
+  Save.slotList().forEach(sl=>{ if(sl.snap) slots[sl.id]={name:sl.name,savedAt:Number(sl.snap.savedAt)||0,run:sl.snap}; });
+  const payload={app:'dungeon-rogue-backup',version:2,exportedAt:new Date().toISOString(),
+    /* `run` stays for older builds that only understand a single save */
+    run:Save.peek(),slots:slots,activeSlot:Save.activeSlot().id,meta:Save.meta(),profile:Profile.get(),settings:Settings.get()};
   const blob=new Blob([JSON.stringify(payload,null,2)],{type:'application/json'});
   const url=URL.createObjectURL(blob), a=document.createElement('a');
   a.href=url; a.download='dungeon-rogue-backup.json'; document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(url),1500);
-  $('backupStatus').textContent=freshRun?'Backup exported. Keep the JSON file somewhere safe; it can restore this run and permanent rewards.':'Backup exported, but the latest run could not be saved first; it contains the last autosaved run.';
+  const slotCount=Object.keys(slots).length;
+  $('backupStatus').textContent=freshRun?'Backup exported with '+slotCount+' saved run'+(slotCount===1?'':'s')+'. Keep the JSON file safe; it restores your runs, profile, rewards and visuals.':'Backup exported, but the latest run could not be saved first; it contains the last autosaved runs.';
 }
 function importBackupFile(file) {
   if(!file) return;
@@ -6084,16 +6500,32 @@ function importBackupFile(file) {
   reader.onload=()=>{
     try {
       const data=JSON.parse(String(reader.result||''));
-      if(data.app!=='dungeon-rogue-backup'||data.version!==1||!data.meta||typeof data.meta!=='object'||(data.run&&(!data.run.player||data.run.v!==1))) throw new Error('format');
-      if(!window.confirm('Replace this device’s current run, profile and rewards with the selected backup?')) return;
-      if(data.run) localStorage.setItem(Save.KEY,JSON.stringify(data.run)); else localStorage.removeItem(Save.KEY);
+      if(data.app!=='dungeon-rogue-backup'||![1,2].includes(data.version)||!data.meta||typeof data.meta!=='object'||(data.run&&(!data.run.player||data.run.v!==1))) throw new Error('format');
+      if(!window.confirm('Replace this device’s saved runs, profile, rewards and visuals with the selected backup?')) return;
+      /* A backup may hold up to three slots. Older v1 backups only have one
+         run, which is restored into slot I. */
+      Save.SLOTS.forEach(sl=>{ try{ localStorage.removeItem(sl.key); }catch(e){} });
+      let restored = 0;
+      if(data.slots && typeof data.slots==='object'){
+        for(const id of Object.keys(data.slots)){
+          const entry=data.slots[id];
+          const run=entry&&entry.run;
+          if(!run||run.v!==1||!run.player) continue;
+          try{ localStorage.setItem(Save.slot(id).key,JSON.stringify(run)); restored++; }catch(e){}
+        }
+      }
+      if(!restored && data.run){
+        try{ localStorage.setItem(Save.slot('a').key,JSON.stringify(data.run)); restored=1; }catch(e){}
+      }
+      if(restored){ Save.setActiveSlot(Save.newest().id); try{ localStorage.setItem(Save.KEY,JSON.stringify(Save.peek())); }catch(e){} }
+      else { try{ localStorage.removeItem(Save.KEY); }catch(e){} }
       Save.writeMeta(data.meta);
       Profile.setName(data.profile&&data.profile.name||'');
       const cfg=data.settings||{};
       Settings.set('volume',cfg.volume===undefined?0.85:cfg.volume); Settings.set('muted',!!cfg.muted); Settings.set('screenShake',cfg.screenShake!==false); Settings.set('reducedMotion',!!cfg.reducedMotion); Settings.set('damageNumbers',cfg.damageNumbers!==false); Settings.set('highContrast',!!cfg.highContrast); Settings.set('largeUI',!!cfg.largeUI); Settings.set('palette',['cinder','moon','moss'].includes(cfg.palette)?cfg.palette:'cinder'); Settings.set('companionAura',['none','ember','moon'].includes(cfg.companionAura)?cfg.companionAura:'none'); Settings.set('heroAspect',['wayfarer','moonblade','thornbound'].includes(cfg.heroAspect)?cfg.heroAspect:'wayfarer'); Settings.set('contract',['standard','pilgrim','reclaimer','glass'].includes(cfg.contract)?cfg.contract:'standard');
       $('profileName').value=Profile.get().name;
       Save.refreshMenuControls(); refreshSettingsPage(); refreshMetaPages();
-      $('backupStatus').textContent='Backup restored on this device. '+(data.run?'Your run is ready to continue.':'No active run was included.');
+      $('backupStatus').textContent='Backup restored on this device. '+(restored?restored+' saved run'+(restored>1?'s':'')+' ready in your slots.':'No active run was included.');
     } catch(e) { $('backupStatus').textContent='Import failed: this file is not a valid Dungeon Rogue backup.'; }
   };
   reader.onerror=()=>{$('backupStatus').textContent='The backup file could not be read.';}; reader.readAsText(file);
@@ -6244,10 +6676,15 @@ function startRun() {
   Sound.startMusic();
   updateHud(true);
   refreshInventoryUI();
-  /* a brand-new run supersedes any old save, then begins autosaving */
-  Save.clear();
+  /* A new run claims a free slot instead of wiping the previous save. Only
+     when all three are full does it recycle the oldest run. */
+  Save.setActiveSlot(Save.slotForNewRun());
   Save.recordRunStart();
   Save.startAutosave();
+  if (Save.available()) {
+    const kept = Save.slotList().filter(sl => sl.snap && sl.id !== Save.activeSlot().id).length;
+    if (kept) toast('Earlier runs are still kept in ' + kept + ' other slot' + (kept === 1 ? '' : 's') + '.', 'gold');
+  }
   Save.save();
 }
 
@@ -11972,7 +12409,9 @@ function showDeath() {
   $('deathOverlay').classList.add('show'); syncMenuOpen();
   Sound.stopMusic();
   Save.recordDeath();
-  Save.clear();
+  /* A death ends this run: clear only the slot it was using, so a second
+     saved run survives the death screen. */
+  Save.clear(Save.activeSlot().id);
   Save.stopAutosave();
 }
 function showVictory() {
@@ -12034,7 +12473,7 @@ function setupInput() {
       case 'KeyF': if (!Game.paused) doInteract(); break;
       case 'KeyM': toggleSound(); break;
       case 'KeyS':
-        if (ev.ctrlKey || ev.metaKey) { ev.preventDefault(); if (Save.save()) toast('Progress saved.', 'good'); }
+        if (ev.ctrlKey || ev.metaKey) { ev.preventDefault(); if (Save.save()) toast('Sealed in ' + Save.activeSlot().name + '.', 'good'); else toast(Save._lastError || 'Saving is unavailable in this browser.', 'danger'); }
         break;
       case 'KeyP': togglePause(); break;
       case 'Enter': if (Game.paused) togglePause(); break;
@@ -12142,10 +12581,11 @@ function setupInput() {
   $('numbersSetting').addEventListener('change',ev=>Settings.set('damageNumbers',ev.target.checked));
   $('contrastSetting').addEventListener('change',ev=>Settings.set('highContrast',ev.target.checked));
   $('largeUISetting').addEventListener('change',ev=>Settings.set('largeUI',ev.target.checked));
-  $('paletteSetting').addEventListener('change',ev=>Settings.set('palette',ev.target.value));
-  $('auraSetting').addEventListener('change',ev=>Settings.set('companionAura',ev.target.value));
-  $('heroAspectSetting').addEventListener('change',ev=>Settings.set('heroAspect',ev.target.value));
-  $('contractSetting').addEventListener('change',ev=>Settings.set('contract',ev.target.value));
+  setupMenuControls();
+  $('paletteSetting').addEventListener('change',ev=>{Settings.set('palette',ev.target.value);syncSelectTriggers();});
+  $('auraSetting').addEventListener('change',ev=>{Settings.set('companionAura',ev.target.value);syncSelectTriggers();});
+  $('heroAspectSetting').addEventListener('change',ev=>{Settings.set('heroAspect',ev.target.value);syncSelectTriggers();});
+  $('contractSetting').addEventListener('change',ev=>{Settings.set('contract',ev.target.value);syncSelectTriggers();});
   $('profileName').addEventListener('change',ev=>{ev.target.value=Profile.setName(ev.target.value);Save.refreshMenuControls();});
   $('profileName').addEventListener('blur',ev=>{ev.target.value=Profile.setName(ev.target.value);Save.refreshMenuControls();});
   $('exportBackupBtn').addEventListener('click',exportBackup);
@@ -12157,10 +12597,40 @@ function setupInput() {
   $('shrineChoices').addEventListener('click',ev=>{const b=ev.target.closest('[data-shrine-oath]');if(b)chooseShrineOath(b.dataset.shrineOath);});
 
   $('continueBtn').addEventListener('click', continueRun);
+  $('saveNowBtn').addEventListener('click', () => {
+    if (Save.save()) { toast('Sealed in ' + Save.activeSlot().name + '.', 'good'); Sound.play('ui'); }
+    else toast(Save._lastError || 'Saving is unavailable in this browser.', 'danger');
+    Save.refreshMenuControls();
+  });
   $('deleteSaveBtn').addEventListener('click', () => {
-    Save.clear();
+    const newest = Save.newest();
+    const target = newest ? newest.id : Save.activeSlot().id;
+    const label = Save.slot(target).name;
+    if (!window.confirm('Delete the run in ' + label + '? Export a backup first if you may want it again.')) return;
+    Save.clear(target);
     Sound.play('ui');
-    toast('Saved run deleted.', 'good');
+    toast('Deleted the run in ' + label + '.', 'good');
+  });
+  $('saveShelf').addEventListener('click', (ev) => {
+    const load = ev.target.closest('[data-load-slot]');
+    const del = ev.target.closest('[data-delete-slot]');
+    if (load) {
+      const id = load.dataset.loadSlot;
+      if (!Save.readSlot(id)) { toast('That slot is empty.', 'danger'); return; }
+      if (!window.confirm('Load the run in ' + Save.slot(id).name + '? Your current unsaved progress will be replaced.')) return;
+      closePage('profileOverlay');
+      continueRun(id);
+      return;
+    }
+    if (del) {
+      const id = del.dataset.deleteSlot;
+      const label = Save.slot(id).name;
+      if (!window.confirm('Delete the run in ' + label + '? This cannot be undone.')) return;
+      Save.clear(id);
+      Sound.play('ui');
+      toast('Deleted the run in ' + label + '.', 'good');
+      Save.refreshMenuControls();
+    }
   });
   $('resumeBtn').addEventListener('click', () => togglePause(false));
   $('pauseInvBtn').addEventListener('click', () => { togglePause(false); toggleInventory(true); });
@@ -12170,8 +12640,8 @@ function setupInput() {
   $('pauseRewardsBtn').addEventListener('click', () => openPage('rewardsOverlay'));
   $('pauseShopBtn').addEventListener('click', () => openPage('sanctuaryOverlay'));
   $('pauseSaveBtn').addEventListener('click', () => {
-    if (Save.save()) { toast('Progress saved.', 'good'); Sound.play('ui'); }
-    else toast('Saving is unavailable in this browser.', 'danger');
+    if (Save.save()) { toast('Sealed in ' + Save.activeSlot().name + '.', 'good'); Sound.play('ui'); }
+    else toast(Save._lastError || 'Saving is unavailable in this browser.', 'danger');
   });
   $('abandonBtn').addEventListener('click', () => {
     togglePause(false);
@@ -12493,6 +12963,8 @@ function toggleSound() {
 function initSaveState() {
   if (!Save.available()) {
     console.warn('localStorage is unavailable: autosave disabled.');
+    const status = $('saveStatusLine');
+    if (status) { status.classList.add('warn'); status.textContent = 'This browser blocks local storage, so runs cannot be saved. Export a backup from a normal browsing window.'; }
     return;
   }
   Save.refreshMenuControls();
@@ -12500,14 +12972,35 @@ function initSaveState() {
   window.addEventListener('beforeunload', () => {
     if (Game.state === 'playing' && Game.player && !Game.player.dead) Save.save();
   });
+  /* iOS freezes or discards a backgrounded tab without ever firing unload.
+     Writing on visibilitychange is the only reliable hook on a phone, and the
+     old code skipped it whenever an overlay had paused the game — exactly the
+     moment a player is most likely to switch apps. */
   document.addEventListener('visibilitychange', () => {
     if (document.visibilityState === 'hidden' && Game.state === 'playing'
-        && Game.player && !Game.player.dead && !Game.paused) {
+        && Game.player && !Game.player.dead) {
       Save.save();
+      if (Game.paused) Save.startAutosave();
+    }
+  });
+  /* A frozen tab can come back with a dead autosave timer: re-arm it when the
+     page becomes visible again so a resumed run keeps saving. */
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible' && Game.state === 'playing'
+        && Game.player && !Game.player.dead) {
+      Save.startAutosave();
     }
   });
 }
 function beginGame() {
+  /* Three full slots means the oldest run is about to be replaced; say which. */
+  if (Save.available() && Save.slotList().every(sl => sl.snap)) {
+    const oldest = Save.slotForNewRun();
+    const snapshot = Save.readSlot(oldest);
+    const info = Save.describe(snapshot);
+    if (!window.confirm('All three save slots are full. Starting a new run replaces the oldest: '
+        + Save.slot(oldest).name + ' (Floor ' + info.floor + ', ' + info.ago + '). Continue?')) return;
+  }
   Sound.init(); Sound.resume();
   /* starting fresh discards the old save only once the new run is real */
   $('startFade').classList.add('black');
@@ -12519,17 +13012,23 @@ function beginGame() {
   }, 420);
 }
 /* Resume the autosaved run exactly where it was left. */
-function continueRun() {
+function continueRun(slotId) {
   Sound.init(); Sound.resume();
   $('startFade').classList.add('black');
   setTimeout(() => {
     $('startScreen').classList.remove('show'); syncMenuOpen();
-    const ok = Save.load();
+    /* a hidden menu must not keep the old run's paused state */
+    Game.paused = false;
+    const ok = Save.load(slotId);
     $('startFade').classList.remove('black');
     Game.input.mouseDown = false;
     if (!ok) {
-      toast('That save could not be read. Starting a new run.', 'danger');
-      startRun();
+      /* Never auto-start a new run on top of a save that failed to load: the
+         player would lose the only copy without being asked. */
+      $('startScreen').classList.add('show'); syncMenuOpen();
+      toast('That saved run could not be read. It has been kept; try another slot in Profile & Backup.', 'danger');
+      openPage('profileOverlay');
+      Save.refreshMenuControls();
     } else {
       toast('Welcome back. Floor ' + Game.floor + ', level ' + Game.player.level + '.', 'good');
       Sound.startMusic();
