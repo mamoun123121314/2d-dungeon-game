@@ -3,9 +3,9 @@
 A complete, runnable action-RPG dungeon crawler in a **single `index.html`** file.
 No external images, no libraries, no build step — open the file in a browser and play.
 
-Every pixel is drawn procedurally with the Canvas 2D API, and every sound is
-synthesized at runtime with the Web Audio API. There is not a single asset file
-in the repository other than the HTML itself.
+Every in-game pixel is drawn procedurally with the Canvas 2D API, and every
+sound is synthesized at runtime with the Web Audio API. The game has no external
+asset or library dependencies; the optional promotional media is kept in `ad/`.
 
 ```
 open index.html          # macOS
@@ -19,11 +19,11 @@ start index.html         # Windows
 | --- | --- |
 | `W A S D` / arrow keys | Move (8-directional, with wall sliding) |
 | Mouse | Aim |
-| Left click / `Space` | Sword slash (wide arc, cleaves up to 3 foes) |
+| Left click | Sword slash (wide arc, cleaves up to 3 foes) |
 | `Q` / right click | Magic Missile (8 mana) |
-| `E` | Ground Slam (stamina-free AoE burst) |
+| `E` | Ground Slam (18 mana, area burst) |
 | `R` | Drink a healing potion |
-| `Shift` | Dodge roll (brief invulnerability) |
+| `Space` | Dodge roll (brief invulnerability) |
 | `F` | Interact — chests, stairs, merchant, vault door |
 | `I` / `Tab` | Inventory, equipment paperdoll, item tooltips |
 | `T` | Talents — spend points earned every third level |
@@ -76,6 +76,10 @@ screen under 900 px.
   and a burst of particles + jingle.
 - Mana regen, out-of-combat health regen, lava/ice hazard interactions,
   dodge i-frames, crits, misses, knockback and hit-stop.
+- **Ember**, a dog companion who attacks nearby enemies and regroups if walls
+  strand her or she falls too far behind. Permanent shard-funded Sanctuary
+  training improves her health, bite damage, or movement speed; earned ranks
+  persist with the local meta save.
 
 ### Loot, inventory, merchant
 - 52 item bases across 6 slots (Helmet, Armor, Weapon, Shield, Boots, Ring).
@@ -189,9 +193,13 @@ A Minecraft-style autosave keeps a single run slot:
 - **Continue** on the title screen resumes the saved run and shows the floor,
   level and how long ago it was saved. **Delete saved run** clears it.
 - Loading is defensive: ratings, ranks, item fields and slot names are all
-  clamped and validated, and a corrupt or hand-edited save is discarded rather
-  than crashing the game. A broken save can never brick the boot.
-- Saves are ~1.2 KB and cost 0.05 ms to write.
+  clamped and validated, and invalid run data is rejected rather than crashing
+  the game.
+- Settings and profile name are stored locally. The utility menu can export or
+  import a JSON backup containing the run, meta progression, profile, and settings.
+- Save size and write time vary with the run and device; no server account is
+  required. Clearing browser/site data can erase local progress, so export a
+  backup first if you need to preserve it.
 
 ### Graphics
 - **Dynamic lighting engine.** Every light carries colour, radius, intensity
@@ -241,48 +249,24 @@ intensity — a bowed minor-second tension rub. Intensity engages quickly and
 relaxes slowly (a boss pins it at maximum), so the music swells with the fight
 and eases out afterwards instead of switching on and off.
 
-## Verified
+## Verification
 
-The build was exercised with a headless jsdom harness driving the real game loop.
-**1,403 automated assertions across six suites, all passing:**
+Run the dependency-free repository checks with:
 
-| Suite | Checks | What it covers |
-| --- | --- | --- |
-| `regress.js` | 287 | boot, DOM bindings, run start, room themes, status engine, elemental loot, talent tree, merchant, boss moveset, live sim, combat, 10 floor builds |
-| `endless.js` | 146 | affix table and rolls, per-affix effects, volatile explosion, HUD chips, light clamping, endless floors, combat intensity |
-| `savetest.js` | 159 | save round-trip, seed reproducibility, corrupt/hostile saves, meta progression, menu UI, combo, bounties, elite traits, loot reveal, milestones |
-| `soak.js` | 778 | 2,400 frames of combat, 16 floors, repeated save/load, 40 shops, full talent tree, 900-frame status storm, 3,000-frame boss fight, phone run |
-| `uitest.js` | 33 | every panel, every button clickable, bounty/combo/affix widgets |
-| `phonetest.js` | 13 | detection, touch movement, action buttons, phone-size render |
+```sh
+python3 scripts/check_site.py
+```
 
-Additional verification:
+This validates the self-contained page structure, duplicate IDs, local
+references, JavaScript syntax, and CSS brace balance. The GitHub Pages workflow
+runs these checks before deploying. A headless jsdom smoke check in the current
+audit also booted the game, opened inventory and settings, purchased and
+persisted companion upgrades, round-tripped a save, built ten seeded floors,
+and ran 600 update/render frames without runtime errors.
 
-- **Deterministic seeds**: the same seed produces a byte-identical tile array;
-  a different seed produces a different layout; `seed: 0` is honoured.
-- **Corrupt saves**: broken JSON, a missing player, and hostile values (NaN
-  levels, negative gold, 99-rarity items, bogus talent ids, junk inventory
-  slots) are all discarded or clamped without a single throw.
-- **Saves never double-pay**: a loaded floor does not re-award its milestone.
-- 480 generated floors: every entrance reaches the stairs, the vault stays sealed.
-- Full run: ten floors → victory → endless floor 11 with a scaled boss.
-- Combat math, melee/crit/miss, magic missiles, potions, dodge, slam.
-- Inventory: equip, unequip, tooltips, buy, sell, level-up refills.
-- 26 sound effects build valid audio graphs with no invalid ramps.
-- Merchant placement clear of props and reachable on every floor tested.
-- Boss/elite aggro on line of sight, proximity aggro through corners.
-- 1,200-frame stress run: no runtime errors, no console output.
-- Rendering: scenes captured to SVG/PNG and inspected per biome; verified lit
-  floors vs shadowed walls by luminance (stone 81/25, lava 75/19, ice 89/31),
-  and confirmed no fog grid artifacts.
-- Performance on a busy floor 9 (37 enemies, 165 props, 155 particles,
-  combat layer at full intensity): **0.38 ms** render, **2.65 ms** update,
-  **0.03 ms** light gathering, **0.05 ms** to save 1.2 KB. Tile art is baked
-  once per theme and cached.
-- Phone mode: device detection, stick movement and deadzone, all five action
-  buttons, rail mirroring, orientation nudge, touch-only chest opening, and a
-  500-frame phone soak run — all passing with the desktop layout unchanged.
-- Button cluster geometry verified on four device sizes: no overlaps, none
-  outside the viewport, none intruding into the stick zone.
+These structural and headless checks are not a substitute for testing actual
+Canvas rendering, audio, and touch behavior in each target browser. Local saves
+are device/browser-specific.
 
 ## Layout
 
