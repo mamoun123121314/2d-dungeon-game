@@ -329,7 +329,40 @@ try {
     await new Promise((r) => setTimeout(r, 150));
     const selfHealed = STORY.open === false;
     const movedWithStuckFlag = await move(420);
-    return { shown, after, movedWhileShown, movedAfterDismiss, selfHealed, movedWithStuckFlag };
+
+    /* A phone player has no keyboard, so the tap-to-advance paths are the only
+       way out of the card. Test each one the way a thumb would trigger it. */
+    const paths = {};
+    for (const [name, fire] of Object.entries({
+      continuingButton: () => el.querySelector('#storyNext')?.click(),
+      tappingTheCard: () => {
+        const ev = new MouseEvent('click', { bubbles: true, cancelable: true });
+        el.dispatchEvent(ev);
+      },
+    })) {
+      STORY.seen = {};
+      STORY.enter(1);
+      await new Promise((r) => setTimeout(r, 1050));
+      const cameUp = STORY.open === true && getComputedStyle(el).display !== 'none';
+      fire();
+      await new Promise((r) => setTimeout(r, 160));
+      paths[name] = { cameUp, dismissed: STORY.open === false && getComputedStyle(el).display === 'none' };
+    }
+
+    /* the stick must not be able to turn the hero while the card holds him:
+       aiming is written straight from the touch handler, bypassing the paused
+       update(), which is why "the sword moves but I cannot fight" happened */
+    STORY.seen = {};
+    STORY.enter(1);
+    await new Promise((r) => setTimeout(r, 1050));
+    const angleBefore = p.aimAngle;
+    Game.input.touchDir = { x: -1, y: 0 };
+    p.aimAngle = Math.PI;                 // what Phone.track() writes while dragging
+    await new Promise((r) => setTimeout(r, 300));
+    Game.input.touchDir = null;
+
+    return { shown, after, movedWhileShown, movedAfterDismiss, selfHealed,
+             movedWithStuckFlag, paths, angleBefore };
   });
   check('the story card actually paints', story.shown.display !== 'none' && story.shown.height > 0, story.shown);
   check('the Continue button has a real hit target', story.shown.buttonBox >= 30, story.shown.buttonBox);
@@ -338,6 +371,10 @@ try {
   check('the player moves again after dismissing', story.movedAfterDismiss > 20, story.movedAfterDismiss);
   check('an open flag with no card corrects itself', story.selfHealed === true, story.selfHealed);
   check('an open flag with no card cannot freeze the player', story.movedWithStuckFlag > 20, story.movedWithStuckFlag);
+  check('the Continue button dismisses the card on a phone',
+    story.paths.continuingButton.cameUp && story.paths.continuingButton.dismissed, story.paths.continuingButton);
+  check('tapping the card dismisses it on a phone',
+    story.paths.tappingTheCard.cameUp && story.paths.tappingTheCard.dismissed, story.paths.tappingTheCard);
 
   /* ============ runtime health ============ */
   section('Runtime health');

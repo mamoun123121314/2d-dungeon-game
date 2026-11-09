@@ -1058,6 +1058,9 @@ body.is-phone #phoneRail{display:block;}
 #phoneRail .pBar.hp i{background:linear-gradient(90deg,#8f1f1f,#e0554d 60%,#ff8a72);}
 #phoneRail .pBar.mp i{background:linear-gradient(90deg,#1d3f7a,#3f7dd6 60%,#79b6ff);}
 #phoneRail .pBar.emb i{background:linear-gradient(90deg,#8a4a1c,#e0954a 60%,#ffd0a0);}
+#phoneRail .pBar.xp i{background:linear-gradient(90deg,#5c4a12,#b99a3f 60%,#f3d99a);}
+/* the rail is a slim readout, so the XP numbers are tighter than the bar text */
+#phoneRail .pRow.pXp{opacity:.92;}
 #phoneRail .pBar em{position:absolute;inset:0;font-style:normal;font-family:var(--font-mono);
   font-size:8px;line-height:11px;text-align:center;color:#f6ead2;text-shadow:0 1px 2px #000;letter-spacing:.04em;}
 #phoneRail .pLvl{font-family:var(--font-mono);font-size:9px;color:var(--gold-bright);
@@ -1078,10 +1081,14 @@ body.is-phone #phoneRail{display:block;}
    ability buttons that live there: the hint covered a control the player was
    trying to press. It now sits under the top HUD, where portrait play has no
    controls. */
-#rotateNudge{position:fixed;left:50%;
-  bottom:auto;top:calc(env(safe-area-inset-top, 0px) + 74px);
-  transform:translateX(-50%);z-index:56;display:none;pointer-events:none;
-  max-width:calc(100vw - 24px);padding:7px 13px;border-radius:999px;
+/* Portrait layout has no free band: the vitals rail owns the top, the dungeon
+   the middle, the thumbstick and action rail the bottom. The BOUNTIES panel
+   sits at top:66px left:10px and only 126px wide, so the nudge is pinned to the
+   remaining space to its right instead of being centred across it. */
+#rotateNudge{position:fixed;left:auto;right:10px;
+  bottom:auto;top:calc(env(safe-area-inset-top, 0px) + 70px);
+  transform:none;z-index:56;display:none;pointer-events:none;
+  max-width:calc(58vw - 12px);padding:7px 13px;border-radius:999px;
   background:rgba(10,8,16,.9);border:1px solid rgba(217,181,107,.34);
   color:#bdb1c8;font-family:var(--font-ui);font-size:10.5px;letter-spacing:.04em;
   align-items:center;gap:8px;line-height:1.25;}
@@ -1354,6 +1361,14 @@ body.is-phone #startScreen .phoneStart{display:flex;}
   text-transform: uppercase; color: #8fe0a8; opacity: 0; pointer-events: none;
   transition: opacity .3s; text-shadow: 0 1px 3px #000; z-index: 4; }
 #saveToast.pop { animation: savePop 1.5s ease-out; }
+/* On a phone the bottom-right corner belongs to SLASH (and the row above it to
+   POTION/MISSILE/SLAM), so the autosave stamp used to fade in directly on top
+   of the attack button. The button column starts around x=254 on a 430pt
+   phone, so the stamp is pinned to the bottom-LEFT band instead, under Ember's
+   chip, where the only thing it can meet is the (invisible when idle)
+   thumbstick ring. */
+body.is-phone #saveToast { right: auto; left: 10px; max-width: calc(50% - 20px);
+  bottom: calc(10px + env(safe-area-inset-bottom, 0px)); }
 .svDot { width: 6px; height: 6px; border-radius: 50%; background: #8fe0a8;
   box-shadow: 0 0 8px #8fe0a8; }
 @keyframes savePop {
@@ -1640,9 +1655,14 @@ body.is-phone .affixChip{font-size:7.5px;padding:2px 6px;}
     <span class="pLvl" style="visibility:hidden">LV</span>
     <div class="pBar mp"><i id="pMpFill" style="width:100%"></i><em id="pMpText">40/40</em></div>
   </div>
-  <div class="pRow pEmber" style="margin-top:2px;">
+  <!-- Third rail slot: XP. Ember used to be drawn here AND in the #compHud
+       chip at the bottom left, so a phone showed her twice while the XP bar
+       behind #playerHud was hidden and showed her nowhere else. Ember keeps
+       the chip (it carries her bond as well as her health); this slot now
+       carries the one vital a phone could not see at all. -->
+  <div class="pRow pXp" style="margin-top:2px;">
     <span class="pLvl" style="visibility:hidden">LV</span>
-    <div class="pBar emb"><i id="pEmbFill" style="width:100%"></i><em id="pEmbText">EMBER</em></div>
+    <div class="pBar xp"><i id="pXpFill" style="width:0%"></i><em id="pXpText">0 / 60 XP</em></div>
   </div>
   <div class="pCur">
     <span>G <b id="pGold">0</b></span>
@@ -3715,104 +3735,220 @@ class Dungeon {
     }
   }
   lockVault(vault) {
-    /* Rather than walling the whole chamber (which severs corridors that pass
-       nearby), cut the corridor mouths that feed it and leave a single locked
-       door. The chamber interior stays intact and is only reachable through
-       the door. */
-    const entries = [];
-    for (let y = vault.y - 1; y <= vault.y + vault.h; y++) {
-      for (let x = vault.x - 1; x <= vault.x + vault.w; x++) {
-        const inside = x >= vault.x && x < vault.x + vault.w && y >= vault.y && y < vault.y + vault.h;
-        if (inside) continue;
-        if (!this.isWalkable(x, y)) continue;
-        let touches = false;
-        for (const d of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
-          const nx2 = x + d[0], ny2 = y + d[1];
-          if (nx2 >= vault.x && nx2 < vault.x + vault.w && ny2 >= vault.y && ny2 < vault.y + vault.h) touches = true;
-        }
-        if (!touches) continue;
-        entries.push([x, y]);
+    /* Seal the chamber from the INSIDE.
+       The original approach walled every exterior corridor mouth that fed the
+       chamber and left one as a door. That is the source of both reported
+       bugs and of a much bigger one: an exterior mouth is ordinary dungeon
+       corridor, so walling it can cut the level in half (worst case measured:
+       1760 stranded cells, and floors where the stairs became unreachable).
+       Sealing inward instead means the chamber is walled off using only its own
+       border ring, which nothing outside can need, and the single door is the
+       only hole in that ring. Anything the seal strands is picked up by
+       repairConnectivity(), which runs afterwards and may not dig back in. */
+    const inside = (x, y) => x >= vault.x && x < vault.x + vault.w && y >= vault.y && y < vault.y + vault.h;
+    const border = [];
+    for (let y = vault.y; y < vault.y + vault.h; y++) {
+      for (let x = vault.x; x < vault.x + vault.w; x++) {
+        const onEdge = x === vault.x || x === vault.x + vault.w - 1 ||
+                       y === vault.y || y === vault.y + vault.h - 1;
+        if (onEdge) border.push([x, y]);
       }
     }
-    if (!entries.length) return;   /* isolated chamber: leave it open */
-    /* the door goes on the mouth closest to the chamber's centre */
-    let best = entries[0], bestD = Infinity;
-    for (const [x, y] of entries) {
-      const dd = dist2(x, y, vault.cx, vault.cy);
-      if (dd < bestD) { bestD = dd; best = [x, y]; }
+    if (border.length < 8) return;   /* too small to ring: leave it open */
+
+    /* Candidate doors are the border cells that face walkable dungeon floor.
+       Try them all, walling the rest of the ring each time, and keep the first
+       one that leaves the level whole and the chamber airtight. */
+    const original = Uint8Array.from(this.tiles);
+    const candidates = border.filter(([x, y]) => {
+      for (const [ax, ay] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+        const nx = x + ax, ny = y + ay;
+        if (inside(nx, ny)) continue;
+        if (nx < 1 || ny < 1 || nx >= this.W - 1 || ny >= this.H - 1) continue;
+        if (this.isWalkable(nx, ny)) return true;
+      }
+      return false;
+    });
+    if (!candidates.length) { this.tiles.set(original); return; }
+
+    const order = candidates.slice().sort((a, b) =>
+      dist2(a[0], a[1], vault.cx, vault.cy) - dist2(b[0], b[1], vault.cx, vault.cy));
+
+    let winner = null;
+    for (const [dx2, dy2] of order) {
+      this.tiles.set(original);
+      this.vaultRoom = vault;
+      for (const [x, y] of border) this.set(x, y, WALL);
+      this.set(dx2, dy2, DOOR);
+      this.vaultDoor = { x: dx2, y: dy2, locked: true, room: vault };
+      /* the door needs somewhere to stand outside it */
+      const reach = this.spawnReach();
+      let usable = false;
+      for (const [ax, ay] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+        const nx = dx2 + ax, ny = dy2 + ay;
+        if (inside(nx, ny)) continue;
+        if (nx < 1 || ny < 1 || nx >= this.W - 1 || ny >= this.H - 1) continue;
+        if (this.isWalkable(nx, ny) && reach(ny, nx)) { usable = true; break; }
+      }
+      if (!usable) continue;
+      if (!this.vaultIsSealed(vault, dx2, dy2)) continue;
+      winner = [dx2, dy2];
+      break;
     }
-    for (const [x, y] of entries) {
-      if (x === best[0] && y === best[1]) continue;
-      this.set(x, y, WALL);
-    }
-    const [dx, dy] = best;
-    this.set(dx, dy, DOOR);
+    if (!winner) { this.tiles.set(original); return; }
+    this.tiles.set(original);
     this.vaultRoom = vault;
-    this.vaultDoor = { x: dx, y: dy, locked: true, room: vault };
+    for (const [x, y] of border) this.set(x, y, WALL);
+    this.set(winner[0], winner[1], DOOR);
+    this.vaultDoor = { x: winner[0], y: winner[1], locked: true, room: vault };
     this.needsKey = true;
+  }
+
+  /* Flood from the entrance, treating a locked vault door as solid, and report
+     whether a tile can be walked to. */
+  spawnReach() {
+    const W = this.W, H = this.H;
+    const seen = new Uint8Array(W * H);
+    const sx = this.entrance.x, sy = this.entrance.y;
+    if (sx < 0 || sy < 0 || sx >= W || sy >= H) return () => false;
+    const q = [sy * W + sx];
+    seen[sy * W + sx] = 1;
+    let head = 0;
+    while (head < q.length) {
+      const cur = q[head++];
+      const cx = cur % W, cy = (cur - cx) / W;
+      for (const [ddx, ddy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+        const nx = cx + ddx, ny = cy + ddy;
+        if (nx < 0 || ny < 0 || nx >= W || ny >= H) continue;
+        const n = ny * W + nx;
+        if (seen[n]) continue;
+        const t = this.tiles[n];
+        if (!(t === FLOOR || t === STAIRS || t === RUBBLE || t === LAVA || t === ICE || t === PIT)) continue;
+        seen[n] = 1; q.push(n);
+      }
+    }
+    return (ty, tx) => (tx < 0 || ty < 0 || tx >= W || ty >= H) ? false : !!seen[ty * W + tx];
+  }
+
+  /* Wall off every cell that still connects the outside world to the chamber
+     interior, so the door is the only way in. Seals against the whole chamber
+     rather than only the part reachable from the door: a chamber with a pillar
+     in it could otherwise be entered through an interior pocket. */
+  /* How many walkable non-vault cells the entrance can no longer reach. */
+  /* True when the chamber cannot be entered with the door treated as solid. */
+  vaultIsSealed(vault, doorX, doorY) {
+    const W = this.W, H = this.H;
+    const seen = new Uint8Array(W * H);
+    const sx = this.entrance.x, sy = this.entrance.y;
+    const q = [sy * W + sx];
+    seen[sy * W + sx] = 1;
+    let head = 0;
+    while (head < q.length) {
+      const cur = q[head++];
+      const cx = cur % W, cy = (cur - cx) / W;
+      if (cx >= vault.x && cx < vault.x + vault.w && cy >= vault.y && cy < vault.y + vault.h) {
+        return false;                      /* walked into the vault */
+      }
+      for (const [ax, ay] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+        const nx = cx + ax, ny = cy + ay;
+        if (nx < 0 || ny < 0 || nx >= W || ny >= H) continue;
+        if (nx === doorX && ny === doorY) continue;      /* shut door is solid */
+        const n = ny * W + nx;
+        if (seen[n]) continue;
+        if (!this.isWalkable(nx, ny)) continue;
+        seen[n] = 1; q.push(n);
+      }
+    }
+    return true;
   }
 
   /* Safety net: if a cut corridor (or packed pillars) disconnected part of the
      floor, carve an L-shaped service tunnel from the stranded tile back to the
      entrance. The sealed vault interior is deliberately left stranded. */
   repairConnectivity() {
+    /* Reconnect stranded regions with SHORTEST tunnels that route around the
+       locked vault, rather than the old horizontal-then-vertical L. The L
+       walked straight at the target and clipped the chamber, where carving is
+       refused, so it silently failed and left whole regions cut off. A BFS from
+       the stranded cell to the reachable set finds a way around any obstacle,
+       and the vault interior plus its sealed ring is impassable to it. */
     const W = this.W, H = this.H, total = W * H;
-    const visit = new Uint8Array(total);
+    const vd = this.vaultDoor;
+    const v = this.vaultRoom;
+    const sealedRing = (x, y) => {
+      if (!v || !vd || !vd.locked) return false;
+      /* the chamber itself, plus the wall ring lockVault() built around it */
+      return x >= v.x - 1 && x <= v.x + v.w && y >= v.y - 1 && y <= v.y + v.h;
+    };
+    const passable = (x, y, forCarving) => {
+      if (x < 1 || y < 1 || x >= W - 1 || y >= H - 1) return false;
+      if (sealedRing(x, y)) return false;              /* never dig back in */
+      if (vd && vd.locked && x === vd.x && y === vd.y) return false;
+      if (forCarving) return true;
+      return this.isWalkable(x, y);
+    };
     const flood = () => {
-      visit.fill(0);
+      const seen = new Uint8Array(total);
       const sx = this.entrance.x, sy = this.entrance.y;
-      if (sx < 1 || sy < 1 || sx >= W - 1 || sy >= H - 1) return;
-      const start = sy * W + sx;
-      visit[start] = 1;
-      const q = [start];
+      if (sx < 1 || sy < 1 || sx >= W - 1 || sy >= H - 1) return seen;
+      const q = [sy * W + sx];
+      seen[sy * W + sx] = 1;
       let head = 0;
       while (head < q.length) {
-        const idx = q[head++];
-        const x = idx % W, y = (idx / W) | 0;
-        for (let k = 0; k < 4; k++) {
-          const nx2 = x + (k === 0 ? 1 : k === 1 ? -1 : 0);
-          const ny2 = y + (k === 2 ? 1 : k === 3 ? -1 : 0);
-          if (nx2 < 1 || ny2 < 1 || nx2 >= W - 1 || ny2 >= H - 1) continue;
-          const ni = ny2 * W + nx2;
-          if (visit[ni]) continue;
-          if (!this.isWalkableTile(this.tiles[ni])) continue;
-          visit[ni] = 1;
-          q.push(ni);
+        const cur = q[head++];
+        const x = cur % W, y = (cur / W) | 0;
+        for (const [ax, ay] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+          const nx = x + ax, ny = y + ay;
+          if (!passable(nx, ny, false)) continue;
+          const ni = ny * W + nx;
+          if (seen[ni]) continue;
+          seen[ni] = 1; q.push(ni);
         }
       }
+      return seen;
     };
-    for (let pass = 0; pass < 12; pass++) {
-      flood();
+    for (let pass = 0; pass < 16; pass++) {
+      const seen = flood();
       let stranded = -1;
       for (let i = 0; i < total; i++) {
-        if (visit[i]) continue;
+        if (seen[i]) continue;
         if (!this.isWalkableTile(this.tiles[i])) continue;
         const x = i % W, y = (i / W) | 0;
-        if (this.isVaultInterior(x, y)) continue;      /* sealed on purpose */
+        if (this.isVaultInterior(x, y)) continue;
+        if (vd && vd.locked && x === vd.x && y === vd.y) continue;
+        if (sealedRing(x, y)) continue;
         stranded = i;
         break;
       }
       if (stranded < 0) return true;
-      let x = stranded % W, y = (stranded / W) | 0;
-      const tx = this.entrance.x, ty = this.entrance.y;
-      const carveTile = (cx, cy) => {
-        if (cx < 1 || cy < 1 || cx >= W - 1 || cy >= H - 1) return;
-        if (this.isVaultInterior(cx, cy)) return;
-        if (this.tiles[cy * W + cx] === WALL) this.tiles[cy * W + cx] = FLOOR;
-        else if (this.tiles[cy * W + cx] === PIT || this.tiles[cy * W + cx] === WATER) this.tiles[cy * W + cx] = FLOOR;
-      };
-      /* horizontal leg */
-      while (x !== tx) {
-        x += (tx > x ? 1 : -1);
-        carveTile(x, y);
+      /* BFS through solid rock from the stranded cell to anything reachable */
+      const sx2 = stranded % W, sy2 = (stranded / W) | 0;
+      const prev = new Int32Array(total).fill(-1);
+      const vis = new Uint8Array(total);
+      const q = [sy2 * W + sx2];
+      vis[sy2 * W + sx2] = 1;
+      let head = 0, hit = -1;
+      while (head < q.length && hit < 0) {
+        const cur = q[head++];
+        const x = cur % W, y = (cur / W) | 0;
+        for (const [ax, ay] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+          const nx = x + ax, ny = y + ay;
+          if (!passable(nx, ny, true)) continue;
+          const ni = ny * W + nx;
+          if (vis[ni]) continue;
+          vis[ni] = 1;
+          prev[ni] = cur;
+          if (seen[ni]) { hit = ni; break; }
+          q.push(ni);
+        }
       }
-      /* vertical leg */
-      while (y !== ty) {
-        y += (ty > y ? 1 : -1);
-        carveTile(x, y);
+      if (hit < 0) return false;   /* genuinely walled off; leave it */
+      for (let cur = prev[hit]; cur >= 0; cur = prev[cur]) {
+        const x = cur % W, y = (cur / W) | 0;
+        const t = this.tiles[cur];
+        if (t === WALL || t === PIT || t === WATER) this.tiles[cur] = FLOOR;
       }
     }
-    flood();
     return false;
   }
 
@@ -7323,8 +7459,33 @@ function spawnProps(d) {
   }
   /* key drop guard: ensure at least one key can be found when vault exists */
   if (d.needsKey) {
-    const keyRoom = pick(chestRooms.length ? chestRooms : d.rooms);
-    const spot = d.randomRoomFloor(keyRoom, 70, { x: p.x, y: p.y });
+    /* A vault you cannot open is a floor you cannot enjoy, and the key crate is
+       the guaranteed source. randomRoomFloor() only checks that a tile is
+       walkable, not that the player can walk to it, so 3 of 60 measured floors
+       dropped that crate in a pocket cut off from the entrance — the door was
+       then permanently locked. Search for a room floor the entrance can
+       actually reach, and fall back to the entrance itself. */
+    const reach = d.spawnReach();
+    const reachableAt = (spot) => reach(spot.ty, spot.tx);
+    const candidates = [];
+    const roomsToUse = chestRooms.length ? chestRooms : d.rooms;
+    for (const room of roomsToUse) {
+      for (let attempt = 0; attempt < 12; attempt++) {
+        const spot = d.randomRoomFloor(room, 70, { x: p.x, y: p.y });
+        if (reachableAt(spot)) { candidates.push(spot); break; }
+      }
+    }
+    if (!candidates.length) {
+      for (const room of d.rooms) {
+        for (let attempt = 0; attempt < 12; attempt++) {
+          const spot = d.randomRoomFloor(room, 0, { x: p.x, y: p.y });
+          if (reachableAt(spot)) { candidates.push(spot); break; }
+        }
+      }
+    }
+    const spot = candidates.length ? pick(candidates)
+               : { x: (d.entrance.x + 0.5) * TILE, y: (d.entrance.y + 0.5) * TILE,
+                   tx: d.entrance.x, ty: d.entrance.y };
     const crate = new Prop('crate', spot.x, spot.y, { hp: 2, solid: true, r: 13 });
     crate.loot = { key: true, gold: randInt(4, 9) };
     crate.keyCrate = true;
@@ -10140,10 +10301,6 @@ function drawDrop(ctx, drop, cam, t) {
 const HERO_DRAW_SCALE = 0.72;
 function drawPlayer(ctx, p, cam, t) {
   const x = p.x - cam.x, y = p.y - cam.y;
-  ctx.save();
-  /* shadow */
-  ctx.fillStyle = 'rgba(0,0,0,0.42)';
-  ctx.beginPath(); ctx.ellipse(x, y + 10, 11, 5, 0, 0, TAU); ctx.fill();
 
   const swingT = p.swing > 0 ? p.swing / 0.26 : 0;
   /* Breathing when still, a two-beat gait when moving, plus a landing squash
@@ -10154,10 +10311,26 @@ function drawPlayer(ctx, p, cam, t) {
   const bob = p.moving ? gait * 1.7 + gait2 : breath;
   const landSquash = p.dodging > 0 ? 1 : (p.landT > 0 ? p.landT * 0.18 : 0);
 
-  /* lean into the direction of travel so momentum reads */
-  if (p.moving && Math.hypot(p.vx, p.vy) > 20) {
-    ctx.rotate(clamp((p.vx / 400) * 0.06, -0.09, 0.09));
-  }
+  ctx.save();
+  /* Shadow. It is drawn from the same bob as the body so the two can never
+     drift apart: previously the shadow used a fixed +10 while the body was
+     translated by (x, y + bob), so the feet rose and sank a few pixels against
+     a shadow nailed to one spot. Damp the bob here (a real cast shadow moves
+     less than the thing casting it) instead of ignoring the motion entirely. */
+  const shadowY = y + 10 + bob * 0.45 + landSquash * 6;
+  ctx.fillStyle = 'rgba(0,0,0,0.42)';
+  ctx.beginPath(); ctx.ellipse(x, shadowY, 11, 5, 0, 0, TAU); ctx.fill();
+
+  /* lean into the direction of travel so momentum reads.
+     The lean MUST be applied after the translate below, not before it. Canvas
+     transforms compose, so rotating here rotated the hero about the canvas
+     origin (0,0) instead of about himself: the further he got from the top-left
+     corner, the further the spin swung him away from where he actually was.
+     At the right edge that was a 21px vertical displacement while the shadow,
+     drawn at the true position, stayed put — which is why he appeared to float
+     above his own shadow while running at a wall. */
+  const lean = (p.moving && Math.hypot(p.vx, p.vy) > 20)
+    ? clamp((p.vx / 400) * 0.06, -0.09, 0.09) : 0;
   const dodgeAlpha = p.dodging > 0 ? 0.55 : 1;
   /* motion blur ghost while dodging */
   if (p.dodging > 0) {
@@ -10171,6 +10344,8 @@ function drawPlayer(ctx, p, cam, t) {
   }
   ctx.globalAlpha = dodgeAlpha;
   ctx.translate(x, y + bob + landSquash * 6);
+  /* lean about the hero's own origin, now that the origin is the hero */
+  if (lean) ctx.rotate(lean);
   /* Scale the body to what actually collides. The hero is drawn at 1.5× the
      size the movement code models — the sprite is 45px tall and 32px wide
      against a 24px collision circle — which is why he used to paint his torso
@@ -13443,11 +13618,11 @@ const Phone = {
     set('pGold', fmt(p.gold));
     set('pKeys', String(p.keys));
     set('pPotions', String(p.potions));
-    /* Ember's bar, so she is legible on a phone too */
-    if (COMPANION.active) {
-      wid('pEmbFill', COMPANION.hp / COMPANION.maxHp * 100);
-      set('pEmbText', COMPANION.downT > 0 ? 'EMBER DOWN' : 'EMBER ' + Math.ceil(COMPANION.hp));
-    }
+    /* XP in the rail's third slot. Ember is not mirrored here: she already
+       has the bottom-left chip, and drawing her twice was the reported
+       "double of everything". */
+    wid('pXpFill', p.xp / p.xpNext * 100);
+    set('pXpText', Math.floor(p.xp) + ' / ' + p.xpNext + ' XP');
     /* radial cooldown sweeps */
     const cd = (id, ratio) => {
       const el = $(id);
@@ -13471,7 +13646,30 @@ const Phone = {
     if (!el) return;
     if (!this.enabled) { el.classList.remove('show'); return; }
     const portrait = window.innerHeight > window.innerWidth * 1.06;
-    el.classList.toggle('show', portrait && Game.state === 'playing');
+    /* A one-time tip, not a permanent label. It has now twice been moved to
+       get it off something it covered (the ability buttons, then the BOUNTIES
+       panel), because there is no free band on a portrait phone: the top is
+       the vitals rail, the middle is the dungeon, the bottom is the thumbstick
+       and the action rail. Rather than chase a gap, the nudge retires itself —
+       it appears on the first portrait run, then goes away for good and stops
+       competing with live information. Rotating is still discovered, because
+       the tip is exactly what tells you to try it. */
+    const seenKey = 'dungeonRogue.rotateTipSeen.v1';
+    let seen = false;
+    try { seen = localStorage.getItem(seenKey) === '1'; } catch (e) {}
+    const show = portrait && Game.state === 'playing' && !seen;
+    if (show && !el.classList.contains('show')) {
+      /* only burn the flag once it has actually been on screen for a moment,
+         so a single frame mid-rotation does not waste it */
+      if (!this._tipTimer) {
+        this._tipTimer = setTimeout(() => {
+          this._tipTimer = null;
+          try { localStorage.setItem(seenKey, '1'); } catch (e) {}
+          el.classList.remove('show');
+        }, 6000);
+      }
+    }
+    el.classList.toggle('show', show);
   }
 };
 function drinkPotion() {

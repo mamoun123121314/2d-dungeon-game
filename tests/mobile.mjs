@@ -147,6 +147,78 @@ try {
       });
       check('the portrait orientation hint covers no controls', nudge.covered.length === 0, nudge);
 
+      /* The hint has now twice been moved because it sat on top of something:
+         first the SLAM/PACK buttons, then the BOUNTIES panel. It is a one-time
+         tip, so the real fix is that it retires itself rather than hunting for
+         a permanently free band that a portrait phone does not have. */
+      const tip = await page.evaluate(async () => {
+        const rect = (id) => {
+          const el = document.getElementById(id);
+          if (!el) return null;
+          const b = el.getBoundingClientRect();
+          const cs = getComputedStyle(el);
+          return { shown: cs.display !== 'none' && b.height > 0,
+                   x: Math.round(b.x), y: Math.round(b.y), w: Math.round(b.width), h: Math.round(b.height) };
+        };
+        const hit = (a, b) => !!(a && b && a.shown && b.shown
+          && !(a.x + a.w <= b.x || b.x + b.w <= a.x || a.y + a.h <= b.y || b.y + b.h <= a.y));
+
+        localStorage.removeItem('dungeonRogue.rotateTipSeen.v1');
+        if (typeof rollBounties === 'function') rollBounties(2);
+        const bh = document.getElementById('bountyHud');
+        if (bh) bh.classList.remove('hidden');
+        if (typeof Phone !== 'undefined' && Phone.checkOrientation) Phone.checkOrientation();
+        await new Promise((r) => setTimeout(r, 120));
+
+        const n = rect('rotateNudge');
+        const bounty = rect('bountyHud');
+        const out = { nudge: n, bounty, overlapsBounty: hit(n, bounty) };
+        return out;
+      });
+      check('the orientation hint does not cover the bounty panel', tip.overlapsBounty === false, tip);
+
+      /* ---- nothing is displayed twice, and no phone vital is missing ----
+         The reported "double of everything": the top rail drew Ember's health
+         bar AND the bottom-left chip drew her again, while the XP bar behind
+         the hidden #playerHud was invisible on a phone. One readout per fact. */
+      const hud = await page.evaluate(() => {
+        const shown = (el) => {
+          if (!el) return false;
+          const b = el.getBoundingClientRect();
+          return getComputedStyle(el).display !== 'none' && b.height > 0;
+        };
+        /* leaf elements only: a wrapper's textContent contains its children */
+        const leaves = Array.from(document.querySelectorAll('body *'))
+          .filter((el) => el.children.length === 0 && shown(el));
+        const emberLabels = leaves
+          .filter((el) => /^EMBER\b/i.test((el.textContent || '').trim()))
+          .map((el) => (el.id || el.className || el.tagName) + ':' + el.textContent.trim());
+        /* Ember's HP should be readable exactly once */
+        const emberBars = leaves.filter((el) => /^EMBER\b/i.test((el.textContent || '').trim())
+          || /^EMBER DOWN$/i.test((el.textContent || '').trim())).length;
+        const xpEl = document.getElementById('pXpText');
+        const saveEl = document.getElementById('saveToast');
+        const slash = document.getElementById('tAttack');
+        const sb = saveEl ? saveEl.getBoundingClientRect() : null;
+        const ab = slash ? slash.getBoundingClientRect() : null;
+        const overlap = !!(sb && ab && sb.width > 0
+          && !(sb.right < ab.left || sb.left > ab.right || sb.bottom < ab.top || sb.top > ab.bottom));
+        return {
+          emberLabels,
+          emberBars,
+          railXpText: xpEl ? xpEl.textContent : null,
+          railXpVisible: shown(xpEl),
+          desktopXpVisible: shown(document.getElementById('xpBar')),
+          xpBarCount: leaves.filter((el) => /XP$/.test((el.textContent || '').trim())).length,
+          saveToastOverSlash: overlap,
+          saveToastLeft: sb ? Math.round(sb.left) : null,
+        };
+      });
+      check('Ember is shown once, not twice', hud.emberBars === 1, hud.emberLabels);
+      check('the phone can see the XP bar', hud.railXpVisible === true && /XP$/.test(hud.railXpText || ''), hud.railXpText);
+      check('XP is not displayed twice', hud.xpBarCount === 1, hud.xpBarCount);
+      check('the autosave stamp does not sit on the attack button', hud.saveToastOverSlash === false, hud);
+
       /* #stickZone is the whole thumb region (46% x 62% of the screen); the
          thing that must clear the home indicator is the drawn ring, whose
          position is decided at touch time by Phone.place(). */
