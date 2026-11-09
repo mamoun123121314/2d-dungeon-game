@@ -274,30 +274,43 @@ Ashes*, *Cinder Vault* and *Reliquary* — listed in **Profile & Backup**:
   *Options* and *Progress* with a separated danger-coloured *Abandon Run*.
 
 ### Audio
-All 39 sound effects are synthesised at runtime, but they are **layered rather
-than tonal**: every impact is built from the three parts a real one has — a
-sharp transient, a resonant body and a decaying tail — instead of a single
-oscillator with a volume ramp.
+**The effects are real recordings, not synthesis.** Each of the 38 clips is a
+recorded sound from the Oculus Audio Pack, published by Meta in
+[`facebookincubator/Meta-open-sound`](https://github.com/facebookincubator/Meta-open-sound)
+under **CC0 1.0** (public domain — no attribution required, credited here
+because it is the honest thing to do).
 
-- **Resonant bodies** (`metal()`) ring at a handful of detuned partials that
-  decay at different rates, which is what makes a sword, a lock and a coin
-  sound like struck metal instead of a beep.
-- **Material impacts** are distinct: flesh and cloth (`thump`/`voice`), dry
-  splintering wood (`crate`), grating iron (`door`), shattering stone
-  (`shatter`/`crunch`).
-- **Creatures have throats.** Grunts, yelps and Ember's bite use a sawtooth
-  through two vowel formants with sub-octave and slight vibrato, so they read
-  as voices rather than synths.
-- **One shared space.** Every effect is sent to a stone-hall reverb built from
-  four mutually-prime comb delays feeding allpass diffusers, with the tail
-  damped as it decays. Sounds no longer play in a vacuum.
+- **Source material.** Punch and metal impacts (`FGHTImpt_*`,
+  `METLImpt_*`), whooshes (`SWSH_*`), a real bone crack (`GOREBone_*`), human
+  hurt/death/effort takes (`VOXMale_*`, `VOXEfrt_*`), a creature growl
+  (`CREAMnstr_*`), a troll laugh, spell tones (`MAGSpel_*`, `UIAlert_MusicTone_*`),
+  coins, keys, a leather satchel, a wooden door, a key in a lock, footsteps and
+  a reverb-chamber tail used as the hall's impulse response.
+- **Processing.** Each clip was trimmed to its transient, layered with one or
+  two other recordings where a single sample was too thin (a hit is a punch
+  plus a metal ring), EQ'd, given a short stone-room tail, loudness-matched and
+  encoded to 64 kbps mono MP3.
+- **Embedded, not linked.** The clips are base64-inlined and decoded with
+  `decodeAudioData` on first use, so the game is still one file, works from
+  `file://` and never makes a network request. 364 KB of MP3 in the page;
+  roughly half a megabyte of PCM once every effect has been played.
+- **No two hits are identical.** Playback pitch and level are jittered per
+  family (a sword hit ±5%, a throat ±9%), so a run of blows does not sound
+  like one sample on repeat.
+- **One shared space.** All effects feed a `ConvolverNode` whose impulse
+  response is a recorded chamber tail from the same pack.
 - **Stereo placement.** Hits are panned by where they happen on screen
   (`Sound.panFor`), so a blow on the left comes from the left.
 
-Sound set: sword swing, hit, crit, enemy hurt and death, Ember's bite and yelp,
-spell cast and impact, chest, gold, loot, level-up, gold pickup, door unlock,
-heartbeat at low HP, boss telegraph, slam, charge, phase shift, bounty fanfare,
-combo climb and menu clicks — plus a layered ambient music bed per biome.
+**What is still generated** is only the looping score and the low wind bed —
+textures rather than hits, where a recording long enough to loop without a seam
+would not fit in the file. Their impulse response is recorded, though, so score
+and effects sit in the same room.
+
+Sound set (38): sword swing, hit, crit, enemy hurt and death, Ember's bite and
+yelp, spell cast and impact, chest, gold, loot, level-up, door, lock, unlock,
+potion, stairs, warp, boss telegraph, slam, charge, phase shift, bounty
+fanfare, combo climb and menu clicks.
 
 **The soundtrack is reactive.** The pad and its distant bell motif always play,
 but when three or more enemies are aggro and near, a combat layer fades in: a
