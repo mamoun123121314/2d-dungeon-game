@@ -42,6 +42,8 @@
   --font-display:"Palatino Linotype","Book Antiqua",Palatino,Georgia,serif;
   --font-ui:"Segoe UI",system-ui,-apple-system,Roboto,Helvetica,Arial,sans-serif;
   --font-mono:"JetBrains Mono","Cascadia Mono",Consolas,"Courier New",monospace;
+  --world-hue:0deg;--world-saturation:1;--world-contrast:1;
+  --sigil:#e7c97f;--sigil-glow:rgba(231,201,127,.24);
 }
 *{box-sizing:border-box;margin:0;padding:0;}
 html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);}
@@ -64,6 +66,8 @@ canvas{display:block;}
   z-index:0;
   image-rendering:auto;
   background:#050408;
+  filter:hue-rotate(var(--world-hue)) saturate(var(--world-saturation)) contrast(var(--world-contrast));
+  transition:filter .45s ease;
 }
 
 /* ---------- generic ornate panel ---------- */
@@ -618,17 +622,42 @@ body.is-phone .invFooter{font-size:10px;}
 .menuField{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:10px 12px;border:1px solid rgba(217,181,107,.16);border-radius:5px;background:rgba(255,255,255,.025);color:#d5c9da;font-size:12px;}
 .menuField input[type=range]{width:min(220px,45%);accent-color:#d9b56b;}
 .menuField select{width:min(240px,58%);padding:9px 10px;background:#100d15;border:1px solid rgba(217,181,107,.28);border-radius:4px;color:#f3e6c7;font:inherit;}
-body.high-contrast #game{filter:contrast(1.24) saturate(1.12)}
+body.high-contrast{--world-contrast:1.24;--world-saturation:1.12}
+body.palette-moon{--world-hue:155deg;--world-saturation:1.18;--sigil:#80eced;--sigil-glow:rgba(66,220,227,.28)}
+body.palette-moon .panel{border-color:rgba(112,225,232,.42);box-shadow:0 0 0 1px rgba(0,0,0,.75),0 10px 34px rgba(0,0,0,.65),inset 0 1px 0 rgba(255,255,255,.07),inset 0 0 42px rgba(20,110,128,.12)}
+body.palette-moon .panelHead h2,body.palette-moon .sanctuarySection{color:#a8eff0}
+body.palette-moon .menuField,body.palette-moon .rewardCard{border-color:rgba(98,207,219,.28)}
+body.palette-moss{--world-hue:72deg;--world-saturation:1.12;--sigil:#b6ec92;--sigil-glow:rgba(153,225,108,.25)}
+body.palette-moss .panel{border-color:rgba(165,210,111,.42)}
+body.palette-moss .panelHead h2,body.palette-moss .sanctuarySection{color:#c4eb9a}
+body.palette-moss .menuField,body.palette-moss .rewardCard{border-color:rgba(151,207,111,.27)}
 body.large-ui #hud{font-size:1.15em}
 .menuField input[type=text]{width:min(240px,58%);padding:9px 10px;background:#100d15;border:1px solid rgba(217,181,107,.28);border-radius:4px;color:#f3e6c7;font:inherit;}
 .menuActions{display:flex;gap:9px;flex-wrap:wrap;justify-content:center;margin-top:4px;}
 .menuActions .bigBtn{flex:1 1 190px;min-height:44px;}
 .menuPage .panelHead h2{font-size:15px;}
-.rewardCard,.storeCard{display:grid;grid-template-columns:1fr auto;gap:5px 12px;align-items:center;padding:12px;border:1px solid rgba(217,181,107,.17);border-radius:5px;background:rgba(255,255,255,.025);}
-.rewardCard.done{border-color:rgba(143,224,168,.38);}
+#rewardList{display:grid;gap:9px;}
+.rewardCard,.storeCard{display:grid;grid-template-columns:1fr auto;gap:5px 12px;align-items:center;padding:12px;border:1px solid rgba(217,181,107,.2);border-radius:9px;background:linear-gradient(118deg,rgba(255,255,255,.045),rgba(255,255,255,.012) 54%,rgba(217,181,107,.035));position:relative;overflow:hidden;transition:transform .22s ease,border-color .22s ease,box-shadow .22s ease;}
+.rewardCard{grid-template-columns:42px minmax(0,1fr) auto;animation:rewardArrive .48s cubic-bezier(.2,.75,.25,1) both;animation-delay:calc(var(--card-index,0)*45ms);}
+@keyframes rewardArrive{from{opacity:0;transform:translateY(9px) scale(.985)}to{opacity:1;transform:translateY(0) scale(1)}}
+.rewardCard::after{content:"";position:absolute;inset:-45% auto -45% -38%;width:25%;transform:rotate(24deg);background:linear-gradient(90deg,transparent,rgba(255,255,255,.08),transparent);transition:left .5s ease;pointer-events:none;}
+.rewardCard:hover{transform:translateY(-2px);border-color:rgba(240,208,135,.54);box-shadow:0 8px 22px rgba(0,0,0,.22),0 0 22px var(--sigil-glow);}
+.rewardCard:hover::after{left:115%;}
+.rewardCard.done{border-color:rgba(143,224,168,.4);}
+.rewardCard.ready{border-color:rgba(244,204,111,.55);box-shadow:inset 0 0 22px rgba(244,204,111,.045);}
+.rewardSigil{grid-column:1;grid-row:1 / span 3;display:grid;place-items:center;width:38px;height:38px;color:var(--sigil);font-size:19px;border:1px solid currentColor;border-radius:11px 4px 11px 4px;background:radial-gradient(circle,var(--sigil-glow),rgba(0,0,0,.08) 72%);box-shadow:inset 0 0 12px var(--sigil-glow),0 0 12px rgba(0,0,0,.2);text-shadow:0 0 12px var(--sigil-glow);}
+.rewardCard.done .rewardSigil{color:#91dfb1;--sigil-glow:rgba(92,219,157,.23);}
+.rewardCard.ready .rewardSigil{animation:sigilBreathe 2.4s ease-in-out infinite;}
+@keyframes sigilBreathe{50%{transform:rotate(45deg) scale(1.06);border-radius:50%;}}
 .rewardCard strong,.storeCard strong{color:#e8d7b7;font-size:12px;}
-.rewardCard small,.storeCard small{grid-column:1;color:#9b91a4;font-size:10px;line-height:1.5;}
-.rewardCard .bigBtn,.storeCard .bigBtn{grid-column:2;grid-row:1 / span 2;width:auto;min-width:112px;padding:10px 12px;font-size:10px;letter-spacing:.12em;}
+.rewardCard strong,.rewardCard small{grid-column:2;}
+.storeCard strong,.storeCard small{grid-column:1;}
+.rewardCard small,.storeCard small{color:#9b91a4;font-size:10px;line-height:1.5;}
+.rewardProgress{grid-column:2;height:3px;background:rgba(255,255,255,.08);border-radius:9px;overflow:hidden;}
+.rewardProgress i{display:block;height:100%;width:var(--progress);border-radius:inherit;background:linear-gradient(90deg,#c49047,var(--sigil));box-shadow:0 0 9px var(--sigil-glow);}
+.rewardCard.done .rewardProgress i{background:linear-gradient(90deg,#559974,#91dfb1);}
+.rewardCard .bigBtn{grid-column:3;grid-row:1 / span 3;width:auto;min-width:112px;padding:10px 12px;font-size:10px;letter-spacing:.12em;}
+.storeCard .bigBtn{grid-column:2;grid-row:1 / span 2;width:auto;min-width:112px;padding:10px 12px;font-size:10px;letter-spacing:.12em;}
 .shrineChoices{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;}
 .shrineCard{display:flex;flex-direction:column;gap:8px;min-height:178px;padding:14px 12px;border:1px solid rgba(238,197,112,.34);border-radius:6px;background:linear-gradient(155deg,rgba(255,215,135,.09),rgba(17,13,24,.94));box-shadow:inset 0 0 22px rgba(230,174,73,.045);}
 .shrineCard h3{margin:0;color:#f2dba9;font:600 13px/1.3 var(--serif,Georgia,serif);}
@@ -646,7 +675,7 @@ body.reduced-motion *,body.reduced-motion *::before,body.reduced-motion *::after
 .menuIdentity b{color:#e2c98e;font-weight:500;}
 .menuHub{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin:6px auto 12px;}
 .menuHub .bigBtn{width:auto;max-width:none;flex:1 1 155px;padding:11px 12px;font-size:10px;letter-spacing:.12em;}
-@media(max-width:520px){.menuPageBody{padding:14px 12px 8px}.menuField{align-items:flex-start;flex-direction:column}.menuField input[type=range],.menuField input[type=text],.menuField select{width:100%}.menuHub .bigBtn{flex-basis:42%;}.rewardCard,.storeCard{grid-template-columns:1fr}.rewardCard small,.storeCard small,.rewardCard .bigBtn,.storeCard .bigBtn{grid-column:1;grid-row:auto}.rewardCard .bigBtn,.storeCard .bigBtn{width:100%;}.shrineChoices{grid-template-columns:1fr}.shrineCard{min-height:0}.shrineCard p{min-height:32px}}
+@media(max-width:520px){.menuPageBody{padding:14px 12px 8px}.menuField{align-items:flex-start;flex-direction:column}.menuField input[type=range],.menuField input[type=text],.menuField select{width:100%}.menuHub .bigBtn{flex-basis:42%;}.rewardCard{grid-template-columns:38px minmax(0,1fr);gap:7px 10px;padding:11px}.rewardSigil{grid-column:1;grid-row:1 / span 3;width:34px;height:34px;font-size:17px}.rewardCard strong,.rewardCard small,.rewardProgress{grid-column:2}.rewardCard .bigBtn{grid-column:1 / -1;grid-row:auto;width:100%;min-height:42px}.storeCard{grid-template-columns:1fr}.storeCard small,.storeCard .bigBtn{grid-column:1;grid-row:auto}.storeCard .bigBtn{width:100%;}.shrineChoices{grid-template-columns:1fr}.shrineCard{min-height:0}.shrineCard p{min-height:32px}}
 
 .pausePanel .panelHead,.deathPanel .panelHead,.victoryPanel .panelHead{justify-content:center;}
 .panelInner{padding:22px 34px 4px;display:flex;flex-direction:column;align-items:center;gap:16px;}
@@ -1654,6 +1683,8 @@ body.is-phone .affixChip{font-size:7.5px;padding:2px 6px;}
       <label class="menuField" for="numbersSetting"><span>Floating combat text</span><input id="numbersSetting" type="checkbox" checked></label>
       <label class="menuField" for="contrastSetting"><span>High-contrast dungeon</span><input id="contrastSetting" type="checkbox"></label>
       <label class="menuField" for="largeUISetting"><span>Larger interface</span><input id="largeUISetting" type="checkbox"></label>
+      <label class="menuField" for="paletteSetting"><span>Dungeon colourway</span><select id="paletteSetting"><option value="cinder">Cinder &amp; gold</option><option value="moon">Moon-tide teal</option><option value="moss">Verdant relic</option></select></label>
+      <label class="menuField" for="auraSetting"><span>Ember’s spirit trail</span><select id="auraSetting"><option value="none">Quiet paws</option><option value="ember">Foxfire orbit</option><option value="moon">Moon sigils</option></select></label>
       <label class="menuField" for="contractSetting"><span>Next expedition contract</span><select id="contractSetting"><option value="standard">Unbound — standard descent</option><option value="pilgrim">Pilgrim’s Mercy — fewer foes, softer hits, less gold</option><option value="reclaimer">The Reclaimer — crowded floors, richer gold</option><option value="glass">Glass Covenant — fewer foes, harder hits, stronger strikes</option></select></label>
       <p class="menuLead">Contracts change the rules of a fresh run. Your current run keeps its original contract.</p>
       <div class="menuActions"><button class="bigBtn secondary" data-close-page="settingsOverlay">Done</button></div>
@@ -1678,7 +1709,7 @@ body.is-phone .affixChip{font-size:7.5px;padding:2px 6px;}
     <div class="panelHead"><h2 id="rewardsTitle">Progress &amp; Rewards</h2></div>
     <div class="menuPageBody"><p class="menuLead">Reach milestones across runs to earn permanent Ember Shards. Claim each reward once.</p>
       <div id="rewardSummary" class="menuCurrency"></div><div id="rewardList"></div>
-      <div class="menuActions"><button class="bigBtn secondary" data-close-page="rewardsOverlay">Done</button></div>
+      <div class="menuActions"><button class="bigBtn secondary" data-open-page="settingsOverlay">Visuals &amp; settings</button><button class="bigBtn secondary" data-close-page="rewardsOverlay">Done</button></div>
     </div>
   </section>
 </div>
@@ -1949,7 +1980,7 @@ const $$ = (sel) => Array.prototype.slice.call(document.querySelectorAll(sel));
 /* Every sound is synthesised from oscillators and noise buffers at call time. */
 const Settings = {
   KEY: 'dungeonRogue.settings.v1',
-  value: { volume: 0.85, muted: false, screenShake: true, reducedMotion: false, damageNumbers: true, highContrast: false, largeUI: false, contract: 'standard' },
+  value: { volume: 0.85, muted: false, screenShake: true, reducedMotion: false, damageNumbers: true, highContrast: false, largeUI: false, palette: 'cinder', companionAura: 'none', contract: 'standard' },
   load() {
     try { const raw = JSON.parse(localStorage.getItem(this.KEY) || '{}'); this.value = Object.assign({}, this.value, raw); } catch (e) {}
     this.value.volume = clamp(Number(this.value.volume) || 0, 0, 1);
@@ -1959,6 +1990,8 @@ const Settings = {
     this.value.damageNumbers = this.value.damageNumbers !== false;
     this.value.highContrast = !!this.value.highContrast;
     this.value.largeUI = !!this.value.largeUI;
+    if (!['cinder','moon','moss'].includes(this.value.palette)) this.value.palette='cinder';
+    if (!['none','ember','moon'].includes(this.value.companionAura)) this.value.companionAura='none';
     if (!['standard','pilgrim','reclaimer','glass'].includes(this.value.contract)) this.value.contract = 'standard';
     this.applyAccessibility();
     return this.value;
@@ -1970,6 +2003,8 @@ const Settings = {
     document.body.classList.toggle('reduced-motion', !!this.value.reducedMotion);
     document.body.classList.toggle('high-contrast', !!this.value.highContrast);
     document.body.classList.toggle('large-ui', !!this.value.largeUI);
+    document.body.classList.toggle('palette-moon', this.value.palette === 'moon');
+    document.body.classList.toggle('palette-moss', this.value.palette === 'moss');
   },
   set(key, value) {
     if (key === 'volume') this.value.volume = clamp(Number(value) || 0, 0, 1);
@@ -1979,6 +2014,8 @@ const Settings = {
     else if (key === 'damageNumbers') this.value.damageNumbers = !!value;
     else if (key === 'highContrast') this.value.highContrast = !!value;
     else if (key === 'largeUI') this.value.largeUI = !!value;
+    else if (key === 'palette' && ['cinder','moon','moss'].includes(value)) this.value.palette = value;
+    else if (key === 'companionAura' && ['none','ember','moon'].includes(value)) this.value.companionAura = value;
     else if (key === 'contract' && ['standard','pilgrim','reclaimer','glass'].includes(value)) this.value.contract = value;
     this.applyAccessibility();
     this.save();
@@ -4847,6 +4884,24 @@ const COMPANION = {
     const sx=this.x-cam.x, sy=this.y-cam.y;
     const coat=COMPANION_COATS[this.coat]||COMPANION_COATS.ember;
     ctx.save(); ctx.translate(sx,sy); ctx.scale(1.48,1.48);
+    const aura=Settings.get().companionAura;
+    if(aura!=='none'&&this.downT<=0){
+      const still=Settings.get().reducedMotion?0:t;
+      const hue=aura==='moon'?'#83eaff':'#ff9b51';
+      ctx.save(); ctx.globalCompositeOperation='lighter'; ctx.rotate(still*(aura==='moon'?.42:-.55));
+      ctx.strokeStyle=rgba(hue,.36); ctx.lineWidth=.8; ctx.setLineDash(aura==='moon'?[2,4]:[]);
+      ctx.beginPath(); ctx.ellipse(0,0,23,11,-.12,0,TAU); ctx.stroke(); ctx.setLineDash([]);
+      for(let i=0;i<3;i++){
+        const a=still*(aura==='moon'?-.8:1.05)+i*TAU/3, rr=20+Math.sin(still*2+i)*1.5;
+        const ox=Math.cos(a)*rr, oy=Math.sin(a)*rr*.62-2;
+        ctx.save(); ctx.translate(ox,oy); ctx.rotate(a+still);
+        ctx.fillStyle=rgba(hue,.82); ctx.shadowColor=hue; ctx.shadowBlur=7;
+        if(aura==='moon'){ctx.beginPath();ctx.moveTo(0,-3);ctx.lineTo(2.5,0);ctx.lineTo(0,3);ctx.lineTo(-2.5,0);ctx.closePath();ctx.fill();}
+        else{ctx.beginPath();ctx.ellipse(0,0,1.8,3.4,0,0,TAU);ctx.fill();}
+        ctx.restore();
+      }
+      ctx.restore();
+    }
     /* Warm outline and shadow keep Ember readable against dark stone. */
     ctx.fillStyle='rgba(255,205,120,.16)'; ctx.beginPath(); ctx.ellipse(0,1,23,17,0,0,TAU); ctx.fill();
     ctx.fillStyle='rgba(0,0,0,.42)'; ctx.beginPath(); ctx.ellipse(0,10,18,7,0,0,TAU); ctx.fill();
@@ -5910,12 +5965,12 @@ const Save = {
 /* Meta progression (including gameplay upgrades) stays on this device unless
    the player exports a backup. */
 const META_REWARDS = [
-  {id:'floor2',title:'First Descent',desc:'Reach floor 2 in any run.',field:'deepestFloor',target:2,shards:12},
-  {id:'floor5',title:'The Deep Halls',desc:'Reach floor 5 in any run.',field:'deepestFloor',target:5,shards:24},
-  {id:'firstWarden',title:'Warden Breaker',desc:'Defeat a dungeon boss.',field:'bossesSlain',target:1,shards:18},
-  {id:'threeRuns',title:'Still Standing',desc:'Begin three runs.',field:'runs',target:3,shards:16},
-  {id:'floor10',title:'Heartstone Hunter',desc:'Reach floor 10.',field:'deepestFloor',target:10,shards:45},
-  {id:'fiveWardens',title:'Legend of the Depths',desc:'Defeat five bosses across your adventures.',field:'bossesSlain',target:5,shards:35}
+  {id:'floor2',title:'First Descent',desc:'Reach floor 2 in any run.',field:'deepestFloor',target:2,shards:12,mark:'✦'},
+  {id:'floor5',title:'The Deep Halls',desc:'Reach floor 5 in any run.',field:'deepestFloor',target:5,shards:24,mark:'◈'},
+  {id:'firstWarden',title:'Warden Breaker',desc:'Defeat a dungeon boss.',field:'bossesSlain',target:1,shards:18,mark:'⚔'},
+  {id:'threeRuns',title:'Still Standing',desc:'Begin three runs.',field:'runs',target:3,shards:16,mark:'∞'},
+  {id:'floor10',title:'Heartstone Hunter',desc:'Reach floor 10.',field:'deepestFloor',target:10,shards:45,mark:'♜'},
+  {id:'fiveWardens',title:'Legend of the Depths',desc:'Defeat five bosses across your adventures.',field:'bossesSlain',target:5,shards:35,mark:'✹'}
 ];
 const SANCTUARY_COATS = [
   {id:'frost',name:'Frostpelt',desc:'A pale blue winter coat for Ember.',cost:25},
@@ -5952,7 +6007,7 @@ function refreshSettingsPage() {
   const v=Settings.get();
   $('volumeSetting').value=Math.round(v.volume*100); $('volumeValue').textContent=Math.round(v.volume*100)+'%';
   $('shakeSetting').checked=v.screenShake; $('motionSetting').checked=v.reducedMotion; $('soundSetting').checked=!v.muted;
-  $('numbersSetting').checked=v.damageNumbers; $('contrastSetting').checked=v.highContrast; $('largeUISetting').checked=v.largeUI; $('contractSetting').value=v.contract;
+  $('numbersSetting').checked=v.damageNumbers; $('contrastSetting').checked=v.highContrast; $('largeUISetting').checked=v.largeUI; $('paletteSetting').value=v.palette; $('auraSetting').value=v.companionAura; $('contractSetting').value=v.contract;
 }
 function refreshMetaPages() {
   if(typeof COMPANION!=='undefined') COMPANION.coat=Save.meta().activeCoat||'ember';
@@ -5960,12 +6015,14 @@ function refreshMetaPages() {
   const sum=$('rewardSummary');
   if(sum) sum.textContent='✦ '+fmt(m.shards)+' EMBER SHARDS';
   const list=$('rewardList');
-  if(list) list.innerHTML=META_REWARDS.map(r=>{
-    const done=claimed.has(r.id), ready=(Number(m[r.field])||0)>=r.target;
-    const progress=Math.min(Number(m[r.field])||0,r.target);
-    return '<div class="rewardCard '+(done?'done':'')+'"><strong>'+escapeHtml(r.title)+'</strong>'+
-      '<small>'+escapeHtml(r.desc)+' · '+(done?'Claimed':ready?'Ready to claim':progress+'/'+r.target)+' · ✦ '+r.shards+'</small>'+
-      '<button class="bigBtn '+(ready&&!done?'':'secondary')+'" data-claim-reward="'+r.id+'" '+(!ready||done?'disabled':'')+'>'+(done?'Claimed':ready?'Claim':'Locked')+'</button></div>';
+  if(list) list.innerHTML=META_REWARDS.map((r,index)=>{
+    const done=claimed.has(r.id), progress=Math.min(Number(m[r.field])||0,r.target), ready=progress>=r.target;
+    const pct=Math.round(progress/r.target*100);
+    return '<article class="rewardCard '+(done?'done':ready?'ready':'')+'" style="--card-index:'+index+'">'+
+      '<span class="rewardSigil" aria-hidden="true">'+r.mark+'</span><strong>'+escapeHtml(r.title)+'</strong>'+
+      '<small>'+escapeHtml(r.desc)+' · '+(done?'Claimed':ready?'Ready to claim':progress+' / '+r.target)+' · ✦ '+r.shards+'</small>'+
+      '<span class="rewardProgress" role="progressbar" aria-label="'+escapeHtml(r.title)+' progress" aria-valuenow="'+progress+'" aria-valuemin="0" aria-valuemax="'+r.target+'" style="--progress:'+pct+'%"><i></i></span>'+
+      '<button class="bigBtn '+(ready&&!done?'':'secondary')+'" data-claim-reward="'+r.id+'" '+(!ready||done?'disabled':'')+'>'+(done?'Claimed':ready?'Claim reward':'Locked')+'</button></article>';
   }).join('');
   const balance=$('sanctuaryBalance'); if(balance) balance.textContent='✦ '+fmt(m.shards)+' EMBER SHARDS';
   if(typeof COMPANION!=='undefined') COMPANION.upgrades=Object.assign({health:0,fangs:0,paws:0},m.companionUpgrades);
@@ -6030,7 +6087,7 @@ function importBackupFile(file) {
       Save.writeMeta(data.meta);
       Profile.setName(data.profile&&data.profile.name||'');
       const cfg=data.settings||{};
-      Settings.set('volume',cfg.volume===undefined?0.85:cfg.volume); Settings.set('muted',!!cfg.muted); Settings.set('screenShake',cfg.screenShake!==false); Settings.set('reducedMotion',!!cfg.reducedMotion); Settings.set('damageNumbers',cfg.damageNumbers!==false); Settings.set('highContrast',!!cfg.highContrast); Settings.set('largeUI',!!cfg.largeUI); Settings.set('contract',['standard','pilgrim','reclaimer','glass'].includes(cfg.contract)?cfg.contract:'standard');
+      Settings.set('volume',cfg.volume===undefined?0.85:cfg.volume); Settings.set('muted',!!cfg.muted); Settings.set('screenShake',cfg.screenShake!==false); Settings.set('reducedMotion',!!cfg.reducedMotion); Settings.set('damageNumbers',cfg.damageNumbers!==false); Settings.set('highContrast',!!cfg.highContrast); Settings.set('largeUI',!!cfg.largeUI); Settings.set('palette',['cinder','moon','moss'].includes(cfg.palette)?cfg.palette:'cinder'); Settings.set('companionAura',['none','ember','moon'].includes(cfg.companionAura)?cfg.companionAura:'none'); Settings.set('contract',['standard','pilgrim','reclaimer','glass'].includes(cfg.contract)?cfg.contract:'standard');
       $('profileName').value=Profile.get().name;
       Save.refreshMenuControls(); refreshSettingsPage(); refreshMetaPages();
       $('backupStatus').textContent='Backup restored on this device. '+(data.run?'Your run is ready to continue.':'No active run was included.');
@@ -12057,6 +12114,7 @@ function setupInput() {
   $('menuRewardsBtn').addEventListener('click',()=>openPage('rewardsOverlay'));
   $('menuShopBtn').addEventListener('click',()=>openPage('sanctuaryOverlay'));
   $$('[data-close-page]').forEach(btn=>btn.addEventListener('click',()=>closePage(btn.dataset.closePage)));
+  $$('[data-open-page]').forEach(btn=>btn.addEventListener('click',()=>{const source=btn.closest('.overlay');if(source)closePage(source.id);openPage(btn.dataset.openPage);}));
   $('volumeSetting').addEventListener('input',ev=>{const v=Number(ev.target.value)/100;Settings.set('volume',v);$('volumeValue').textContent=Math.round(v*100)+'%';});
   $('shakeSetting').addEventListener('change',ev=>Settings.set('screenShake',ev.target.checked));
   $('motionSetting').addEventListener('change',ev=>Settings.set('reducedMotion',ev.target.checked));
@@ -12064,6 +12122,8 @@ function setupInput() {
   $('numbersSetting').addEventListener('change',ev=>Settings.set('damageNumbers',ev.target.checked));
   $('contrastSetting').addEventListener('change',ev=>Settings.set('highContrast',ev.target.checked));
   $('largeUISetting').addEventListener('change',ev=>Settings.set('largeUI',ev.target.checked));
+  $('paletteSetting').addEventListener('change',ev=>Settings.set('palette',ev.target.value));
+  $('auraSetting').addEventListener('change',ev=>Settings.set('companionAura',ev.target.value));
   $('contractSetting').addEventListener('change',ev=>Settings.set('contract',ev.target.value));
   $('profileName').addEventListener('change',ev=>{ev.target.value=Profile.setName(ev.target.value);Save.refreshMenuControls();});
   $('profileName').addEventListener('blur',ev=>{ev.target.value=Profile.setName(ev.target.value);Save.refreshMenuControls();});
