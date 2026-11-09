@@ -1,6 +1,6 @@
 # Dungeon Rogue — ad copy
 
-Play link: **https://mamoun123121314.github.io/2d-dungeon-game/**
+Play link: **https://mamoun123121314.github.io/dungeon-rogue/**
 
 ---
 
@@ -51,7 +51,7 @@ Play link: **https://mamoun123121314.github.io/2d-dungeon-game/**
 > No engine, no asset files, no audio folder. Procedural floors, three-phase bosses, elemental builds, talent trees, endless mode, autosave. 38 sound effects — real CC0 recordings, not oscillators — are inlined as base64 and decoded on demand, so the whole game is still one file that runs offline.
 >
 > Play it in your browser — free, nothing to install:
-> https://mamoun123121314.github.io/2d-dungeon-game/
+> https://mamoun123121314.github.io/dungeon-rogue/
 >
 > Built with vanilla JS + Canvas 2D. Happy to answer anything about how it works.
 
@@ -60,7 +60,7 @@ Play link: **https://mamoun123121314.github.io/2d-dungeon-game/**
 > one HTML file. no engine, no assets, no install.
 > procedural floors, 3-phase bosses, elemental builds, endless mode.
 > play free 👇
-> https://mamoun123121314.github.io/2d-dungeon-game/
+> https://mamoun123121314.github.io/dungeon-rogue/
 
 ---
 

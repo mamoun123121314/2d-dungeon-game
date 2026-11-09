@@ -2111,7 +2111,6 @@ const dist2 = (x1, y1, x2, y2) => { const dx = x2 - x1, dy = y2 - y1; return dx 
 const dist = (x1, y1, x2, y2) => Math.sqrt(dist2(x1, y1, x2, y2));
 const angleTo = (x1, y1, x2, y2) => Math.atan2(y2 - y1, x2 - x1);
 const smoothstep = (t) => t * t * (3 - 2 * t);
-const sign = (v) => (v < 0 ? -1 : 1);
 const now = () => performance.now() / 1000;
 const fmt = (n) => Math.round(n).toLocaleString('en-US');
 
@@ -6493,12 +6492,6 @@ function refreshSettingsPage() {
    select is now paired with a rune-lit trigger that opens an in-game listbox.
    The hidden select stays the single source of truth, so Settings.set,
    backups, saved runs and the existing change listeners keep working. */
-const SELECT_KEYS = {
-  paletteSetting: 'palette',
-  auraSetting: 'companionAura',
-  heroAspectSetting: 'heroAspect',
-  contractSetting: 'contract'
-};
 let _menuSelectId = null, _menuReturnFocus = null;
 
 function syncSelectTriggers() {
