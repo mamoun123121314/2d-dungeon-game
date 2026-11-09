@@ -1058,6 +1058,9 @@ body.is-phone #phoneRail{display:block;}
 #phoneRail .pBar.hp i{background:linear-gradient(90deg,#8f1f1f,#e0554d 60%,#ff8a72);}
 #phoneRail .pBar.mp i{background:linear-gradient(90deg,#1d3f7a,#3f7dd6 60%,#79b6ff);}
 #phoneRail .pBar.emb i{background:linear-gradient(90deg,#8a4a1c,#e0954a 60%,#ffd0a0);}
+#phoneRail .pBar.xp i{background:linear-gradient(90deg,#5c4a12,#b99a3f 60%,#f3d99a);}
+/* the rail is a slim readout, so the XP numbers are tighter than the bar text */
+#phoneRail .pRow.pXp{opacity:.92;}
 #phoneRail .pBar em{position:absolute;inset:0;font-style:normal;font-family:var(--font-mono);
   font-size:8px;line-height:11px;text-align:center;color:#f6ead2;text-shadow:0 1px 2px #000;letter-spacing:.04em;}
 #phoneRail .pLvl{font-family:var(--font-mono);font-size:9px;color:var(--gold-bright);
@@ -1354,6 +1357,14 @@ body.is-phone #startScreen .phoneStart{display:flex;}
   text-transform: uppercase; color: #8fe0a8; opacity: 0; pointer-events: none;
   transition: opacity .3s; text-shadow: 0 1px 3px #000; z-index: 4; }
 #saveToast.pop { animation: savePop 1.5s ease-out; }
+/* On a phone the bottom-right corner belongs to SLASH (and the row above it to
+   POTION/MISSILE/SLAM), so the autosave stamp used to fade in directly on top
+   of the attack button. The button column starts around x=254 on a 430pt
+   phone, so the stamp is pinned to the bottom-LEFT band instead, under Ember's
+   chip, where the only thing it can meet is the (invisible when idle)
+   thumbstick ring. */
+body.is-phone #saveToast { right: auto; left: 10px; max-width: calc(50% - 20px);
+  bottom: calc(10px + env(safe-area-inset-bottom, 0px)); }
 .svDot { width: 6px; height: 6px; border-radius: 50%; background: #8fe0a8;
   box-shadow: 0 0 8px #8fe0a8; }
 @keyframes savePop {
@@ -1640,9 +1651,14 @@ body.is-phone .affixChip{font-size:7.5px;padding:2px 6px;}
     <span class="pLvl" style="visibility:hidden">LV</span>
     <div class="pBar mp"><i id="pMpFill" style="width:100%"></i><em id="pMpText">40/40</em></div>
   </div>
-  <div class="pRow pEmber" style="margin-top:2px;">
+  <!-- Third rail slot: XP. Ember used to be drawn here AND in the #compHud
+       chip at the bottom left, so a phone showed her twice while the XP bar
+       behind #playerHud was hidden and showed her nowhere else. Ember keeps
+       the chip (it carries her bond as well as her health); this slot now
+       carries the one vital a phone could not see at all. -->
+  <div class="pRow pXp" style="margin-top:2px;">
     <span class="pLvl" style="visibility:hidden">LV</span>
-    <div class="pBar emb"><i id="pEmbFill" style="width:100%"></i><em id="pEmbText">EMBER</em></div>
+    <div class="pBar xp"><i id="pXpFill" style="width:0%"></i><em id="pXpText">0 / 60 XP</em></div>
   </div>
   <div class="pCur">
     <span>G <b id="pGold">0</b></span>
@@ -13443,11 +13459,11 @@ const Phone = {
     set('pGold', fmt(p.gold));
     set('pKeys', String(p.keys));
     set('pPotions', String(p.potions));
-    /* Ember's bar, so she is legible on a phone too */
-    if (COMPANION.active) {
-      wid('pEmbFill', COMPANION.hp / COMPANION.maxHp * 100);
-      set('pEmbText', COMPANION.downT > 0 ? 'EMBER DOWN' : 'EMBER ' + Math.ceil(COMPANION.hp));
-    }
+    /* XP in the rail's third slot. Ember is not mirrored here: she already
+       has the bottom-left chip, and drawing her twice was the reported
+       "double of everything". */
+    wid('pXpFill', p.xp / p.xpNext * 100);
+    set('pXpText', Math.floor(p.xp) + ' / ' + p.xpNext + ' XP');
     /* radial cooldown sweeps */
     const cd = (id, ratio) => {
       const el = $(id);
