@@ -10160,10 +10160,6 @@ function drawDrop(ctx, drop, cam, t) {
 const HERO_DRAW_SCALE = 0.72;
 function drawPlayer(ctx, p, cam, t) {
   const x = p.x - cam.x, y = p.y - cam.y;
-  ctx.save();
-  /* shadow */
-  ctx.fillStyle = 'rgba(0,0,0,0.42)';
-  ctx.beginPath(); ctx.ellipse(x, y + 10, 11, 5, 0, 0, TAU); ctx.fill();
 
   const swingT = p.swing > 0 ? p.swing / 0.26 : 0;
   /* Breathing when still, a two-beat gait when moving, plus a landing squash
@@ -10174,10 +10170,26 @@ function drawPlayer(ctx, p, cam, t) {
   const bob = p.moving ? gait * 1.7 + gait2 : breath;
   const landSquash = p.dodging > 0 ? 1 : (p.landT > 0 ? p.landT * 0.18 : 0);
 
-  /* lean into the direction of travel so momentum reads */
-  if (p.moving && Math.hypot(p.vx, p.vy) > 20) {
-    ctx.rotate(clamp((p.vx / 400) * 0.06, -0.09, 0.09));
-  }
+  ctx.save();
+  /* Shadow. It is drawn from the same bob as the body so the two can never
+     drift apart: previously the shadow used a fixed +10 while the body was
+     translated by (x, y + bob), so the feet rose and sank a few pixels against
+     a shadow nailed to one spot. Damp the bob here (a real cast shadow moves
+     less than the thing casting it) instead of ignoring the motion entirely. */
+  const shadowY = y + 10 + bob * 0.45 + landSquash * 6;
+  ctx.fillStyle = 'rgba(0,0,0,0.42)';
+  ctx.beginPath(); ctx.ellipse(x, shadowY, 11, 5, 0, 0, TAU); ctx.fill();
+
+  /* lean into the direction of travel so momentum reads.
+     The lean MUST be applied after the translate below, not before it. Canvas
+     transforms compose, so rotating here rotated the hero about the canvas
+     origin (0,0) instead of about himself: the further he got from the top-left
+     corner, the further the spin swung him away from where he actually was.
+     At the right edge that was a 21px vertical displacement while the shadow,
+     drawn at the true position, stayed put — which is why he appeared to float
+     above his own shadow while running at a wall. */
+  const lean = (p.moving && Math.hypot(p.vx, p.vy) > 20)
+    ? clamp((p.vx / 400) * 0.06, -0.09, 0.09) : 0;
   const dodgeAlpha = p.dodging > 0 ? 0.55 : 1;
   /* motion blur ghost while dodging */
   if (p.dodging > 0) {
@@ -10191,6 +10203,8 @@ function drawPlayer(ctx, p, cam, t) {
   }
   ctx.globalAlpha = dodgeAlpha;
   ctx.translate(x, y + bob + landSquash * 6);
+  /* lean about the hero's own origin, now that the origin is the hero */
+  if (lean) ctx.rotate(lean);
   /* Scale the body to what actually collides. The hero is drawn at 1.5× the
      size the movement code models — the sprite is 45px tall and 32px wide
      against a 24px collision circle — which is why he used to paint his torso
