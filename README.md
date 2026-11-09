@@ -266,13 +266,38 @@ Ashes*, *Cinder Vault* and *Reliquary* — listed in **Profile & Backup**:
 - Ability hotbar with procedurally painted icons and cooldown sweeps.
 - Full-screen overlays for title, death, victory, pause, inventory and shop,
   all styled with CSS only.
+- **One menu shell.** Every panel — Settings, Profile & Backup, Rewards,
+  Sanctuary, Shrine, Pause, Death, Victory — shares the same header (a gold
+  rule, a title and an uppercase subtitle explaining the screen), the same
+  inner padding and the same button shapes, so they read as one game rather
+  than nine separate screens. The pause menu is grouped into *Play*,
+  *Options* and *Progress* with a separated danger-coloured *Abandon Run*.
 
 ### Audio
-All 40 sound effects are built from oscillators, filtered noise and gain
-envelopes — sword swing, spell cast, enemy grunts, chest chime, player hurt,
-level-up jingle, gold pickup, door unlock, heartbeat at low HP, boss telegraph,
-slam, charge, phase shift, loot reveal, bounty fanfare, combo climb and more —
-plus a layered ambient music bed that changes per biome.
+All 39 sound effects are synthesised at runtime, but they are **layered rather
+than tonal**: every impact is built from the three parts a real one has — a
+sharp transient, a resonant body and a decaying tail — instead of a single
+oscillator with a volume ramp.
+
+- **Resonant bodies** (`metal()`) ring at a handful of detuned partials that
+  decay at different rates, which is what makes a sword, a lock and a coin
+  sound like struck metal instead of a beep.
+- **Material impacts** are distinct: flesh and cloth (`thump`/`voice`), dry
+  splintering wood (`crate`), grating iron (`door`), shattering stone
+  (`shatter`/`crunch`).
+- **Creatures have throats.** Grunts, yelps and Ember's bite use a sawtooth
+  through two vowel formants with sub-octave and slight vibrato, so they read
+  as voices rather than synths.
+- **One shared space.** Every effect is sent to a stone-hall reverb built from
+  four mutually-prime comb delays feeding allpass diffusers, with the tail
+  damped as it decays. Sounds no longer play in a vacuum.
+- **Stereo placement.** Hits are panned by where they happen on screen
+  (`Sound.panFor`), so a blow on the left comes from the left.
+
+Sound set: sword swing, hit, crit, enemy hurt and death, Ember's bite and yelp,
+spell cast and impact, chest, gold, loot, level-up, gold pickup, door unlock,
+heartbeat at low HP, boss telegraph, slam, charge, phase shift, bounty fanfare,
+combo climb and menu clicks — plus a layered ambient music bed per biome.
 
 **The soundtrack is reactive.** The pad and its distant bell motif always play,
 but when three or more enemies are aggro and near, a combat layer fades in: a
