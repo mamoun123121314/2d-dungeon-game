@@ -5603,6 +5603,15 @@ const STORY = {
       <div class="scLines">${ch.lines.map(l => `<p>${escapeHtml(l)}</p>`).join('')}</div>
       <button class="scBtn" id="storyNext">Continue</button>
       <div class="scHint">Click, tap or press any key to continue</div>`;
+    /* The element ships with class="hidden" so it cannot flash before boot.
+       `.hidden` is `display:none !important` and therefore outranks the
+       `#storyCard.show` rule, so a card that only ADDED 'show' never became
+       visible — while still setting this.open below, which every movement and
+       combat path checks. The hero could not move at all, with nothing on
+       screen to explain it, and no way out: the Continue button, the
+       tap-to-dismiss area and the key handler all belonged to an element with
+       no layout box. Removing 'hidden' is what makes 'show' mean anything. */
+    el.classList.remove('hidden');
     el.classList.add('show');
     /* The card used to freeze the game by setting Game.paused. That flag is
        also what every other overlay clears on close, so a card whose Continue
@@ -5618,6 +5627,7 @@ const STORY = {
       if (!this.open) return;
       this.open = false;
       el.classList.remove('show');
+      el.classList.add('hidden');
       if (this.keyHandler) { window.removeEventListener('keydown', this.keyHandler, true); this.keyHandler = null; }
       if (ch.whisper) setTimeout(() => toast(ch.whisper, 'lore'), 400);
       Sound.play('ui');
@@ -5650,10 +5660,24 @@ const STORY = {
   reset() {
     this.seen = {}; this.chapter = 0;
     if (this.open && this.close) this.close();
+    /* close() is skipped when a card is open but has no dismiss hook, so the
+       element is reset directly too. A leftover `show` (or a missing `hidden`)
+       carried into the next run would resurrect the freeze. */
+    const el = $('storyCard');
+    if (el) { el.classList.remove('show'); el.classList.add('hidden'); }
     if (this.keyHandler) { window.removeEventListener('keydown', this.keyHandler, true); this.keyHandler = null; }
     this.open = false; this.close = null;
   }
 };
+
+/* Every gameplay gate asks this, never `STORY.open` directly. A card only
+   holds the game when it is both flagged open AND actually painted; the two
+   drifting apart is what froze the hero behind an invisible card. */
+function storyHolds() {
+  if (!STORY.open) return false;
+  const el = $('storyCard');
+  return !!(el && el.getBoundingClientRect().height > 0 && getComputedStyle(el).display !== 'none');
+}
 
 /* ============================== SAVE SYSTEM ============================= */
 /* Minecraft-style persistence: the run autosaves every few seconds and on
@@ -7855,7 +7879,7 @@ function reapplyMerchantPrices() {
 
 /* ---------- floor transitions ---------- */
 function descend() {
-  if (Game.state !== 'playing' || Game.paused || STORY.open) return;
+  if (Game.state !== 'playing' || Game.paused || storyHolds()) return;
   const d = Game.dungeon;
   const px = Game.player.x, py = Game.player.y;
   const onStairs = d.roomAt(px, py) === d.stairsRoom && dist(px, py, (d.stairs.x + 0.5) * TILE, (d.stairs.y + 0.5) * TILE) < 52;
@@ -7989,7 +8013,7 @@ const Combat = {
   /* melee arc swing */
   playerAttack() {
     const p = Game.player;
-    if (p.attackCd > 0 || p.dodging > 0 || Game.state !== 'playing' || Game.paused || STORY.open) return;
+    if (p.attackCd > 0 || p.dodging > 0 || Game.state !== 'playing' || Game.paused || storyHolds()) return;
     p.attackCd = 0.40;
     p.swing = 0.26;
     p.swingDir = p.aimAngle;
@@ -8040,7 +8064,7 @@ const Combat = {
   },
   playerMagic() {
     const p = Game.player;
-    if (p.magicCd > 0 || p.dodging > 0 || Game.state !== 'playing' || Game.paused || STORY.open) return;
+    if (p.magicCd > 0 || p.dodging > 0 || Game.state !== 'playing' || Game.paused || storyHolds()) return;
     const cost = Math.max(1, Math.round(8 * p.manaCostMul));
     if (p.mana < cost) {
       FX.text(p.x, p.y - 34, 'NO MANA', { color: '#7fb6e8', size: 12 });
@@ -8063,7 +8087,7 @@ const Combat = {
   },
   playerSlam() {
     const p = Game.player;
-    if (p.slamCd > 0 || Game.state !== 'playing' || Game.paused || STORY.open) return;
+    if (p.slamCd > 0 || Game.state !== 'playing' || Game.paused || storyHolds()) return;
     const slamCost = Math.max(1, Math.round(18 * p.manaCostMul));
     if (p.mana < slamCost) {
       FX.text(p.x, p.y - 34, 'NO MANA', { color: '#7fb6e8', size: 12 });
@@ -8968,7 +8992,7 @@ function renderShrineChoices() {
   empty.hidden=choices.length>0;
 }
 function openShrine() {
-  if(Game.state!=='playing'||Game.paused||Game.floorShrineUsed||STORY.open) return false;
+  if(Game.state!=='playing'||Game.paused||Game.floorShrineUsed||storyHolds()) return false;
   if(!Game.shrineChoices.length) Game.shrineChoices=shuffle(SHRINE_OATHS.filter(o=>(Game.runBoons[o.id]||0)<2).slice()).slice(0,3);
   Game.shrineOpen=true; Game.paused=true;
   renderShrineChoices();
@@ -9028,7 +9052,7 @@ function nearestInteractable() {
   return best;
 }
 function doInteract() {
-  if (Game.state !== 'playing' || Game.paused || STORY.open) return;
+  if (Game.state !== 'playing' || Game.paused || storyHolds()) return;
   const p = Game.player, d = Game.dungeon;
   /* vault door */
   if (d.vaultDoor && d.vaultDoor.locked) {
@@ -12965,7 +12989,7 @@ function setupInput() {
     if (ev.repeat) return;
     Game.keysDown.add(code);
     if (keyMap[code]) Game.input[keyMap[code]] = true;
-    if (STORY.open) return;          /* the chapter card owns the keyboard */
+    if (storyHolds()) return;          /* the chapter card owns the keyboard */
     if (Game.state !== 'playing' && Game.state !== 'paused') return;
     switch (code) {
       case 'KeyQ': Combat.playerMagic(); flashAbility('ab1'); break;
@@ -13006,7 +13030,7 @@ function setupInput() {
   canvas.addEventListener('mousedown', (ev) => {
     if (ev.button !== 0) return;
     Sound.init(); Sound.resume();
-    if (STORY.open) return;            /* the card's own tap closes it */
+    if (storyHolds()) return;            /* the card's own tap closes it */
     if (Game.state === 'playing' && !Game.paused) {
       Game.input.mouseDown = true;
       Combat.playerAttack();
@@ -13478,7 +13502,7 @@ function drinkPotion() {
 function percentOf(v, pct) { return Math.round(v * pct / 100); }
 function dodgeRoll() {
   const p = Game.player;
-  if (!p || p.dead || p.dodgeCd > 0 || Game.paused || STORY.open) return;
+  if (!p || p.dead || p.dodgeCd > 0 || Game.paused || storyHolds()) return;
   const moving = Game.input.up || Game.input.down || Game.input.left || Game.input.right;
   p.dodgeAngle = moving ? Math.atan2((Game.input.down ? 1 : 0) - (Game.input.up ? 1 : 0), (Game.input.right ? 1 : 0) - (Game.input.left ? 1 : 0)) : p.aimAngle;
   p.dodging = 0.22;
@@ -13739,7 +13763,15 @@ function update(dt) {
   /* A chapter card holds the world the same way an overlay does, but through
      its own flag: Game.paused belongs to the menus, and reusing it here is
      what used to leave the hero frozen after a floor change. */
-  const held = Game.paused || STORY.open;
+  if (STORY.open && !storyHolds()) {
+    /* the flag outlived the card: clear both rather than freeze the player */
+    STORY.open = false;
+    if (STORY.keyHandler) {
+      window.removeEventListener('keydown', STORY.keyHandler, true);
+      STORY.keyHandler = null;
+    }
+  }
+  const held = Game.paused || storyHolds();
   if (Game.state === 'playing' && !held) {
     Game.elapsedRun += dt;
     updatePlayer(dt);
