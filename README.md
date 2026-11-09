@@ -209,7 +209,8 @@ A Minecraft-style autosave keeps a single run slot:
   sound, screen shake, reduced motion/flash, floating combat text, high contrast,
   larger interface, and the next-run contract. The utility menu can export or
   import a JSON backup containing the run, meta progression, profile, and settings.
-- Visual options include *Cinder*, *Moon-tide* and *Verdant* colourways, plus
+- Visual options include *Cinder*, *Moon-tide* and *Verdant* colourways,
+  three hero mantles (*Ashen Wayfarer*, *Moonblade*, *Thornbound*), and
   selectable Foxfire or Moon Sigil trails around Ember. The reward screen uses
   animated milestone sigils and progress bars; Settings can also be opened
   directly from Progress & Rewards. These effects respect reduced-motion mode.
