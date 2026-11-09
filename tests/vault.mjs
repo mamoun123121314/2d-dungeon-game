@@ -31,17 +31,19 @@ const check = (name, ok, detail = '') => {
 try {
   await page.goto(server.url, { waitUntil: 'load' });
   await waitForBoot(page);
-  /* Begin a run by calling the game's own startRun() rather than clicking the
-     button. the harness helper clicks #startBtn and then waits for
-     Game.state === 'playing', and on CI's slower Chrome that wait timed out for
-     20s — the suite failed while the game was fine. Calling the game's own
-     entry point synchronously sets up the same state without a race. */
-  await page.evaluate(() => {
-    if (typeof Game !== 'undefined' && Game.state === 'playing') return;
-    /* the game's startRun() is shadowed by the harness import name only in
-       module scope, not in the page */
-    window.startRun();
-  });
+  /* Begin a run without going through the start button.
+     beginGame() (what #startBtn calls) shows window.confirm() when all three
+     save slots are full — "starting a new run replaces the oldest". A confirm()
+     dialog blocks a headless browser until it is answered, so the harness's
+     wait for Game.state === 'playing' sat there until its 20s timeout and took
+     the whole suite down with it. Every suite here shares one origin, so slots
+     written by the save suite make that path reachable; this suite only ever
+     passed locally because the timing happened to differ.
+     Clearing the slots first and calling the game's own startRun() directly
+     avoids the dialog entirely. The other 7 suites still click the button, so
+     the real start path stays covered there. */
+  await page.evaluate(() => { try { window.localStorage.clear(); } catch (e) {} });
+  await page.evaluate(() => { window.startRun(); });
   await page.waitForFunction(() => Game.state === 'playing', { timeout: 20000 });
 
   /* Walk the grid with the shut door treated as solid, the way repairConnectivity
