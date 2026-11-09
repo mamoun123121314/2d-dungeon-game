@@ -606,6 +606,34 @@ body.is-phone .invFooter{font-size:10px;}
 #pauseOverlay .pausePanel,#deathOverlay .deathPanel,#victoryOverlay .victoryPanel{
   width:min(520px,94vw);padding:0 0 24px;text-align:center;overflow:hidden;
 }
+/* Settings, profile, rewards and the permanent cosmetic shop share one clear,
+   scrollable shell. Buttons stay large enough for touch and keyboard users. */
+#settingsOverlay,#profileOverlay,#rewardsOverlay,#sanctuaryOverlay{z-index:80;}
+.menuPage{width:min(620px,94vw);max-height:min(88vh,780px);overflow:auto;padding:0 0 18px;}
+.menuPage .panelHead{position:sticky;top:0;z-index:1;background:rgba(13,10,18,.98);}
+.menuPageBody{padding:18px 22px 8px;display:flex;flex-direction:column;gap:13px;text-align:left;}
+.menuLead{font-size:12px;color:#a99caf;line-height:1.65;margin:0;}
+.menuNote{font-size:10px;line-height:1.6;color:#887e91;padding:10px 12px;border-left:2px solid rgba(217,181,107,.4);background:rgba(255,255,255,.025);}
+.menuField{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:10px 12px;border:1px solid rgba(217,181,107,.16);border-radius:5px;background:rgba(255,255,255,.025);color:#d5c9da;font-size:12px;}
+.menuField input[type=range]{width:min(220px,45%);accent-color:#d9b56b;}
+.menuField input[type=text]{width:min(240px,58%);padding:9px 10px;background:#100d15;border:1px solid rgba(217,181,107,.28);border-radius:4px;color:#f3e6c7;font:inherit;}
+.menuActions{display:flex;gap:9px;flex-wrap:wrap;justify-content:center;margin-top:4px;}
+.menuActions .bigBtn{flex:1 1 190px;min-height:44px;}
+.menuPage .panelHead h2{font-size:15px;}
+.rewardCard,.storeCard{display:grid;grid-template-columns:1fr auto;gap:5px 12px;align-items:center;padding:12px;border:1px solid rgba(217,181,107,.17);border-radius:5px;background:rgba(255,255,255,.025);}
+.rewardCard.done{border-color:rgba(143,224,168,.38);}
+.rewardCard strong,.storeCard strong{color:#e8d7b7;font-size:12px;}
+.rewardCard small,.storeCard small{grid-column:1;color:#9b91a4;font-size:10px;line-height:1.5;}
+.rewardCard .bigBtn,.storeCard .bigBtn{grid-column:2;grid-row:1 / span 2;width:auto;min-width:112px;padding:10px 12px;font-size:10px;letter-spacing:.12em;}
+.menuCurrency{color:#ffd88a;font:12px var(--font-mono);text-align:center;}
+
+body.reduced-motion *,body.reduced-motion *::before,body.reduced-motion *::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important;scroll-behavior:auto!important;}
+.menuIdentity{font-size:10px;color:#9d91a5;letter-spacing:.08em;margin:8px auto 0;}
+.menuIdentity b{color:#e2c98e;font-weight:500;}
+.menuHub{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin:6px auto 12px;}
+.menuHub .bigBtn{width:auto;max-width:none;flex:1 1 155px;padding:11px 12px;font-size:10px;letter-spacing:.12em;}
+@media(max-width:520px){.menuPageBody{padding:14px 12px 8px}.menuField{align-items:flex-start;flex-direction:column}.menuField input[type=range],.menuField input[type=text]{width:100%}.menuHub .bigBtn{flex-basis:42%;}.rewardCard,.storeCard{grid-template-columns:1fr}.rewardCard small,.storeCard small,.rewardCard .bigBtn,.storeCard .bigBtn{grid-column:1;grid-row:auto}.rewardCard .bigBtn,.storeCard .bigBtn{width:100%;}}
+
 .pausePanel .panelHead,.deathPanel .panelHead,.victoryPanel .panelHead{justify-content:center;}
 .panelInner{padding:22px 34px 4px;display:flex;flex-direction:column;align-items:center;gap:16px;}
 .bigBtn{
@@ -835,7 +863,7 @@ body.is-phone #phoneRail{display:block;}
 /* Was a full-screen opaque overlay at z-index 200 shown whenever a phone was
    in portrait — it covered the entire display and swallowed every tap, which
    is why the inventory and shop felt dead on a portrait phone. Portrait is
-   fully playable now; this is a small dismissible hint in the top corner that
+   fully playable now; this is a small non-interactive hint at the bottom that
    never intercepts input. */
 #rotateNudge{position:fixed;left:50%;bottom:calc(12px + env(safe-area-inset-bottom, 0px));
   transform:translateX(-50%);z-index:56;display:none;pointer-events:none;
@@ -850,11 +878,7 @@ body.is-phone .actionSheet:not(.hidden) ~ #rotateNudge{display:none;}
   border-radius:4px;flex:0 0 auto;animation:rot 2.4s ease-in-out infinite;}
 #rotateNudge h3{display:none;}
 #rotateNudge p{font-size:10.5px;margin:0;max-width:none;color:#bdb1c8;}
-#rotateNudge .rotIcon{width:76px;height:76px;border:2px solid var(--gold);
-  border-radius:14px;position:relative;animation:rot 2.4s ease-in-out infinite;}
 @keyframes rot{0%,40%{transform:rotate(0)}60%,100%{transform:rotate(90deg)}}
-#rotateNudge h3{font-size:17px;letter-spacing:.1em;text-transform:uppercase;color:var(--gold-bright);margin:0;}
-#rotateNudge p{font-size:13px;color:#a99d88;margin:0;max-width:280px;line-height:1.5;}
 
 body.is-phone #minimapPanel,
 body.is-phone #playerHud,
@@ -1162,8 +1186,7 @@ body.is-phone #startScreen .phoneStart{display:flex;}
 .chBar i { display: block; height: 100%; border-radius: 2px;
   background: linear-gradient(90deg,#c98a4a,#ffd0a0); transition: width .2s; }
 .chBond { color: #9aa4b6; }
-@media (max-width: 760px) { #compHud { display: none; } }
-body.is-phone #compHud { display: none; }
+@media (max-width: 760px) { #compHud { display: flex; } }
 
 #comboHud { position: absolute; right: 14px; bottom: 120px; width: 150px;
   text-align: right; pointer-events: none; z-index: 3; opacity: 0; transition: opacity .18s; }
@@ -1232,6 +1255,14 @@ body.is-phone #comboHud{top:66px;right:10px;bottom:auto;width:92px;}
 body.is-phone .cX{font-size:23px;}
 body.is-phone .cLabel{font-size:7px;letter-spacing:.2em;}
 body.is-phone .cTrack{margin-top:3px;}
+
+body.is-phone #compHud{display:flex;position:fixed;left:10px;bottom:calc(88px + env(safe-area-inset-bottom, 0px));z-index:48;
+  max-width:138px;padding:7px 9px;gap:6px;font-size:8px;letter-spacing:.07em;
+  background:rgba(8,6,12,.88);border-color:rgba(217,181,107,.48);box-shadow:0 2px 12px rgba(0,0,0,.55);}
+body.is-phone #compHud .chName{font-size:8px;}
+body.is-phone #compHud .chBar{width:36px;flex:0 0 36px;}
+body.is-phone #compHud .chBond{font-size:7px;white-space:nowrap;}
+body.is-phone #compHud.hidden{display:none;}
 
 body.is-phone #bountyHud{display:flex;top:66px;left:10px;right:auto;width:126px;gap:4px;}
 body.is-phone .bountyHead{font-size:8px;letter-spacing:.14em;}
@@ -1318,7 +1349,7 @@ body.is-phone .affixChip{font-size:7.5px;padding:2px 6px;}
   <div id="bountyHud" class="hidden"></div>
   <div id="comboHud" class="hidden"><span class="cX" id="comboX">x1</span><span class="cLabel">COMBO</span>
     <div class="cTrack"><div class="cFill" id="comboFill"></div></div></div>
-<div id="compHud" class="hidden">
+<div id="compHud" class="hidden" role="status" aria-label="Ember companion status" aria-live="polite">
   <span class="chName">EMBER</span>
   <div class="chBar"><i id="compHpFill" style="width:100%"></i></div>
   <span class="chBond" id="compBond">BOND 0</span>
@@ -1562,6 +1593,10 @@ body.is-phone .affixChip{font-size:7.5px;padding:2px 6px;}
       <button class="bigBtn secondary" id="pauseInvBtn">Open Satchel</button>
       <button class="bigBtn secondary" id="pauseSaveBtn">Save Game</button>
       <button class="bigBtn secondary" id="pauseSoundBtn">Toggle Sound</button>
+      <button class="bigBtn secondary" id="pauseSettingsBtn">Settings</button>
+      <button class="bigBtn secondary" id="pauseProfileBtn">Profile &amp; Backup</button>
+      <button class="bigBtn secondary" id="pauseRewardsBtn">Progress &amp; Rewards</button>
+      <button class="bigBtn secondary" id="pauseShopBtn">Sanctuary Shop</button>
       <button class="bigBtn secondary" id="abandonBtn">Abandon Run</button>
       <div class="controlsList">
         <kbd>W A S D / Arrows</kbd><span>Move</span>
@@ -1578,6 +1613,53 @@ body.is-phone .affixChip{font-size:7.5px;padding:2px 6px;}
       </div>
     </div>
   </div>
+</div>
+
+<!-- ============================ SETTINGS / PROFILE / META ============================ -->
+<div class="overlay" id="settingsOverlay" aria-hidden="true">
+  <section class="panel menuPage" role="dialog" aria-modal="true" aria-labelledby="settingsTitle">
+    <div class="panelHead"><h2 id="settingsTitle">Settings</h2></div>
+    <div class="menuPageBody">
+      <p class="menuLead">Tune the descent to your screen and your ears. Choices are saved on this device.</p>
+      <label class="menuField" for="volumeSetting"><span>Master volume <b id="volumeValue">85%</b></span><input id="volumeSetting" type="range" min="0" max="100" value="85"></label>
+      <label class="menuField" for="shakeSetting"><span>Screen shake</span><input id="shakeSetting" type="checkbox" checked></label>
+      <label class="menuField" for="motionSetting"><span>Reduced motion</span><input id="motionSetting" type="checkbox"></label>
+      <label class="menuField" for="soundSetting"><span>Sound effects &amp; music</span><input id="soundSetting" type="checkbox" checked></label>
+      <div class="menuActions"><button class="bigBtn secondary" data-close-page="settingsOverlay">Done</button></div>
+    </div>
+  </section>
+</div>
+<div class="overlay" id="profileOverlay" aria-hidden="true">
+  <section class="panel menuPage" role="dialog" aria-modal="true" aria-labelledby="profileTitle">
+    <div class="panelHead"><h2 id="profileTitle">Adventurer Profile</h2></div>
+    <div class="menuPageBody">
+      <p class="menuLead">Your optional local profile labels this device's progress. No email, password or personal details are needed.</p>
+      <label class="menuField" for="profileName"><span>Adventurer name</span><input id="profileName" type="text" maxlength="24" autocomplete="nickname" placeholder="Wanderer"></label>
+      <div class="menuNote"><b>Protect your progress:</b> progress is stored in this browser. Export a backup file and keep it somewhere safe, then import it on another device to move your save. This static game has no account server or automatic cloud sync, so clearing browser data can erase local progress.</div>
+      <div class="menuActions"><button class="bigBtn" id="exportBackupBtn">Export Backup</button><button class="bigBtn secondary" id="importBackupBtn">Import Backup</button><input id="backupFileInput" type="file" accept="application/json,.json" hidden></div>
+      <div id="backupStatus" class="menuNote" aria-live="polite">Backups include this device's run, profile and permanent rewards.</div>
+      <div class="menuActions"><button class="bigBtn secondary" data-close-page="profileOverlay">Done</button></div>
+    </div>
+  </section>
+</div>
+<div class="overlay" id="rewardsOverlay" aria-hidden="true">
+  <section class="panel menuPage" role="dialog" aria-modal="true" aria-labelledby="rewardsTitle">
+    <div class="panelHead"><h2 id="rewardsTitle">Progress &amp; Rewards</h2></div>
+    <div class="menuPageBody"><p class="menuLead">Reach milestones across runs to earn permanent Ember Shards. Claim each reward once.</p>
+      <div id="rewardSummary" class="menuCurrency"></div><div id="rewardList"></div>
+      <div class="menuActions"><button class="bigBtn secondary" data-close-page="rewardsOverlay">Done</button></div>
+    </div>
+  </section>
+</div>
+<div class="overlay" id="sanctuaryOverlay" aria-hidden="true">
+  <section class="panel menuPage" role="dialog" aria-modal="true" aria-labelledby="sanctuaryTitle">
+    <div class="panelHead"><h2 id="sanctuaryTitle">Sanctuary · Permanent Keepsakes</h2></div>
+    <div class="menuPageBody"><p class="menuLead">Spend earned Ember Shards on cosmetic companions. These are permanent and never affect combat power.</p>
+      <div id="sanctuaryBalance" class="menuCurrency"></div><div id="sanctuaryItems"></div>
+      <div class="menuNote"><b>Real-money purchases:</b> checkout is not enabled. This game is hosted as a static page and has no payment provider or secure purchase server; no real-money items are offered or charged.</div>
+      <div class="menuActions"><button class="bigBtn secondary" data-close-page="sanctuaryOverlay">Done</button></div>
+    </div>
+  </section>
 </div>
 
 <!-- ============================ DEATH ============================ -->
@@ -1681,6 +1763,13 @@ body.is-phone .affixChip{font-size:7.5px;padding:2px 6px;}
       <button class="bigBtn secondary hidden" id="continueBtn">Continue</button>
     </div>
     <div class="bestRecord hidden" id="bestRecord"></div>
+    <div id="menuIdentity" class="menuIdentity"></div>
+    <div class="menuHub" aria-label="Game options">
+      <button class="bigBtn secondary" id="menuSettingsBtn">Settings</button>
+      <button class="bigBtn secondary" id="menuProfileBtn">Profile &amp; Backup</button>
+      <button class="bigBtn secondary" id="menuRewardsBtn">Progress &amp; Rewards</button>
+      <button class="bigBtn secondary" id="menuShopBtn">Sanctuary Shop</button>
+    </div>
     <button class="linkBtn hidden" id="deleteSaveBtn">Delete saved run</button>
     <div class="startMeta">
       <span>Single-file · <b>0 KB</b> assets</span>
@@ -1825,9 +1914,39 @@ const $$ = (sel) => Array.prototype.slice.call(document.querySelectorAll(sel));
 
 /* ============================== 02. AUDIO ENGINE ========================== */
 /* Every sound is synthesised from oscillators and noise buffers at call time. */
+const Settings = {
+  KEY: 'dungeonRogue.settings.v1',
+  value: { volume: 0.85, muted: false, screenShake: true, reducedMotion: false },
+  load() {
+    try { const raw = JSON.parse(localStorage.getItem(this.KEY) || '{}'); this.value = Object.assign({}, this.value, raw); } catch (e) {}
+    this.value.volume = clamp(Number(this.value.volume) || 0, 0, 1);
+    this.value.muted = !!this.value.muted;
+    this.value.screenShake = this.value.screenShake !== false;
+    this.value.reducedMotion = !!this.value.reducedMotion;
+    return this.value;
+  },
+  save() { try { localStorage.setItem(this.KEY, JSON.stringify(this.value)); } catch (e) {} },
+  get() { return this.value; },
+  set(key, value) {
+    if (key === 'volume') this.value.volume = clamp(Number(value) || 0, 0, 1);
+    else if (key === 'muted') this.value.muted = !!value;
+    else if (key === 'screenShake') this.value.screenShake = !!value;
+    else if (key === 'reducedMotion') this.value.reducedMotion = !!value;
+    this.save();
+    if(key==='reducedMotion'&&document.body) document.body.classList.toggle('reduced-motion',this.value.reducedMotion);
+    if (key === 'muted' || key === 'volume') if (typeof Sound !== 'undefined') { Sound.setVolume(this.value.volume); Sound.setMuted(this.value.muted); }
+  }
+};
+Settings.load();
+const PROFILE_KEY = 'dungeonRogue.profile.v1';
+const Profile = {
+  get() { try { const p=JSON.parse(localStorage.getItem(PROFILE_KEY)||'{}'); return {name:String(p.name||'').slice(0,24)}; } catch(e) { return {name:''}; } },
+  setName(name) { const clean=String(name||'').trim().replace(/[<>]/g,'').slice(0,24); try { localStorage.setItem(PROFILE_KEY,JSON.stringify({name:clean})); } catch(e) {} return clean; }
+};
+
 const Sound = (() => {
   let ctx = null, master = null, musicGain = null, sfxGain = null, sfxOut = null, noiseBuf = null;
-  let muted = false, started = false;
+  let muted = Settings.get().muted, volume = Settings.get().volume, started = false;
   let musicTimer = null, musicStep = 0, musicLayer = 0;
   let ambientGain = null, ambientSrc = null;
 
@@ -1837,7 +1956,7 @@ const Sound = (() => {
     if (!AC) return false;
     try {
       ctx = new AC();
-      master = ctx.createGain(); master.gain.value = 0.85; master.connect(ctx.destination);
+      master = ctx.createGain(); master.gain.value = muted ? 0 : volume; master.connect(ctx.destination);
       const comp = ctx.createDynamicsCompressor();
       comp.threshold.value = -18; comp.knee.value = 22; comp.ratio.value = 8;
       comp.attack.value = 0.004; comp.release.value = 0.18;
@@ -2360,11 +2479,12 @@ const Sound = (() => {
     muted = !!m;
     if (master) {
       master.gain.cancelScheduledValues(ctx.currentTime);
-      master.gain.setTargetAtTime(muted ? 0 : 0.85, ctx.currentTime, 0.05);
+      master.gain.setTargetAtTime(muted ? 0 : volume, ctx.currentTime, 0.05);
     }
     return muted;
   }
   function toggleMute() { return setMuted(!muted); }
+  function setVolume(v) { volume=clamp(Number(v)||0,0,1); if(master) master.gain.setTargetAtTime(muted?0:volume,ctx.currentTime,0.05); return volume; }
   function isMuted() { return muted; }
   /* ambient wind / lava rumble bed; intensity 0..1 */
   function setAmbient(level) {
@@ -2380,7 +2500,7 @@ const Sound = (() => {
     }
     if (ambientGain) ambientGain.gain.setTargetAtTime(clamp(level, 0, 1) * 0.5, ctx.currentTime, 0.7);
   }
-  return { init, resume, play, startMusic, stopMusic, toggleMute, setMuted, isMuted, setAmbient, get ctx() { return ctx; } };
+  return { init, resume, play, startMusic, stopMusic, toggleMute, setMuted, setVolume, isMuted, setAmbient, get ctx() { return ctx; } };
 })();
 
 /* roundRect polyfill for older engines */
@@ -4492,6 +4612,12 @@ class Player {
    last thing that still recognises you as a person rather than a delver.
    Designed as a self-contained module so nothing else has to know about her.
    ========================================================================= */
+const COMPANION_COATS = {
+  ember:{body0:'#b87b46',body1:'#7a4e2a',tail:'#a9713f',head:'#c88a52',ear:'#8a5730'},
+  frost:{body0:'#a6d7e7',body1:'#4d829e',tail:'#8fc1d2',head:'#c0e8f0',ear:'#6c9eae'},
+  moon:{body0:'#c2a8df',body1:'#684f91',tail:'#9a7bbd',head:'#dcc8f0',ear:'#896ca8'},
+  moss:{body0:'#a9b96b',body1:'#556b3c',tail:'#82944d',head:'#c0ca80',ear:'#748545'}
+};
 const COMPANION = {
   name: 'Ember',
   x: 0, y: 0, vx: 0, vy: 0,
@@ -4548,11 +4674,11 @@ const COMPANION = {
     this.treasureSniff = Math.max(0, this.treasureSniff - dt);
 
     /* pick the closest live enemy inside a sane leash of the player */
-    let target = null, bestD = 230 * 230;
+    let target = null, bestD = 175 * 175;
     for (const e of Game.enemies) {
       if (!e.alive) continue;
       const d2 = dist2(e.x, e.y, p.x, p.y);
-      if (d2 > 260 * 260) continue;
+      if (d2 > 175 * 175) continue;
       const own = dist2(e.x, e.y, this.x, this.y);
       if (own < bestD) { bestD = own; target = e; }
     }
@@ -4639,6 +4765,9 @@ const COMPANION = {
     const sx = this.x - cam.x, sy = this.y - cam.y;
     ctx.save();
     ctx.translate(sx, sy);
+    ctx.scale(1.28,1.28); /* readable at phone scale */
+    const coat=COMPANION_COATS[this.coat]||COMPANION_COATS.ember;
+    ctx.fillStyle='rgba(255,205,120,.13)'; ctx.beginPath(); ctx.arc(0,0,17,0,TAU); ctx.fill();
 
     /* shadow */
     ctx.fillStyle = 'rgba(0,0,0,0.38)';
@@ -4662,14 +4791,14 @@ const COMPANION = {
     ctx.save();
     ctx.translate(-7 * this.face, -2 + bob);
     ctx.rotate(wag - 0.6 * this.face);
-    ctx.fillStyle = '#a9713f';
+    ctx.fillStyle = coat.tail;
     ctx.beginPath(); ctx.roundRect(-2, -9, 4, 11, 2); ctx.fill();
     ctx.restore();
 
     /* body */
     const bodyG = ctx.createLinearGradient(0, -8, 0, 8);
-    bodyG.addColorStop(0, this.hurtFlash > 0 ? '#ff9b8a' : '#b87b46');
-    bodyG.addColorStop(1, '#7a4e2a');
+    bodyG.addColorStop(0, this.hurtFlash > 0 ? '#ff9b8a' : coat.body0);
+    bodyG.addColorStop(1, coat.body1);
     ctx.fillStyle = bodyG;
     ctx.beginPath(); ctx.ellipse(0, bob, 11, 7, 0, 0, TAU); ctx.fill();
 
@@ -4683,10 +4812,10 @@ const COMPANION = {
 
     /* head, pushed forward on a lunge */
     const hx = (9 + lunge * 3) * this.face;
-    ctx.fillStyle = '#c88a52';
+    ctx.fillStyle = coat.head;
     ctx.beginPath(); ctx.ellipse(hx, -3 + bob, 6.4, 5.4, 0, 0, TAU); ctx.fill();
     /* ears */
-    ctx.fillStyle = '#8a5730';
+    ctx.fillStyle = coat.ear;
     ctx.beginPath(); ctx.moveTo(hx - 2 * this.face, -8 + bob);
     ctx.lineTo(hx - 5 * this.face, -2 + bob); ctx.lineTo(hx + 1 * this.face, -3 + bob); ctx.closePath(); ctx.fill();
     /* snout + eye */
@@ -5337,7 +5466,11 @@ const Save = {
       },
       /* gear and bag contents live here so both survive a reload */
       equipment: this.slimSlots(p.equipment),
-      inventory: p.inventory.map(it => this.slimItem(it))
+      inventory: p.inventory.map(it => this.slimItem(it)),
+      companion: COMPANION && COMPANION.active ? {
+        hp: COMPANION.hp, hungry: COMPANION.hungry, bond: COMPANION.bond, downT: COMPANION.downT,
+        coat: COMPANION.coat || 'ember'
+      } : null
     };
   },
 
@@ -5497,9 +5630,22 @@ const Save = {
 
       /* rebuild the floor from the saved seed, then drop the player back in */
       const floorN = clamp(Number(snap.floor) || 1, 1, 9999);
+      /* Ember is part of the saved party, not a menu-only spawn. A fresh page
+         used to leave companionActive undefined, so Continue rebuilt the floor
+         without her and the HUD stayed hidden. */
+      Game.companionActive = true;
       Game.loadingSave = true;
       buildFloor(floorN, false, snap.seed);
       Game.loadingSave = false;
+      COMPANION.active = true;
+      COMPANION.coat = this.meta().activeCoat || 'ember';
+      if (snap.companion && typeof snap.companion === 'object') {
+        COMPANION.downT = clamp(Number(snap.companion.downT) || 0, 0, 9);
+        const savedEmberHp=Number(snap.companion.hp);
+        COMPANION.hp = COMPANION.downT>0 ? 0 : clamp(Number.isFinite(savedEmberHp)?savedEmberHp:COMPANION.maxHp, 1, COMPANION.maxHp);
+        COMPANION.hungry = Math.max(0, Number(snap.companion.hungry) || 0);
+        COMPANION.bond = clamp(Number(snap.companion.bond) || 0, 0, 100);
+      }
       if (snap.endlessBundle && Array.isArray(snap.endlessBundle.list)) {
         Game.endlessBundle.list = snap.endlessBundle.list.filter(k => !!AFFIXES[k]).slice(0, 4);
         Game.endlessBundle.floor = floorN;
@@ -5534,6 +5680,11 @@ const Save = {
       if (Number.isFinite(sx) && Number.isFinite(sy) && Game.dungeon.isWalkablePx(sx, sy)) {
         p.x = sx; p.y = sy;
       }
+      /* buildFloor initially places her by the entrance; after restoring a
+         mid-floor player position, bring her back beside the player too. */
+      const emberSpot=findFreeSpot(p.x-38,p.y+22,COMPANION.radius);
+      COMPANION.x=emberSpot.x; COMPANION.y=emberSpot.y; COMPANION.vx=0; COMPANION.vy=0;
+      COMPANION.active=true; Game.companionActive=true;
       p.hp = clamp(Number(pdata.hp) || p.maxHp, 1, p.maxHp);
       p.mana = clamp(Number(pdata.mana) || p.maxMana, 0, p.maxMana);
       p.invuln = 1.2;
@@ -5546,6 +5697,7 @@ const Save = {
       Game.combatIntensity = 0;
       updateHud(true);
       refreshInventoryUI();
+      if(typeof COMPANION!=='undefined') COMPANION.coat=this.meta().activeCoat||'ember';
       return true;
     } catch (e) {
       /* a broken save must never brick the game */
@@ -5579,7 +5731,8 @@ const Save = {
   /* ---- meta progression (survives every death) ---- */
   meta() {
     const empty = { runs: 0, deepestFloor: 0, totalKills: 0, totalGold: 0,
-                    bossesSlain: 0, bestTime: 0, unlocked: {}, deaths: 0 };
+                    bossesSlain: 0, bestTime: 0, unlocked: {}, deaths: 0,
+                    shards: 0, claimedRewards: [], unlockedCoats: ['ember'], activeCoat: 'ember' };
     if (!this.available()) return empty;
     try {
       const raw = JSON.parse(window.localStorage.getItem(this.META_KEY));
@@ -5589,6 +5742,10 @@ const Save = {
         const v = Number(raw[k]);
         if (Number.isFinite(v)) out[k] = Math.max(0, v);
       }
+      out.shards = Math.max(0, Number(raw.shards) || 0);
+      out.claimedRewards = Array.isArray(raw.claimedRewards) ? raw.claimedRewards.map(String).slice(0,100) : [];
+      out.unlockedCoats = Array.isArray(raw.unlockedCoats) ? [...new Set(['ember', ...raw.unlockedCoats.filter(k => ['frost','moon','moss'].includes(k))])] : ['ember'];
+      out.activeCoat = ['ember','frost','moon','moss'].includes(raw.activeCoat) && out.unlockedCoats.includes(raw.activeCoat) ? raw.activeCoat : 'ember';
       if (raw.unlocked && typeof raw.unlocked === 'object') {
         for (const k in raw.unlocked) if (raw.unlocked[k]) out.unlocked[k] = true;
       }
@@ -5605,6 +5762,7 @@ const Save = {
     m.runs++;
     this.writeMeta(m);
     this.refreshMenuControls();
+    refreshMetaPages();
     return m;
   },
   recordFloor(floorN) {
@@ -5612,11 +5770,13 @@ const Save = {
     if (floorN > m.deepestFloor) m.deepestFloor = floorN;
     this.writeMeta(m);
     this.refreshMenuControls();
+    refreshMetaPages();
   },
   recordBoss() {
     const m = this.meta();
     m.bossesSlain++;
     this.writeMeta(m);
+    refreshMetaPages();
   },
   recordDeath() {
     const m = this.meta();
@@ -5629,6 +5789,7 @@ const Save = {
     }
     this.writeMeta(m);
     this.refreshMenuControls();
+    refreshMetaPages();
   },
   /* paint the start menu with whatever progress exists */
   refreshMenuControls() {
@@ -5645,6 +5806,8 @@ const Save = {
     } else {
       cont.classList.add('hidden');
     }
+    const identity=$('menuIdentity');
+    if(identity){const name=Profile.get().name;identity.innerHTML=name?'Adventurer <b>'+escapeHtml(name)+'</b> · local profile':'Playing as a local guest';}
     const best = $('bestRecord');
     if (best) {
       const m = this.meta();
@@ -5663,6 +5826,110 @@ const Save = {
     if (del) del.classList.toggle('hidden', !snap);
   }
 };
+
+/* Permanent rewards are intentionally cosmetic-only. Progress and currency
+   stay on this device unless the player exports a backup. */
+const META_REWARDS = [
+  {id:'floor2',title:'First Descent',desc:'Reach floor 2 in any run.',field:'deepestFloor',target:2,shards:12},
+  {id:'floor5',title:'The Deep Halls',desc:'Reach floor 5 in any run.',field:'deepestFloor',target:5,shards:24},
+  {id:'firstWarden',title:'Warden Breaker',desc:'Defeat a dungeon boss.',field:'bossesSlain',target:1,shards:18},
+  {id:'threeRuns',title:'Still Standing',desc:'Begin three runs.',field:'runs',target:3,shards:16},
+  {id:'floor10',title:'Heartstone Hunter',desc:'Reach floor 10.',field:'deepestFloor',target:10,shards:45},
+  {id:'fiveWardens',title:'Legend of the Depths',desc:'Defeat five bosses across your adventures.',field:'bossesSlain',target:5,shards:35}
+];
+const SANCTUARY_COATS = [
+  {id:'frost',name:'Frostpelt',desc:'A pale blue winter coat for Ember.',cost:25},
+  {id:'moon',name:'Moonshade',desc:'A twilight-violet coat with a soft glow.',cost:40},
+  {id:'moss',name:'Mossrunner',desc:'A quiet green coat from the old woods.',cost:55}
+];
+let utilityReturnFocus=null;
+function openPage(id) {
+  const el=$(id); if(!el) return;
+  if(!document.querySelector('#settingsOverlay.show,#profileOverlay.show,#rewardsOverlay.show,#sanctuaryOverlay.show')) utilityReturnFocus=document.activeElement;
+  el.classList.add('show'); el.setAttribute('aria-hidden','false'); syncMenuOpen();
+  if(id==='settingsOverlay') refreshSettingsPage();
+  if(id==='profileOverlay') $('profileName').value=Profile.get().name;
+  if(id==='rewardsOverlay'||id==='sanctuaryOverlay') refreshMetaPages();
+  const first=el.querySelector('button:not([disabled]),input:not([type=hidden])'); if(first) setTimeout(()=>first.focus(),0);
+}
+function closePage(id) {
+  const el=$(id); if(!el) return;
+  el.classList.remove('show'); el.setAttribute('aria-hidden','true'); syncMenuOpen();
+  if(!document.querySelector('#settingsOverlay.show,#profileOverlay.show,#rewardsOverlay.show,#sanctuaryOverlay.show')&&utilityReturnFocus&&utilityReturnFocus.isConnected){
+    utilityReturnFocus.focus(); utilityReturnFocus=null;
+  }
+}
+function refreshSettingsPage() {
+  const v=Settings.get();
+  $('volumeSetting').value=Math.round(v.volume*100); $('volumeValue').textContent=Math.round(v.volume*100)+'%';
+  $('shakeSetting').checked=v.screenShake; $('motionSetting').checked=v.reducedMotion; $('soundSetting').checked=!v.muted;
+}
+function refreshMetaPages() {
+  if(typeof COMPANION!=='undefined') COMPANION.coat=Save.meta().activeCoat||'ember';
+  const m=Save.meta(), claimed=new Set(m.claimedRewards||[]);
+  const sum=$('rewardSummary');
+  if(sum) sum.textContent='✦ '+fmt(m.shards)+' EMBER SHARDS';
+  const list=$('rewardList');
+  if(list) list.innerHTML=META_REWARDS.map(r=>{
+    const done=claimed.has(r.id), ready=(Number(m[r.field])||0)>=r.target;
+    const progress=Math.min(Number(m[r.field])||0,r.target);
+    return '<div class="rewardCard '+(done?'done':'')+'"><strong>'+escapeHtml(r.title)+'</strong>'+
+      '<small>'+escapeHtml(r.desc)+' · '+(done?'Claimed':ready?'Ready to claim':progress+'/'+r.target)+' · ✦ '+r.shards+'</small>'+
+      '<button class="bigBtn '+(ready&&!done?'':'secondary')+'" data-claim-reward="'+r.id+'" '+(!ready||done?'disabled':'')+'>'+(done?'Claimed':ready?'Claim':'Locked')+'</button></div>';
+  }).join('');
+  const balance=$('sanctuaryBalance'); if(balance) balance.textContent='✦ '+fmt(m.shards)+' EMBER SHARDS';
+  const shop=$('sanctuaryItems');
+  if(shop) shop.innerHTML=SANCTUARY_COATS.map(c=>{
+    const owned=m.unlockedCoats.includes(c.id), active=m.activeCoat===c.id;
+    return '<div class="storeCard"><strong>'+escapeHtml(c.name)+(active?' · Equipped':'')+'</strong><small>'+escapeHtml(c.desc)+' · '+(owned?'Permanent cosmetic':('✦ '+c.cost))+'</small>'+
+      '<button class="bigBtn '+(owned?'secondary':'')+'" data-coat="'+c.id+'" '+(!owned&&m.shards<c.cost?'disabled':'')+'>'+(active?'Equipped':owned?'Equip':m.shards<c.cost?'Need shards':'Unlock')+'</button></div>';
+  }).join('');
+}
+function claimMetaReward(id) {
+  const r=META_REWARDS.find(x=>x.id===id); if(!r) return false;
+  const m=Save.meta();
+  if(m.claimedRewards.includes(id)||Number(m[r.field]||0)<r.target) return false;
+  m.claimedRewards.push(id); m.shards+=r.shards; Save.writeMeta(m); refreshMetaPages();
+  Sound.play('bounty'); toast('Milestone claimed · +'+r.shards+' Ember Shards','gold'); return true;
+}
+function buySanctuaryCoat(id) {
+  const c=SANCTUARY_COATS.find(x=>x.id===id); if(!c) return false;
+  const m=Save.meta();
+  if(m.unlockedCoats.includes(id)) m.activeCoat=id;
+  else { if(m.shards<c.cost) { toast('Not enough Ember Shards yet.','danger'); return false; }
+    m.shards-=c.cost; m.unlockedCoats.push(id); m.activeCoat=id; }
+  Save.writeMeta(m); refreshMetaPages(); Sound.play('loot'); return true;
+}
+function exportBackup() {
+  let freshRun=true;
+  if(Game.state==='playing'&&Game.player&&!Game.player.dead) freshRun=Save.save();
+  const payload={app:'dungeon-rogue-backup',version:1,exportedAt:new Date().toISOString(),run:Save.peek(),meta:Save.meta(),profile:Profile.get(),settings:Settings.get()};
+  const blob=new Blob([JSON.stringify(payload,null,2)],{type:'application/json'});
+  const url=URL.createObjectURL(blob), a=document.createElement('a');
+  a.href=url; a.download='dungeon-rogue-backup.json'; document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(url),1500);
+  $('backupStatus').textContent=freshRun?'Backup exported. Keep the JSON file somewhere safe; it can restore this run and permanent rewards.':'Backup exported, but the latest run could not be saved first; it contains the last autosaved run.';
+}
+function importBackupFile(file) {
+  if(!file) return;
+  if(file.size>5*1024*1024) { $('backupStatus').textContent='That file is too large to be a valid game backup.'; return; }
+  const reader=new FileReader();
+  reader.onload=()=>{
+    try {
+      const data=JSON.parse(String(reader.result||''));
+      if(data.app!=='dungeon-rogue-backup'||data.version!==1||!data.meta||typeof data.meta!=='object'||(data.run&&(!data.run.player||data.run.v!==1))) throw new Error('format');
+      if(!window.confirm('Replace this device’s current run, profile and rewards with the selected backup?')) return;
+      if(data.run) localStorage.setItem(Save.KEY,JSON.stringify(data.run)); else localStorage.removeItem(Save.KEY);
+      Save.writeMeta(data.meta);
+      Profile.setName(data.profile&&data.profile.name||'');
+      const cfg=data.settings||{};
+      Settings.set('volume',cfg.volume===undefined?0.85:cfg.volume); Settings.set('muted',!!cfg.muted); Settings.set('screenShake',cfg.screenShake!==false); Settings.set('reducedMotion',!!cfg.reducedMotion);
+      $('profileName').value=Profile.get().name;
+      Save.refreshMenuControls(); refreshSettingsPage(); refreshMetaPages();
+      $('backupStatus').textContent='Backup restored on this device. '+(data.run?'Your run is ready to continue.':'No active run was included.');
+    } catch(e) { $('backupStatus').textContent='Import failed: this file is not a valid Dungeon Rogue backup.'; }
+  };
+  reader.onerror=()=>{$('backupStatus').textContent='The backup file could not be read.';}; reader.readAsText(file);
+}
 
 /* ============================== 10. GAME STATE =========================== */
 const MAX_FLOOR = 10;
@@ -7784,8 +8051,9 @@ function drawWallBlock(ctx, d, tx, ty, sx, sy, art, v, time) {
 function renderWorld(ctx) {
   const d = Game.dungeon, cam = Game.cam, p = Game.player;
   const art = TileArt.bake(d.theme);
-  const shx = Game.cam.shake ? rand(Game.cam.shake, -Game.cam.shake) : 0;
-  const shy = Game.cam.shake ? rand(Game.cam.shake, -Game.cam.shake) : 0;
+  const shakeEnabled = Settings.get().screenShake && !Settings.get().reducedMotion;
+  const shx = shakeEnabled && Game.cam.shake ? rand(Game.cam.shake, -Game.cam.shake) : 0;
+  const shy = shakeEnabled && Game.cam.shake ? rand(Game.cam.shake, -Game.cam.shake) : 0;
   const camX = Math.round(cam.x + shx), camY = Math.round(cam.y + shy);
   const drawCam = { x: camX, y: camY };
   /* background void */
@@ -11024,7 +11292,7 @@ function escapeHtml(s) {
    a dozen call sites. While a panel is open the phone touch layer is hidden,
    which stops the movement stick from stealing taps aimed at the panel. */
 const MENU_OVERLAY_IDS = ['inventoryOverlay', 'shopOverlay', 'skillOverlay', 'pauseOverlay',
-                          'deathOverlay', 'victoryOverlay', 'startScreen'];
+                          'deathOverlay', 'victoryOverlay', 'startScreen', 'settingsOverlay', 'profileOverlay', 'rewardsOverlay', 'sanctuaryOverlay'];
 function syncMenuOpen() {
   const any = MENU_OVERLAY_IDS.some(id => {
     const el = document.getElementById(id);
@@ -11444,6 +11712,11 @@ function setupInput() {
   };
   window.addEventListener('keydown', (ev) => {
     const code = ev.code;
+    const utilityPage=document.querySelector('#settingsOverlay.show,#profileOverlay.show,#rewardsOverlay.show,#sanctuaryOverlay.show');
+    if(utilityPage){
+      if(code==='Escape'){closePage(utilityPage.id);ev.preventDefault();}
+      return; /* do not trigger gameplay or dismiss the pause menu behind a dialog */
+    }
     if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Space', 'Tab'].includes(code)) ev.preventDefault();
     if (ev.repeat) return;
     Game.keysDown.add(code);
@@ -11560,6 +11833,23 @@ function setupInput() {
   $('soundBtn').addEventListener('click', toggleSound);
   /* overlay buttons */
   $('startBtn').addEventListener('click', beginGame);
+  $('menuSettingsBtn').addEventListener('click',()=>openPage('settingsOverlay'));
+  $('menuProfileBtn').addEventListener('click',()=>openPage('profileOverlay'));
+  $('menuRewardsBtn').addEventListener('click',()=>openPage('rewardsOverlay'));
+  $('menuShopBtn').addEventListener('click',()=>openPage('sanctuaryOverlay'));
+  $$('[data-close-page]').forEach(btn=>btn.addEventListener('click',()=>closePage(btn.dataset.closePage)));
+  $('volumeSetting').addEventListener('input',ev=>{const v=Number(ev.target.value)/100;Settings.set('volume',v);$('volumeValue').textContent=Math.round(v*100)+'%';});
+  $('shakeSetting').addEventListener('change',ev=>Settings.set('screenShake',ev.target.checked));
+  $('motionSetting').addEventListener('change',ev=>Settings.set('reducedMotion',ev.target.checked));
+  $('soundSetting').addEventListener('change',ev=>{Settings.set('muted',!ev.target.checked);$('soundBtn').textContent=ev.target.checked?'♪':'✕';$('soundBtn').style.opacity=ev.target.checked?'.65':'.4';});
+  $('profileName').addEventListener('change',ev=>{ev.target.value=Profile.setName(ev.target.value);Save.refreshMenuControls();});
+  $('profileName').addEventListener('blur',ev=>{ev.target.value=Profile.setName(ev.target.value);Save.refreshMenuControls();});
+  $('exportBackupBtn').addEventListener('click',exportBackup);
+  $('importBackupBtn').addEventListener('click',()=>$('backupFileInput').click());
+  $('backupFileInput').addEventListener('change',ev=>{importBackupFile(ev.target.files&&ev.target.files[0]);ev.target.value='';});
+  $('rewardList').addEventListener('click',ev=>{const b=ev.target.closest('[data-claim-reward]');if(b)claimMetaReward(b.dataset.claimReward);});
+  $('sanctuaryItems').addEventListener('click',ev=>{const b=ev.target.closest('[data-coat]');if(b&&buySanctuaryCoat(b.dataset.coat))toast('Ember’s keepsake is ready.','good');});
+
   $('continueBtn').addEventListener('click', continueRun);
   $('deleteSaveBtn').addEventListener('click', () => {
     Save.clear();
@@ -11569,6 +11859,10 @@ function setupInput() {
   $('resumeBtn').addEventListener('click', () => togglePause(false));
   $('pauseInvBtn').addEventListener('click', () => { togglePause(false); toggleInventory(true); });
   $('pauseSoundBtn').addEventListener('click', toggleSound);
+  $('pauseSettingsBtn').addEventListener('click', () => openPage('settingsOverlay'));
+  $('pauseProfileBtn').addEventListener('click', () => openPage('profileOverlay'));
+  $('pauseRewardsBtn').addEventListener('click', () => openPage('rewardsOverlay'));
+  $('pauseShopBtn').addEventListener('click', () => openPage('sanctuaryOverlay'));
   $('pauseSaveBtn').addEventListener('click', () => {
     if (Save.save()) { toast('Progress saved.', 'good'); Sound.play('ui'); }
     else toast('Saving is unavailable in this browser.', 'danger');
@@ -11884,6 +12178,7 @@ function togglePause(force) {
 function toggleSound() {
   Sound.init();
   const muted = Sound.toggleMute();
+  Settings.set('muted', muted);
   $('soundBtn').textContent = muted ? '✕' : '♪';
   $('soundBtn').style.opacity = muted ? '0.4' : '0.65';
   if (!muted) { Sound.resume(); Sound.play('ui'); }
@@ -12303,12 +12598,16 @@ function boot() {
   if (Phone.detect()) Phone.enable();
   /* watch every menu panel for .show changes and mirror that onto body */
   document.querySelectorAll('#inventoryOverlay,#shopOverlay,#skillOverlay,#pauseOverlay,' +
-    '#deathOverlay,#victoryOverlay,#startScreen').forEach(el => {
+    '#deathOverlay,#victoryOverlay,#startScreen,#settingsOverlay,#profileOverlay,#rewardsOverlay,#sanctuaryOverlay').forEach(el => {
     if (!el) return;
     new MutationObserver(syncMenuOpen).observe(el, { attributes: true, attributeFilter: ['class'] });
   });
   syncMenuOpen();
   Phone.checkOrientation();
+  refreshSettingsPage(); refreshMetaPages();
+  document.body.classList.toggle('reduced-motion',Settings.get().reducedMotion);
+  $('soundBtn').textContent=Settings.get().muted?'✕':'♪'; $('soundBtn').style.opacity=Settings.get().muted?'.4':'.65';
+  $('profileName').value=Profile.get().name;
   Game.state = 'menu';
   Game.titleEmbers = null;
   requestAnimationFrame(loop);
