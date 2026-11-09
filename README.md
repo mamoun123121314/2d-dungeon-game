@@ -57,6 +57,10 @@ screen under 900 px.
   masonry, floor treatment, light colour, ambience and hazard behaviour.
 - Rooms, hallways, vault chambers with a **locked door and a key crate**,
   breakable crates, chests, torches, and stairs to the next floor.
+- A reachable **Hollow Shrine** on every floor offers three randomized, original
+  run-only Oaths. Choose one each floor to shape the build; eight Oaths can be
+  ranked twice, and your current Oaths are listed in the inventory and saved
+  with the run (they do not become permanent meta upgrades).
 - Ten floors to a **victory**, then an **endless mode** that keeps scaling
   enemy health, damage and count.
 - **Deterministic seeds.** Every floor is generated from a stored seed, so a
@@ -261,8 +265,9 @@ This validates the self-contained page structure, duplicate IDs, local
 references, JavaScript syntax, and CSS brace balance. The GitHub Pages workflow
 runs these checks before deploying. A headless jsdom smoke check in the current
 audit also booted the game, opened inventory and settings, purchased and
-persisted companion upgrades, round-tripped a save, built ten seeded floors,
-and ran 600 update/render frames without runtime errors.
+persisted companion upgrades, tested the shrine-choice flow and its save/load
+behavior, built ten seeded floors, and ran update/render frames in desktop and
+simulated-phone modes without runtime errors.
 
 These structural and headless checks are not a substitute for testing actual
 Canvas rendering, audio, and touch behavior in each target browser. Local saves

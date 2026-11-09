@@ -626,6 +626,15 @@ body.is-phone .invFooter{font-size:10px;}
 .rewardCard strong,.storeCard strong{color:#e8d7b7;font-size:12px;}
 .rewardCard small,.storeCard small{grid-column:1;color:#9b91a4;font-size:10px;line-height:1.5;}
 .rewardCard .bigBtn,.storeCard .bigBtn{grid-column:2;grid-row:1 / span 2;width:auto;min-width:112px;padding:10px 12px;font-size:10px;letter-spacing:.12em;}
+.shrineChoices{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;}
+.shrineCard{display:flex;flex-direction:column;gap:8px;min-height:178px;padding:14px 12px;border:1px solid rgba(238,197,112,.34);border-radius:6px;background:linear-gradient(155deg,rgba(255,215,135,.09),rgba(17,13,24,.94));box-shadow:inset 0 0 22px rgba(230,174,73,.045);}
+.shrineCard h3{margin:0;color:#f2dba9;font:600 13px/1.3 var(--serif,Georgia,serif);}
+.shrineCard p{flex:1;margin:0;color:#aaa0ad;font-size:10px;line-height:1.55;}
+.shrineRank{color:#cfad6b;font:9px var(--mono,monospace);letter-spacing:.1em;text-transform:uppercase;}
+.shrineCard .bigBtn{width:100%;margin-top:auto;padding:10px 8px;font-size:9px;}
+.runOathList{margin-top:12px;padding:10px 12px;border:1px solid rgba(217,181,107,.17);border-radius:5px;background:rgba(10,8,15,.66);}
+.runOathList h3{margin:0 0 7px;color:#d7bd82;font-size:10px;letter-spacing:.16em;text-transform:uppercase;}
+.runOathList p{margin:4px 0;color:#a99caf;font-size:9px;line-height:1.45;}
 .menuCurrency{color:#ffd88a;font:12px var(--font-mono);text-align:center;}
 .sanctuarySection{margin:4px 0 -5px;color:#d9b56b;font:10px var(--font-mono);letter-spacing:.16em;text-transform:uppercase;}
 
@@ -634,7 +643,7 @@ body.reduced-motion *,body.reduced-motion *::before,body.reduced-motion *::after
 .menuIdentity b{color:#e2c98e;font-weight:500;}
 .menuHub{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin:6px auto 12px;}
 .menuHub .bigBtn{width:auto;max-width:none;flex:1 1 155px;padding:11px 12px;font-size:10px;letter-spacing:.12em;}
-@media(max-width:520px){.menuPageBody{padding:14px 12px 8px}.menuField{align-items:flex-start;flex-direction:column}.menuField input[type=range],.menuField input[type=text]{width:100%}.menuHub .bigBtn{flex-basis:42%;}.rewardCard,.storeCard{grid-template-columns:1fr}.rewardCard small,.storeCard small,.rewardCard .bigBtn,.storeCard .bigBtn{grid-column:1;grid-row:auto}.rewardCard .bigBtn,.storeCard .bigBtn{width:100%;}}
+@media(max-width:520px){.menuPageBody{padding:14px 12px 8px}.menuField{align-items:flex-start;flex-direction:column}.menuField input[type=range],.menuField input[type=text]{width:100%}.menuHub .bigBtn{flex-basis:42%;}.rewardCard,.storeCard{grid-template-columns:1fr}.rewardCard small,.storeCard small,.rewardCard .bigBtn,.storeCard .bigBtn{grid-column:1;grid-row:auto}.rewardCard .bigBtn,.storeCard .bigBtn{width:100%;}.shrineChoices{grid-template-columns:1fr}.shrineCard{min-height:0}.shrineCard p{min-height:32px}}
 
 .pausePanel .panelHead,.deathPanel .panelHead,.victoryPanel .panelHead{justify-content:center;}
 .panelInner{padding:22px 34px 4px;display:flex;flex-direction:column;align-items:center;gap:16px;}
@@ -1506,6 +1515,7 @@ body.is-phone .affixChip{font-size:7.5px;padding:2px 6px;}
           </div>
         </div>
         <div class="statList" id="statList"></div>
+        <div class="runOathList" id="runOathList" hidden></div>
       </div>
       <div class="invRight">
         <div class="packHead">
@@ -1618,6 +1628,17 @@ body.is-phone .affixChip{font-size:7.5px;padding:2px 6px;}
 </div>
 
 <!-- ============================ SETTINGS / PROFILE / META ============================ -->
+<div class="overlay" id="shrineOverlay" aria-hidden="true">
+  <section class="panel menuPage" role="dialog" aria-modal="true" aria-labelledby="shrineTitle">
+    <div class="panelHead"><h2 id="shrineTitle">The Hollow Shrine · Run Oath</h2></div>
+    <div class="menuPageBody">
+      <p class="menuLead">Choose one vow. It lasts for this run only; each altar may be claimed once per floor. Your earlier oaths shape the build you carry into the depths.</p>
+      <div id="shrineChoices" class="shrineChoices"></div>
+      <div id="shrineEmpty" class="menuNote" hidden>No new oaths remain on this altar. The ones you have chosen are still with you.</div>
+      <div class="menuActions"><button class="bigBtn secondary" data-close-page="shrineOverlay">Leave the Shrine</button></div>
+    </div>
+  </section>
+</div>
 <div class="overlay" id="settingsOverlay" aria-hidden="true">
   <section class="panel menuPage" role="dialog" aria-modal="true" aria-labelledby="settingsTitle">
     <div class="panelHead"><h2 id="settingsTitle">Settings</h2></div>
@@ -4419,6 +4440,21 @@ const SKILL_NODES = {
   }
 };
 
+const SHRINE_OATHS = [
+  {id:'keen',name:'Keen Edge',desc:'Increase all your attack damage by 10% per rank.',stats:{attackPct:0.10}},
+  {id:'stone',name:'Stoneheart',desc:'Gain 16 maximum health per rank and recover that much health when chosen.',stats:{maxHp:16}},
+  {id:'swift',name:'Windstep',desc:'Move 8% faster per rank.',stats:{speedPct:0.08}},
+  {id:'ward',name:'Quiet Aegis',desc:'Gain 2 defense per rank.',stats:{defense:2}},
+  {id:'fortune',name:'Hoarder’s Mark',desc:'Find 12% more gold per rank.',stats:{goldFind:12}},
+  {id:'well',name:'Deepwell',desc:'Gain 10 maximum mana and reduce spell costs by 5% per rank.',stats:{maxMana:10,manaCostMul:-0.05}},
+  {id:'hawk',name:'Hawk’s Eye',desc:'Gain 4 percentage points of critical chance per rank.',stats:{crit:4}},
+  {id:'pack',name:'Pack Vow',desc:'Ember’s bite deals 18% more damage per rank.',stats:{companionAttackPct:0.18}}
+];
+function runOathStat(stat) {
+  const ranks=Game.runBoons||{};
+  return SHRINE_OATHS.reduce((sum,o)=>sum+(o.stats[stat]||0)*(ranks[o.id]||0),0);
+}
+
 class Player {
   constructor() {
     this.x = 0; this.y = 0;
@@ -4519,12 +4555,12 @@ class Player {
     }
     return sum;
   }
-  get maxHp() { return Math.round(this.baseMaxHp + (this.level - 1) * 14 + this.equipStats.hp + this.skillStats.hp); }
-  get maxMana() { return Math.round(this.baseMaxMana + (this.level - 1) * 6 + this.equipStats.mana + this.skillStats.mana); }
+  get maxHp() { return Math.round(this.baseMaxHp + (this.level - 1) * 14 + this.equipStats.hp + this.skillStats.hp + runOathStat('maxHp')); }
+  get maxMana() { return Math.round(this.baseMaxMana + (this.level - 1) * 6 + this.equipStats.mana + this.skillStats.mana + runOathStat('maxMana')); }
   get attackPower() {
     const base = this.baseAtk + (this.level - 1) * 2.1 + this.equipStats.atk;
     /* Heavy Blow adds 6% of the raw base per rank, so it scales with the character */
-    return Math.round(base * (1 + this.skillStats.atk / 100));
+    return Math.round(base * (1 + this.skillStats.atk / 100) * (1 + runOathStat('attackPct')));
   }
   /* the element your attacks carry — weapon wins over ring */
   get element() {
@@ -4535,21 +4571,21 @@ class Player {
   }
   /* elemental damage bonus, expressed as a multiplier on final damage */
   get elementPower() { return this.element === 'physical' ? 0 : 0.18; }
-  get defense() { return Math.round(this.baseDef + (this.level - 1) * 1.15 + this.equipStats.def + this.skillStats.def); }
-  get critChance() { return clamp(this.baseCrit + this.equipStats.crit + this.skillStats.crit, 0, 75); }
+  get defense() { return Math.round(this.baseDef + (this.level - 1) * 1.15 + this.equipStats.def + this.skillStats.def + runOathStat('defense')); }
+  get critChance() { return clamp(this.baseCrit + this.equipStats.crit + this.skillStats.crit + runOathStat('crit'), 0, 75); }
   get moveSpeed() {
     const pct = this.skillStats.speed;            /* +5% per Fleet Foot rank */
-    return (this.baseSpeed + this.equipStats.speed * 1.6) * (1 + pct / 100);
+    return (this.baseSpeed + this.equipStats.speed * 1.6) * (1 + pct / 100) * (1 + runOathStat('speedPct'));
   }
   get cleaveTargets() { return 3 + Math.round(this.skillStats.cleave); }
   get swingReach() { return this.skillStats.reach; }
   get magicPower() { return this.skillStats.magicPower; }
-  get manaCostMul() { return clamp(1 + this.skillStats.manaCostMul, 0.35, 1); }
+  get manaCostMul() { return clamp(1 + this.skillStats.manaCostMul + runOathStat('manaCostMul'), 0.35, 1); }
   get dodgeCdMul() { return clamp(1 + this.skillStats.dodgeCdMul, 0.4, 1); }
   get skillRegen() { return this.skillStats.regen; }
   get lifesteal() { return clamp(this.equipStats.lifesteal, 0, 30); }
   get thorns() { return this.equipStats.thorns; }
-  get goldFind() { return clamp(this.equipStats.gold + this.skillStats.goldFind, 0, 200); }
+  get goldFind() { return clamp(this.equipStats.gold + this.skillStats.goldFind + runOathStat('goldFind'), 0, 200); }
   get hpPct() { return clamp(this.hp / this.maxHp, 0, 1); }
   get manaPct() { return clamp(this.mana / this.maxMana, 0, 1); }
   get xpPct() { return clamp(this.xp / this.xpNext, 0, 1); }
@@ -4645,7 +4681,7 @@ const COMPANION = {
   /* her damage scales with the hero so she stays useful, never carries you */
   get damage() {
     const p = Game.player;
-    return Math.max(6, Math.round((p ? p.attackPower : 10) * 0.42 + this.bond * 0.15)) + (this.upgrades.fangs || 0) * 3;
+    return Math.round((Math.max(6, Math.round((p ? p.attackPower : 10) * 0.42 + this.bond * 0.15)) + (this.upgrades.fangs || 0) * 3) * (1 + runOathStat('companionAttackPct')));
   },
 
   spawn(x, y) {
@@ -5473,7 +5509,9 @@ const Save = {
       companion: COMPANION && COMPANION.active ? {
         hp: COMPANION.hp, hungry: COMPANION.hungry, bond: COMPANION.bond, downT: COMPANION.downT,
         coat: COMPANION.coat || 'ember'
-      } : null
+      } : null,
+      runBoons: Object.assign({}, Game.runBoons || {}),
+      floorShrineUsed: !!Game.floorShrineUsed
     };
   },
 
@@ -5585,6 +5623,14 @@ const Save = {
       Game.endless = !!snap.endless;
       MAX_FLOOR_DYNAMIC = Math.max(MAX_FLOOR, snap.maxFloor || MAX_FLOOR);
       Game.elapsedRun = Number(snap.elapsedRun) || 0;
+      Game.runBoons = {};
+      if (snap.runBoons && typeof snap.runBoons === 'object') {
+        for (const oath of SHRINE_OATHS) {
+          const rank = clamp(Math.floor(Number(snap.runBoons[oath.id]) || 0), 0, 2);
+          if (rank) Game.runBoons[oath.id] = rank;
+        }
+      }
+      Game.floorShrineUsed = false;
       Game.runStats = Object.assign({ kills: 0, gold: 0, chests: 0, items: 0, depth: 1, time: 0 }, snap.runStats || {});
       Game.shopDiscountUsed = !!snap.shopDiscountUsed;
       Game.shopRep = clamp(Number(snap.shopRep) || 0, 0, 9);
@@ -5639,6 +5685,7 @@ const Save = {
       Game.companionActive = true;
       Game.loadingSave = true;
       buildFloor(floorN, false, snap.seed);
+      Game.floorShrineUsed = !!snap.floorShrineUsed;
       Game.loadingSave = false;
       COMPANION.active = true;
       COMPANION.coat = this.meta().activeCoat || 'ember';
@@ -5856,7 +5903,7 @@ const COMPANION_UPGRADES = [
 let utilityReturnFocus=null;
 function openPage(id) {
   const el=$(id); if(!el) return;
-  if(!document.querySelector('#settingsOverlay.show,#profileOverlay.show,#rewardsOverlay.show,#sanctuaryOverlay.show')) utilityReturnFocus=document.activeElement;
+  if(!document.querySelector('#settingsOverlay.show,#profileOverlay.show,#rewardsOverlay.show,#sanctuaryOverlay.show,#shrineOverlay.show')) utilityReturnFocus=document.activeElement;
   el.classList.add('show'); el.setAttribute('aria-hidden','false'); syncMenuOpen();
   if(id==='settingsOverlay') refreshSettingsPage();
   if(id==='profileOverlay') $('profileName').value=Profile.get().name;
@@ -5866,7 +5913,11 @@ function openPage(id) {
 function closePage(id) {
   const el=$(id); if(!el) return;
   el.classList.remove('show'); el.setAttribute('aria-hidden','true'); syncMenuOpen();
-  if(!document.querySelector('#settingsOverlay.show,#profileOverlay.show,#rewardsOverlay.show,#sanctuaryOverlay.show')&&utilityReturnFocus&&utilityReturnFocus.isConnected){
+  if(id==='shrineOverlay'){
+    Game.shrineOpen=false;
+    if(Game.state==='playing') Game.paused=Game.invOpen||Game.shopOpen||Game.skillOpen;
+  }
+  if(!document.querySelector('#settingsOverlay.show,#profileOverlay.show,#rewardsOverlay.show,#sanctuaryOverlay.show,#shrineOverlay.show')&&utilityReturnFocus&&utilityReturnFocus.isConnected){
     utilityReturnFocus.focus(); utilityReturnFocus=null;
   }
 }
@@ -5989,6 +6040,10 @@ const Game = {
   invOpen: false,
   shopOpen: false,
   skillOpen: false,
+  shrineOpen: false,
+  floorShrineUsed: false,
+  shrineChoices: [],
+  runBoons: {},
   /* merchant haggling: a reroll budget that refills each floor, a one-time
      welcome discount and a reputation track that nudges prices over a run */
   shopRerolls: 2,
@@ -6056,6 +6111,10 @@ function resizeCanvas() {
 /* ---------- floor bootstrap ---------- */
 function startRun() {
   Game.floor = 1;
+  Game.runBoons = {};
+  Game.floorShrineUsed = false;
+  Game.shrineChoices = [];
+  Game.shrineOpen = false;
   Game.runStats = { kills: 0, gold: 0, chests: 0, items: 0, depth: 1, time: 0 };
   Game.player = new Player();
   Game.player.depthReached = 1;
@@ -6096,6 +6155,9 @@ function startRun() {
 function buildFloor(n, first = false, seed) {
   const p = Game.player;
   Game.floor = n;
+  Game.floorShrineUsed = false;
+  Game.shrineOpen = false;
+  Game.shrineChoices = [];
   Game.dungeon = new Dungeon(n, seed !== undefined ? { seed: seed } : {});
   const d = Game.dungeon;
   d.exploredMap.fill(0);
@@ -6329,6 +6391,35 @@ function spawnProps(d) {
     crate.loot = { key: true, gold: randInt(4, 9) };
     crate.keyCrate = true;
     props.push(crate);
+  }
+  /* Guarantee one usable altar per floor even when the decor roll did not
+     produce a Shrine room. Keep it in a walkable, uncluttered room. */
+  if (!props.some(pr => !pr.dead && pr.kind === 'altar')) {
+    let altarRooms = d.rooms.filter(r => r.type === 'normal' && r !== d.startRoom);
+    if (!altarRooms.length) altarRooms = d.rooms.filter(r => r !== d.startRoom && r !== d.stairsRoom);
+    altarRooms.sort((a, b) => b.area - a.area);
+    for (const room of altarRooms) {
+      let spot = null;
+      const clearSpot = candidate => d.isWalkablePx(candidate.x, candidate.y)
+        && !circleHitsWalls(candidate.x, candidate.y, 15)
+        && dist(candidate.x, candidate.y, p.x, p.y) >= 110
+        && !props.some(pr => !pr.dead && pr.solid && dist(pr.x, pr.y, candidate.x, candidate.y) < 46);
+      for (let tries = 0; tries < 18 && !spot; tries++) {
+        const candidate = d.randomRoomFloor(room, 110, { x: p.x, y: p.y });
+        if (clearSpot(candidate)) spot = candidate;
+      }
+      /* A scan fallback makes the shrine guaranteed even on cramped layouts. */
+      if (!spot) for (let ty=room.y+1;ty<room.y+room.h-1&&!spot;ty++) {
+        for(let tx=room.x+1;tx<room.x+room.w-1&&!spot;tx++) {
+          const candidate={x:(tx+0.5)*TILE,y:(ty+0.5)*TILE,tx,ty};
+          if(clearSpot(candidate)) spot=candidate;
+        }
+      }
+      if (spot) {
+        props.push(makeThemeProp('altar', spot.x, spot.y));
+        break;
+      }
+    }
   }
   /* merchant stand */
   if (d.merchant) {
@@ -7877,13 +7968,66 @@ function pickupDrop(d, index) {
   updateHud();
 }
 
+/* ---------- shrine oaths: one run-only choice per floor ---------- */
+function hasUnchosenShrineOath() {
+  return SHRINE_OATHS.some(o => (Game.runBoons[o.id] || 0) < 2);
+}
+function renderShrineChoices() {
+  const root=$('shrineChoices'), empty=$('shrineEmpty');
+  if(!root||!empty) return;
+  const choices=Game.shrineChoices||[];
+  root.innerHTML=choices.map(o=>{
+    const rank=Game.runBoons[o.id]||0;
+    return '<article class="shrineCard"><span class="shrineRank">Oath · Rank '+(rank+1)+' of 2</span>'+
+      '<h3>'+escapeHtml(o.name)+'</h3><p>'+escapeHtml(o.desc)+'</p>'+
+      '<button class="bigBtn" type="button" data-shrine-oath="'+o.id+'">Take Oath</button></article>';
+  }).join('');
+  empty.hidden=choices.length>0;
+}
+function openShrine() {
+  if(Game.state!=='playing'||Game.paused||Game.floorShrineUsed) return false;
+  if(!Game.shrineChoices.length) Game.shrineChoices=shuffle(SHRINE_OATHS.filter(o=>(Game.runBoons[o.id]||0)<2).slice()).slice(0,3);
+  Game.shrineOpen=true; Game.paused=true;
+  renderShrineChoices();
+  openPage('shrineOverlay');
+  Sound.play('ui');
+  return true;
+}
+function chooseShrineOath(id) {
+  if(!Game.shrineOpen||Game.floorShrineUsed) return false;
+  const oath=Game.shrineChoices.find(o=>o.id===id);
+  const p=Game.player;
+  if(!oath||!p||(Game.runBoons[id]||0)>=2) return false;
+  const oldMaxHp=p.maxHp, oldMaxMana=p.maxMana;
+  Game.runBoons[id]=(Game.runBoons[id]||0)+1;
+  p.hp=Math.min(p.maxHp,p.hp+Math.max(0,p.maxHp-oldMaxHp));
+  p.mana=Math.min(p.maxMana,p.mana+Math.max(0,p.maxMana-oldMaxMana));
+  Game.floorShrineUsed=true;
+  const taken=oath.name;
+  closePage('shrineOverlay');
+  Game.shrineChoices=[];
+  refreshInventoryUI(); updateHud(true);
+  if(Save.available()) Save.save();
+  Sound.play('loot');
+  toast(taken+' sworn · lasts this run','gold');
+  return true;
+}
+function renderRunOaths() {
+  const box=$('runOathList'); if(!box) return;
+  const selected=SHRINE_OATHS.filter(o=>Game.runBoons[o.id]);
+  box.hidden=!selected.length;
+  box.innerHTML=selected.length?'<h3>Run Oaths</h3>'+selected.map(o=>
+    '<p><b>'+escapeHtml(o.name)+' · '+(Game.runBoons[o.id]||0)+'/2</b> — '+escapeHtml(o.desc)+'</p>'
+  ).join(''):'';
+}
+
 /* ---------- interactions ---------- */
 function nearestInteractable() {
   const p = Game.player, d = Game.dungeon;
   let best = null, bestD = 72;
   for (const pr of Game.props) {
     if (pr.dead) continue;
-    if (pr.kind !== 'chest' && pr.kind !== 'merchantStand') continue;
+    if (pr.kind !== 'chest' && pr.kind !== 'merchantStand' && !(pr.kind === 'altar' && !Game.floorShrineUsed && hasUnchosenShrineOath())) continue;
     /* a chest should never outrank the stall you are standing at: if you are
        within arm's reach of the merchant, trading is what you meant to do */
     let dd = dist(pr.x, pr.y, p.x, p.y);
@@ -7931,6 +8075,7 @@ function doInteract() {
      silently did nothing unless you happened to be nearer the merchant sprite
      than his own stand, which made the shop look broken on a phone. */
   else if (target.kind === 'merchant' || target.kind === 'merchantStand') openShop();
+  else if (target.kind === 'altar') openShrine();
   else if (target.kind === 'stairs') descend();
 }
 function openChest(chest) {
@@ -10996,6 +11141,7 @@ function refreshInventoryUI() {
     Game.dragItem = null; Game.dragFrom = null;
   });
   renderStatList();
+  renderRunOaths();
   $('invGold').textContent = fmt(p.gold);
   $('invGold2').textContent = fmt(p.gold);
   $('classSub').textContent = 'Wanderer · Level ' + p.level;
@@ -11324,7 +11470,7 @@ function escapeHtml(s) {
    a dozen call sites. While a panel is open the phone touch layer is hidden,
    which stops the movement stick from stealing taps aimed at the panel. */
 const MENU_OVERLAY_IDS = ['inventoryOverlay', 'shopOverlay', 'skillOverlay', 'pauseOverlay',
-                          'deathOverlay', 'victoryOverlay', 'startScreen', 'settingsOverlay', 'profileOverlay', 'rewardsOverlay', 'sanctuaryOverlay'];
+                          'deathOverlay', 'victoryOverlay', 'startScreen', 'settingsOverlay', 'profileOverlay', 'rewardsOverlay', 'sanctuaryOverlay', 'shrineOverlay'];
 function syncMenuOpen() {
   const any = MENU_OVERLAY_IDS.some(id => {
     const el = document.getElementById(id);
@@ -11744,7 +11890,7 @@ function setupInput() {
   };
   window.addEventListener('keydown', (ev) => {
     const code = ev.code;
-    const utilityPage=document.querySelector('#settingsOverlay.show,#profileOverlay.show,#rewardsOverlay.show,#sanctuaryOverlay.show');
+    const utilityPage=document.querySelector('#settingsOverlay.show,#profileOverlay.show,#rewardsOverlay.show,#sanctuaryOverlay.show,#shrineOverlay.show');
     if(utilityPage){
       if(code==='Escape'){closePage(utilityPage.id);ev.preventDefault();}
       return; /* do not trigger gameplay or dismiss the pause menu behind a dialog */
@@ -11882,6 +12028,7 @@ function setupInput() {
   $('rewardList').addEventListener('click',ev=>{const b=ev.target.closest('[data-claim-reward]');if(b)claimMetaReward(b.dataset.claimReward);});
   $('sanctuaryItems').addEventListener('click',ev=>{const b=ev.target.closest('[data-coat]');if(b&&buySanctuaryCoat(b.dataset.coat))toast('Ember’s keepsake is ready.','good');});
   $('companionUpgradeItems').addEventListener('click',ev=>{const b=ev.target.closest('[data-comp-upgrade]');if(b)buyCompanionUpgrade(b.dataset.compUpgrade);});
+  $('shrineChoices').addEventListener('click',ev=>{const b=ev.target.closest('[data-shrine-oath]');if(b)chooseShrineOath(b.dataset.shrineOath);});
 
   $('continueBtn').addEventListener('click', continueRun);
   $('deleteSaveBtn').addEventListener('click', () => {
@@ -12473,6 +12620,7 @@ function update(dt) {
       const verb = target.kind === 'chest' ? 'open the chest'
         : (target.kind === 'merchant' || target.kind === 'merchantStand')
           ? 'trade with the Quartermaster'
+        : target.kind === 'altar' ? 'choose a run oath at the shrine'
         : 'descend to the next floor';
       const hint = Game.isPhone ? '<b>TAP</b> to ' + verb : 'Press <b>F</b> to ' + verb + '.';
       if (Game.lastInteractHint !== hint) {
@@ -12631,7 +12779,7 @@ function boot() {
   if (Phone.detect()) Phone.enable();
   /* watch every menu panel for .show changes and mirror that onto body */
   document.querySelectorAll('#inventoryOverlay,#shopOverlay,#skillOverlay,#pauseOverlay,' +
-    '#deathOverlay,#victoryOverlay,#startScreen,#settingsOverlay,#profileOverlay,#rewardsOverlay,#sanctuaryOverlay').forEach(el => {
+    '#deathOverlay,#victoryOverlay,#startScreen,#settingsOverlay,#profileOverlay,#rewardsOverlay,#sanctuaryOverlay,#shrineOverlay').forEach(el => {
     if (!el) return;
     new MutationObserver(syncMenuOpen).observe(el, { attributes: true, attributeFilter: ['class'] });
   });
