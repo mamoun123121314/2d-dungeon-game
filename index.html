@@ -318,11 +318,6 @@ canvas{display:block;}
 }
 #ambientTint{position:fixed;inset:0;z-index:8;pointer-events:none;opacity:0;transition:opacity 1.2s ease;}
 
-#pausedTag{
-  position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);
-  font-family:var(--font-display);letter-spacing:.3em;color:#e9d9b4;
-  text-shadow:0 2px 20px #000;z-index:20;font-size:22px;pointer-events:none;
-}
 
 /* ---------- tooltip ---------- */
 #tooltip{
@@ -377,8 +372,9 @@ body.is-phone #storyCard{padding:4vh 6vw;}
 body.is-phone .scTitle{font-size:clamp(26px,8vw,40px);}
 
 #tooltip.touch{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);
-  max-width:min(340px,calc(100vw - 28px));pointer-events:auto;z-index:120;
-  padding:16px 18px;}
+  max-width:min(340px,calc(100vw - 28px));pointer-events:auto;z-index:150;
+  padding:16px 18px;max-height:88vh;overflow-y:auto;
+  -webkit-overflow-scrolling:touch;overscroll-behavior:contain;}
 #tooltip.touch .ttName{font-size:18px;}
 #tooltip.touch .ttSub{font-size:10px;}
 #tooltip.touch .ttStat{font-size:13px;margin:4px 0;}
@@ -531,6 +527,10 @@ body.is-phone .scTitle{font-size:clamp(26px,8vw,40px);}
   font-size:9.5px;color:#8a7f94;line-height:1.5;
 }
 .invFooter b{color:#d7c8a4;font-weight:600;}
+.invFootPhone{display:none;}
+body.is-phone .invFootDesk{display:none;}
+body.is-phone .invFootPhone{display:block;font-size:10px;line-height:1.55;}
+body.is-phone .invFooter{font-size:10px;}
 .invGold{font-family:var(--font-mono);color:var(--gold);white-space:nowrap;}
 .sellNote{color:#c99f5f;font-size:9px;}
 
@@ -541,7 +541,9 @@ body.is-phone .scTitle{font-size:clamp(26px,8vw,40px);}
 .shopCol + .shopCol{border-left:1px solid rgba(217,181,107,.13);background:rgba(30,24,36,.16);}
 .shopCol h3{font-family:var(--font-display);font-size:12px;letter-spacing:.24em;font-weight:400;color:var(--gold);text-transform:uppercase;}
 .shopCol .desc{font-size:9.5px;color:#8b8097;line-height:1.5;}
-.shopList{display:flex;flex-direction:column;gap:6px;overflow-y:auto;max-height:46vh;padding-right:4px;}
+.shopTabs{display:none;}
+.shopList{display:flex;flex-direction:column;gap:6px;overflow-y:auto;max-height:46vh;padding-right:4px;
+  flex:1 1 auto;min-height:0;}
 .shopList::-webkit-scrollbar{width:6px;}
 .shopList::-webkit-scrollbar-thumb{background:rgba(217,181,107,.25);border-radius:3px;}
 .shopRow{
@@ -696,9 +698,6 @@ body.is-phone .scTitle{font-size:clamp(26px,8vw,40px);}
 #startFade{position:fixed;inset:0;z-index:65;background:#040308;opacity:0;pointer-events:none;transition:opacity .5s;}
 #startFade.black{opacity:1;pointer-events:all;}
 
-#floorNum{
-  position:absolute;top:-9999px;
-}
 .soundBtn{
   position:fixed;top:16px;left:50%;transform:translateX(-50%);z-index:15;
   width:32px;height:32px;border-radius:50%;
@@ -732,9 +731,12 @@ body.is-phone .scTitle{font-size:clamp(26px,8vw,40px);}
    Driven entirely off body.is-phone, set by Phone.detect() at boot,
    so a desktop window can never grow thumbsticks by accident.
    ============================================================ */
-#touchLayer{position:fixed;inset:0;z-index:60;display:none;pointer-events:none;
+#touchLayer{position:fixed;inset:0;z-index:45;display:none;pointer-events:none;
   touch-action:none;-webkit-user-select:none;user-select:none;}
 body.is-phone #touchLayer{display:block;}
+/* While any panel is open the game is paused, so the movement stick must not
+   be able to swallow taps meant for the panel underneath it. */
+body.is-phone.menu-open #touchLayer{display:none;}
 
 #stickZone{position:absolute;left:0;bottom:0;width:46%;height:62%;pointer-events:auto;touch-action:none;}
 #stickBase,#stickKnob{position:absolute;border-radius:50%;pointer-events:none;
@@ -829,8 +831,42 @@ body.is-phone .invBody{flex-direction:column;overflow-y:auto;}
 body.is-phone .invLeft{width:100%;border-right:none;border-bottom:1px solid rgba(217,181,107,.14);}
 body.is-phone .dollWrap{height:170px;}
 body.is-phone .invGrid{grid-template-columns:repeat(auto-fill,minmax(48px,1fr));gap:7px;padding:12px;}
-body.is-phone .shopBody{grid-template-columns:1fr;overflow-y:auto;}
-body.is-phone .shopList{max-height:26vh;}
+/* ---- phone shop -------------------------------------------------------
+   The two-column shop was unusable in portrait: the grid stacked, and a
+   hard 26vh cap on .shopList left roughly two rows visible under a header,
+   a mood line and the reroll button — the FOR SALE list looked empty.
+   The phone gets tabs instead, and the list owns all remaining height. */
+body.is-phone .shopBody{grid-template-columns:1fr;overflow:hidden;flex:1 1 auto;min-height:0;}
+body.is-phone .shopCol{padding:10px 14px 14px;overflow:hidden;min-height:0;flex:1 1 auto;}
+body.is-phone .shopCol[data-shopcol="sell"]{border-left:none;border-top:none;}
+body.is-phone .shopTabs{display:flex;gap:8px;padding:10px 14px 0;flex:0 0 auto;}
+body.is-phone .shopTab{flex:1;font-family:var(--font-mono);font-size:11px;letter-spacing:.14em;
+  text-transform:uppercase;padding:12px 8px;min-height:44px;border-radius:6px;cursor:pointer;
+  border:1px solid rgba(217,181,107,.28);color:#a99cb4;background:rgba(255,255,255,.03);
+  touch-action:manipulation;}
+body.is-phone .shopTab span{opacity:.7;margin-left:4px;}
+body.is-phone .shopTab.active{border-color:rgba(217,181,107,.75);color:#f3e2bb;
+  background:linear-gradient(160deg,rgba(92,70,36,.5),rgba(30,22,12,.55));}
+body.is-phone .shopCol h3{display:none;}
+body.is-phone .shopMoodLine,
+body.is-phone #shopMood{font-size:9.5px;line-height:1.45;}
+/* one column visible at a time; the other is display:none so its rows can
+   never stretch the grid and crush the visible one */
+body.is-phone #shopBody[data-tab="buy"] .shopCol[data-shopcol="sell"],
+body.is-phone #shopBody[data-tab="sell"] .shopCol[data-shopcol="buy"]{display:none;}
+body.is-phone #shopBody[data-tab="buy"] .shopCol[data-shopcol="buy"],
+body.is-phone #shopBody[data-tab="sell"] .shopCol[data-shopcol="sell"]{display:flex;flex-direction:column;}
+body.is-phone .shopList{max-height:none;flex:1 1 auto;min-height:0;overflow-y:auto;
+  -webkit-overflow-scrolling:touch;overscroll-behavior:contain;padding-bottom:4px;}
+body.is-phone .shopRow{padding:10px;gap:12px;min-height:58px;}
+body.is-phone .shopRow img{width:44px;height:44px;}
+body.is-phone .shopRow .sname{font-size:13px;white-space:normal;line-height:1.3;}
+body.is-phone .shopRow .ssub{font-size:9.5px;}
+body.is-phone .buyBtn{font-size:12px;padding:12px 14px;min-height:44px;min-width:74px;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;}
+body.is-phone .buyBtn .discountBadge{font-size:9px;}
+body.is-phone .shopHaggle{flex-wrap:wrap;gap:8px;}
+body.is-phone .shopRerollBtn{min-height:44px;font-size:11px;}
 body.is-phone .tooltip{max-width:min(300px,calc(100vw - 24px));}
 body.is-phone .startTitle{font-size:clamp(30px,11vw,54px);}
 body.is-phone .startControls{display:none;}
@@ -1399,8 +1435,10 @@ body.is-phone .affixChip{font-size:7.5px;padding:2px 6px;}
         </div>
         <div class="invGrid" id="invGrid"></div>
         <div class="invFooter">
-          <div><b>Left-click</b> equip · <b>Right-click</b> sell · <b>Drag</b> to move<br>
+          <div class="invFootDesk"><b>Left-click</b> equip · <b>Right-click</b> sell · <b>Drag</b> to move<br>
           Click an equipped item to unequip it · Hover for details</div>
+          <div class="invFootPhone"><b>Tap an item</b> to open it, then choose <b>Equip</b> or <b>Sell</b>.<br>
+          Tap an equipped slot to inspect or remove it.</div>
           <div class="invGold">Gold <span id="invGold2">0</span></div>
         </div>
       </div>
@@ -1418,10 +1456,14 @@ body.is-phone .affixChip{font-size:7.5px;padding:2px 6px;}
       <div class="headGold"><span class="curIcon gold">G</span><span id="shopGold">0</span></div>
       <button class="closeBtn" data-close-ov="shopOverlay">✕</button>
     </div>
-    <div class="shopBody">
-      <div class="shopCol">
+    <div class="shopTabs" id="shopTabs">
+      <button class="shopTab active" data-shoptab="buy">Buy <span id="shopTabBuyCount">0</span></button>
+      <button class="shopTab" data-shoptab="sell">Sell <span id="shopTabSellCount">0</span></button>
+    </div>
+    <div class="shopBody" id="shopBody">
+      <div class="shopCol" data-shopcol="buy">
         <h3>For Sale</h3>
-        <div class="desc" id="shopMood">Fresh stock, restocked each floor. Click a name to inspect.</div>
+        <div class="desc" id="shopMood">Fresh stock, restocked each floor. Tap a name to inspect.</div>
         <div class="shopHaggle">
           <button class="shopRerollBtn" id="shopRerollBtn">Reroll Stock · 20g</button>
           <span class="shopRerolls" id="shopRerolls">2 rerolls left</span>
@@ -1429,9 +1471,9 @@ body.is-phone .affixChip{font-size:7.5px;padding:2px 6px;}
         <div class="shopList" id="shopStock"></div>
         <div class="shopMesg" id="shopMsg"></div>
       </div>
-      <div class="shopCol">
+      <div class="shopCol" data-shopcol="sell">
         <h3>Sell Your Wares</h3>
-        <div class="desc">Right-click items in your satchel to sell them instantly.</div>
+        <div class="desc">Tap an item to sell it for gold, or tap its name to inspect it first.</div>
         <div class="shopList" id="sellList"></div>
       </div>
     </div>
@@ -4112,9 +4154,20 @@ class Enemy {
     this.shake = 0.18;
     if (opts.knockback) {
       const ang = opts.angle;
-      const power = opts.knockback * (this.isElite ? 0.35 : 1);
-      this.kx += Math.cos(ang) * power;
-      this.ky += Math.sin(ang) * power;
+      /* Elites and bosses barely move. This used to be a flat 0.35 multiplier
+         for both, and because kx was *added* on every hit it compounded: stand
+         against a wall, hit the boss ten times, and the accumulated impulse
+         launched him across the room the moment the wall let go. */
+      const mass = this.isBoss ? 0.06 : (this.isElite ? 0.22 : 1);
+      const power = opts.knockback * mass;
+      /* Set rather than add: a new hit replaces the old impulse instead of
+         queueing on top of it. */
+      this.kx = Math.cos(ang) * power;
+      this.ky = Math.sin(ang) * power;
+      /* hard ceiling so nothing can ever be flung */
+      const cap = this.isBoss ? 90 : (this.isElite ? 190 : 460);
+      const mag = Math.hypot(this.kx, this.ky);
+      if (mag > cap) { this.kx = this.kx / mag * cap; this.ky = this.ky / mag * cap; }
     }
     this.aggro = true;
     if (this.state === 'patrol') this.state = 'chase';
@@ -5243,9 +5296,17 @@ const Save = {
     if (!it) return null;
     return {
       id: it.id, name: it.name, slot: it.slot, rarity: it.rarity, level: it.level,
+      /* tier was missing here, so every reloaded item came back with tier
+         undefined and the inventory cell rendered "iundefined". */
+      tier: it.tier,
+      baseName: it.baseName || null,
       stats: Object.assign({}, it.stats), value: it.value, element: it.element || null,
       affixes: it.affixes ? it.affixes.slice(0, 8) : [],
       flavor: it.flavor || '', iconSeed: it.iconSeed, iconKind: it.iconKind,
+      /* the look of the item: without these a reloaded hero lost its armour
+         colours and every blade came back the default grey */
+      metal: it.metal || null, blade: it.blade ? it.blade.slice(0, 3) : null,
+      grip: it.grip || null, gem: it.gem || null, leather: it.leather || null,
       stackable: !!it.stackable, heal: it.heal
     };
   },
@@ -5270,6 +5331,15 @@ const Save = {
       slot: raw.slot,
       rarity,
       level: clamp(Number(raw.level) || 1, 1, 99),
+      /* Older saves predate these fields. Fall back to a value derived from
+         rarity so nothing renders as undefined. */
+      tier: clamp(Number(raw.tier) || (rarity + 1), 1, 6),
+      baseName: raw.baseName ? String(raw.baseName).slice(0, 60) : null,
+      metal: raw.metal || null,
+      blade: Array.isArray(raw.blade) ? raw.blade.slice(0, 3).map(String) : null,
+      grip: raw.grip || null,
+      gem: raw.gem || null,
+      leather: raw.leather || null,
       stats,
       value: Math.max(1, Number(raw.value) || 1),
       element: raw.element && ELEMENTS[raw.element] ? raw.element : null,
@@ -6491,6 +6561,16 @@ function moveWithCollision(ent, dx, dy) {
     }
   }
 }
+/* Enemy damage per floor. Previously every attack was `base + Game.floor`,
+   which is linear while the hero's defence is also linear *and* the hero's
+   HP pool grows faster than either — so incoming damage measured as a share
+   of max HP actually fell as you went deeper (8 hp on floor 1, 6 hp on floor
+   10). Depth now compounds, and defence has diminishing returns, so a floor
+   10 brute genuinely hurts. */
+function depthDamage(base, floor = Game.floor) {
+  return base * (1 + (floor - 1) * 0.40 + Math.pow(floor - 1, 1.75) * 0.075);
+}
+
 function hasLineOfSight(x1, y1, x2, y2) {
   const d = Game.dungeon;
   const steps = Math.ceil(dist(x1, y1, x2, y2) / 16);
@@ -6535,6 +6615,9 @@ const Combat = {
       let ang = Math.atan2(dy, dx);
       let diff = ((ang - p.aimAngle + Math.PI * 3) % TAU) - Math.PI;
       if (Math.abs(diff) > arc / 2) continue;
+      /* The arc is generous, and a generous arc through a wall is cheating:
+         the blade must actually have a path to the target. */
+      if (!hasLineOfSight(p.x, p.y, e.x, e.y)) continue;
       this.damageEnemy(e, p.attackPower * 2.0, p.aimAngle, { knockback: 230, source: 'melee' });
       hits++;
       /* cleave: skill ranks widen the arc's target cap */
@@ -6549,6 +6632,7 @@ const Combat = {
       const ang = Math.atan2(dy, dx);
       const diff = ((ang - p.aimAngle + Math.PI * 3) % TAU) - Math.PI;
       if (Math.abs(diff) > arc / 2) continue;
+      if (!hasLineOfSight(p.x, p.y, pr.x, pr.y)) continue;
       this.hitCrate(pr);
     }
     /* swing visual sparks at the blade tip */
@@ -6701,7 +6785,7 @@ const Combat = {
         }
       }
       if (dist(p.x, p.y, e.x, e.y) < radius && p.dodging <= 0 && p.invuln <= 0) {
-        Combat.damagePlayer(Math.round(8 + e.maxHp * 0.06), e);
+        Combat.damagePlayer(Math.round(depthDamage(8) + e.maxHp * 0.06), e);
       }
       FX.ring(e.x, e.y, radius, 'rgba(255,140,60,0.7)', 0.5, 6);
       FX.ember(e.x, e.y, 26, '#ff9a3c');
@@ -6757,7 +6841,10 @@ const Combat = {
   damagePlayer(rawDamage, source) {
     const p = Game.player;
     if (p.dead || p.invuln > 0 || p.dodging > 0) return 0;
-    const reduced = rawDamage * (100 / (100 + p.defense * 4.2));
+    /* 4.2 per point of defence was so steep that mid-game armour absorbed
+       ~75% of every hit, which is why nothing could hurt the hero by floor 6.
+       Softer curve + a floor-scaled threat term below keeps danger real. */
+    const reduced = rawDamage * (100 / (100 + p.defense * 2.6));
     const dmg = Math.max(1, Math.round(reduced * rand(1.06, 0.94)));
     p.hp -= dmg;
     comboBreak(1);
@@ -6883,7 +6970,7 @@ function bossResolveMove(e) {
   const def = BOSS_MOVES[e.bossMove];
   const p = Game.player;
   const phase = bossPhase(e);
-  const dmgBase = (e.def.damage + Game.floor * 2) * def.damageMul;
+  const dmgBase = depthDamage(e.def.damage) * def.damageMul;
   if (e.bossMove === 'slam') {
     const radius = e.bossSlamRadius || def.radius;
     if (COMPANION.active && COMPANION.downT <= 0 && dist(COMPANION.x, COMPANION.y, e.x, e.y) < radius + COMPANION.radius) {
@@ -6975,7 +7062,7 @@ function updateBoss(e, dt, angToPlayer, dd, t) {
     FX.dustPuff(e.x, e.y, 2, 'rgba(160,110,100,0.4)');
     if (!e.chargeHit && dist(p.x, p.y, e.x, e.y) < e.radius + p.radius + 10) {
       e.chargeHit = true;
-      Combat.damagePlayer(Math.round((e.def.damage + Game.floor * 2) * BOSS_MOVES.charge.damageMul), e);
+      Combat.damagePlayer(Math.round(depthDamage(e.def.damage) * BOSS_MOVES.charge.damageMul), e);
       Game.cam.shake = 15; Game.cam.shakeT = 0.4;
       FX.ring(e.x, e.y, 70, 'rgba(255,180,90,0.7)', 0.4, 5);
       Sound.play('bossHit', 1.0);
@@ -7028,9 +7115,13 @@ function updateEnemy(e, dt) {
   e.stunT = Math.max(0, e.stunT - dt);
   e.contactCd = Math.max(0, e.contactCd - dt);
   e.attackAnim = Math.max(0, e.attackAnim - dt * 3.2);
-  /* knockback decay */
+  /* knockback decay — bosses bleed it off almost instantly so they never
+     drift across the room over the course of a fight */
+  const kbDecay = e.isBoss ? 0.00002 : 0.0016;
   e.x += e.kx * dt; e.y += e.ky * dt;
-  e.kx *= Math.pow(0.0016, dt); e.ky *= Math.pow(0.0016, dt);
+  e.kx *= Math.pow(kbDecay, dt); e.ky *= Math.pow(kbDecay, dt);
+  if (Math.abs(e.kx) < 3) e.kx = 0;
+  if (Math.abs(e.ky) < 3) e.ky = 0;
   if (Math.abs(e.kx) > 400) { /* keep inside walls after knockback */ }
   if (circleHitsWalls(e.x, e.y, e.radius * 0.8)) {
     const oldX = e.x, oldY = e.y;
@@ -7165,7 +7256,7 @@ function updateEnemy(e, dt) {
           COMPANION.hurt(Math.round((t.damage + Game.floor) * 0.9));
           dealt = 0;
         } else {
-          dealt = Combat.damagePlayer(t.damage + Game.floor * 1.0, e);
+          dealt = Combat.damagePlayer(depthDamage(t.damage), e);
         }
         if (e.lifesteal && dealt > 0 && e.alive) {
           e.hp = Math.min(e.maxHp, e.hp + dealt * e.lifesteal);
@@ -7214,7 +7305,7 @@ function updateEnemy(e, dt) {
 
   /* contact damage for rushers */
   if (t.behavior === 'rusher' && dd < e.radius + p.radius + 4 && e.contactCd <= 0) {
-    Combat.damagePlayer(t.damage * 0.7 + Game.floor, e);
+    Combat.damagePlayer(depthDamage(t.damage * 0.7), e);
     e.contactCd = 0.9;
   }
 
@@ -7238,14 +7329,14 @@ function enemyRangedAttack(e, angle) {
     const sx = e.x + Math.cos(angle) * 20, sy = e.y + Math.sin(angle) * 20;
     FX.projectile({
       x: sx, y: sy, vx: Math.cos(angle) * 250, vy: Math.sin(angle) * 250,
-      radius: 9, life: 2.2, damage: t.damage + Game.floor * 1.1, color: '#b06bff',
+      radius: 9, life: 2.2, damage: depthDamage(t.damage * 1.1), color: '#b06bff',
       kind: 'skull', friendly: false, angle
     });
     FX.spark(sx, sy, { count: 8, color: '#c58cff', speed: 120 });
   } else if (e.type === 'imp') {
     FX.projectile({
       x: e.x, y: e.y, vx: Math.cos(angle) * 340, vy: Math.sin(angle) * 340,
-      radius: 7, life: 1.6, damage: t.damage + Game.floor, color: '#ff8a3c',
+      radius: 7, life: 1.6, damage: depthDamage(t.damage), color: '#ff8a3c',
       kind: 'orb', friendly: false, angle
     });
     Sound.play('magic', 0.45);
@@ -10479,8 +10570,18 @@ function refreshInventoryUI() {
         hideTooltip();
       });
       slotEl.addEventListener('dragend', () => { Game.dragItem = null; Game.dragFrom = null; });
-      slotEl.addEventListener('click', () => { unequipSlot(slot); });
-      slotEl.addEventListener('mouseenter', (ev) => showTooltip(item, ev.clientX, ev.clientY, slot, false));
+      slotEl.addEventListener('click', (ev) => {
+        /* Phone: a stray thumb must not strip your armour. Open the card and
+           let the Unequip button be the deliberate action. */
+        if (Game.isPhone) {
+          ev.stopPropagation();
+          Game.touchItemSel = item;
+          showTooltip(item, ev.clientX, ev.clientY, slot, false, true);
+          return;
+        }
+        unequipSlot(slot);
+      });
+      slotEl.addEventListener('mouseenter', (ev) => { if (!Game.isPhone) showTooltip(item, ev.clientX, ev.clientY, slot, false); });
       slotEl.addEventListener('mousemove', (ev) => positionTooltip(ev.clientX, ev.clientY));
       slotEl.addEventListener('mouseleave', hideTooltip);
     } else {
@@ -10684,7 +10785,11 @@ function showTooltip(item, x, y, slot, fromInventory, touchMode) {
     /* phone: explicit targets, because there is no right-click and hover does
        not exist. Without these you could not sell anything on a phone. */
     html += `<div class="ttActions">`;
-    if (fromInventory) {
+    if (fromInventory && Game.ttFromShopSell) {
+      /* opened from the Quartermaster's sell list — the whole point is gold */
+      html += `<button class="ttBtn sell" data-tt="sell">Sell ${fmt(p.sellPrice(item))}g</button>`;
+      html += `<button class="ttBtn primary" data-tt="equip">Equip</button>`;
+    } else if (fromInventory) {
       html += `<button class="ttBtn primary" data-tt="equip">Equip</button>`;
       html += `<button class="ttBtn sell" data-tt="sell">Sell ${fmt(p.sellPrice(item))}g</button>`;
     } else {
@@ -10695,6 +10800,7 @@ function showTooltip(item, x, y, slot, fromInventory, touchMode) {
     html += `<div class="ttHint">${fromInventory ? 'Click to equip · Right-click to sell' : 'Click to unequip'}</div>`;
   }
   el.innerHTML = html;
+  Game.ttFromShopSell = false;   /* consumed — the next card defaults to equip-first */
   el.classList.remove('hidden');
   if (touchMode) el.classList.add('touch'); else el.classList.remove('touch');
   positionTooltip(x, y);
@@ -10716,6 +10822,13 @@ function showTooltip(item, x, y, slot, fromInventory, touchMode) {
 function positionTooltip(x, y) {
   const el = $('tooltip');
   if (el.classList.contains('hidden')) return;
+  /* The touch card is pinned to the middle of the screen by CSS
+     (left/top:50% + translate(-50%,-50%)). Writing left/top here as well
+     applied BOTH offsets: on a 390px-wide phone the card resolved to
+     left:-162px, which put the EQUIP and SELL buttons entirely off the left
+     edge of the display. That is why nothing was tappable. Touch mode is
+     CSS-positioned only — never touch it from script. */
+  if (el.classList.contains('touch')) { el.style.left = ''; el.style.top = ''; return; }
   const rect = el.getBoundingClientRect();
   let left = x + 18, top = y + 14;
   if (left + rect.width > window.innerWidth - 10) left = x - rect.width - 18;
@@ -10744,13 +10857,28 @@ function escapeHtml(s) {
   return String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 }
 
+/* Keep body.menu-open in sync with whichever full-screen panel is visible.
+   Every panel here sets .show independently (there is no single open/close
+   helper to hook), so observe the class attribute instead of trying to patch
+   a dozen call sites. While a panel is open the phone touch layer is hidden,
+   which stops the movement stick from stealing taps aimed at the panel. */
+const MENU_OVERLAY_IDS = ['inventoryOverlay', 'shopOverlay', 'skillOverlay', 'pauseOverlay',
+                          'deathOverlay', 'victoryOverlay', 'startScreen'];
+function syncMenuOpen() {
+  const any = MENU_OVERLAY_IDS.some(id => {
+    const el = document.getElementById(id);
+    return el && el.classList.contains('show');
+  });
+  document.body.classList.toggle('menu-open', any);
+}
+
 /* ============================== 17. SHOP ================================ */
 function openShop() {
   if (Game.state !== 'playing') return;
   Game.shopOpen = true;
   Game.paused = true;
   Sound.play('ui');
-  $('shopOverlay').classList.add('show');
+  $('shopOverlay').classList.add('show'); syncMenuOpen();
   hideTooltip();
   refreshInventoryUI();
   renderShop();
@@ -10759,7 +10887,7 @@ function openShop() {
 function closeShop() {
   Game.shopOpen = false;
   Game.paused = Game.invOpen || Game.skillOpen;
-  $('shopOverlay').classList.remove('show');
+  $('shopOverlay').classList.remove('show'); syncMenuOpen();
   hideTooltip();
   Sound.play('ui');
 }
@@ -10769,10 +10897,35 @@ function shopMessage(msg) {
   clearTimeout(Game.shopMsgTimer);
   Game.shopMsgTimer = setTimeout(() => { $('shopMsg').textContent = ''; }, 3200);
 }
+/* Phone shop tabs. The phone shows one column at a time (see the
+   body.is-phone rules) because two stacked columns in portrait left the
+   FOR SALE list with barely two visible rows. Desktop keeps both columns and
+   the tab strip stays hidden. */
+Game.shopTab = 'buy';
+function setShopTab(tab) {
+  Game.shopTab = tab === 'sell' ? 'sell' : 'buy';
+  const body = $('shopBody');
+  if (body) body.dataset.tab = Game.shopTab;
+  document.querySelectorAll('#shopTabs .shopTab').forEach(b => {
+    b.classList.toggle('active', b.dataset.shoptab === Game.shopTab);
+  });
+  /* a tooltip opened from the other tab is stale the moment we switch */
+  hideTooltip();
+}
+document.querySelectorAll('#shopTabs .shopTab').forEach(b => {
+  b.addEventListener('click', () => setShopTab(b.dataset.shoptab));
+});
+
 function renderShop() {
   const p = Game.player;
   if (!p) return;
   $('shopGold').textContent = fmt(p.gold);
+  {
+    const bc = $('shopTabBuyCount'), sc = $('shopTabSellCount');
+    if (bc) bc.textContent = String(Game.shopStock.length);
+    if (sc) sc.textContent = String(p.inventory.length);
+    setShopTab(Game.shopTab);
+  }
   /* haggling state */
   const rerollBtn = $('shopRerollBtn');
   if (rerollBtn) {
@@ -10812,7 +10965,11 @@ function renderShop() {
     const isPotion = item.slot === 'consumable';
     info.innerHTML = `<div class="sname" style="color:${RARITY_COLOR[item.rarity]}">${escapeHtml(item.name)}</div>
       <div class="ssub">${isPotion ? 'Consumable' : RARITIES[item.rarity].name + ' · ' + SLOT_LABEL[item.slot] + ' · iLvl ' + item.level}</div>`;
-    info.addEventListener('click', (ev) => showTooltip(item, ev.clientX, ev.clientY, item.slot, false));
+    info.addEventListener('click', (ev) => {
+      /* phone has no hover: open the card as a centred touch card */
+      if (Game.isPhone) { Game.touchItemSel = item; showTooltip(item, ev.clientX, ev.clientY, item.slot, false, true); return; }
+      showTooltip(item, ev.clientX, ev.clientY, item.slot, false);
+    });
     info.addEventListener('mousemove', (ev) => positionTooltip(ev.clientX, ev.clientY));
     info.addEventListener('mouseleave', hideTooltip);
     row.appendChild(info);
@@ -10854,7 +11011,13 @@ function renderShop() {
     info.className = 'sinfo';
     info.innerHTML = `<div class="sname" style="color:${RARITY_COLOR[item.rarity]}">${escapeHtml(item.name)}</div>
       <div class="ssub">${RARITIES[item.rarity].name} · ${SLOT_LABEL[item.slot]} · iLvl ${item.level}</div>`;
-    info.addEventListener('click', (ev) => showTooltip(item, ev.clientX, ev.clientY, item.slot, true));
+    info.addEventListener('click', (ev) => {
+      Game.ttFromShopSell = true;                 /* sell is the primary action here */
+      try {
+        if (Game.isPhone) { Game.touchItemSel = item; showTooltip(item, ev.clientX, ev.clientY, item.slot, true, true); return; }
+        showTooltip(item, ev.clientX, ev.clientY, item.slot, true);
+      } finally { /* cleared in showTooltip after it has been read */ }
+    });
     info.addEventListener('mousemove', (ev) => positionTooltip(ev.clientX, ev.clientY));
     info.addEventListener('mouseleave', hideTooltip);
     row.appendChild(info);
@@ -10961,7 +11124,7 @@ function toggleInventory(force) {
   Game.invOpen = open;
   Game.paused = open || Game.shopOpen || Game.skillOpen;
   if (Game.state === 'paused') Game.state = 'playing';
-  $('inventoryOverlay').classList.toggle('show', open);
+  $('inventoryOverlay').classList.toggle('show', open); syncMenuOpen();
   if (open) { refreshInventoryUI(); Sound.play('ui'); }
   else { hideTooltip(); }
   updateHud();
@@ -11065,7 +11228,7 @@ function toggleSkills(force) {
   Game.skillOpen = open;
   Game.paused = open || Game.shopOpen || Game.invOpen;
   if (Game.state === 'paused') Game.state = 'playing';
-  $('skillOverlay').classList.toggle('show', open);
+  $('skillOverlay').classList.toggle('show', open); syncMenuOpen();
   if (open) {
     $('skillSub').textContent = Game.player.pendingSkillChoice
       ? 'A talent point awaits — choose wisely.'
@@ -11079,7 +11242,7 @@ function showDeath() {
   const p = Game.player;
   $('deathEpitaph').textContent = 'Cut down on floor ' + Game.floor + ' by ' + Game.deathBy + '. The dungeon keeps its secrets — and your bones.';
   $('deathStats').innerHTML = runStatsHtml(p);
-  $('deathOverlay').classList.add('show');
+  $('deathOverlay').classList.add('show'); syncMenuOpen();
   Sound.stopMusic();
   Save.recordDeath();
   Save.clear();
@@ -11088,7 +11251,7 @@ function showDeath() {
 function showVictory() {
   const p = Game.player;
   $('victoryStats').innerHTML = runStatsHtml(p);
-  $('victoryOverlay').classList.add('show');
+  $('victoryOverlay').classList.add('show'); syncMenuOpen();
   Sound.stopMusic();
   Save.save();
 }
@@ -11256,7 +11419,7 @@ function setupInput() {
   $('endlessBtn').addEventListener('click', () => {
     Game.endless = true;
     MAX_FLOOR_DYNAMIC = Math.max(MAX_FLOOR_DYNAMIC, Game.floor + 1);
-    $('victoryOverlay').classList.remove('show');
+    $('victoryOverlay').classList.remove('show'); syncMenuOpen();
     /* the final floor is cleared: descend into the endless depths */
     Game.state = 'transition';
     $('transition').classList.add('black');
@@ -11551,7 +11714,7 @@ function togglePause(force) {
   }
   Game.paused = p;
   Game.state = p ? 'paused' : 'playing';
-  $('pauseOverlay').classList.toggle('show', p);
+  $('pauseOverlay').classList.toggle('show', p); syncMenuOpen();
   if (p) { hideTooltip(); Sound.play('ui'); }
   Game.input.up = Game.input.down = Game.input.left = Game.input.right = false;
 }
@@ -11585,7 +11748,7 @@ function beginGame() {
   /* starting fresh discards the old save only once the new run is real */
   $('startFade').classList.add('black');
   setTimeout(() => {
-    $('startScreen').classList.remove('show');
+    $('startScreen').classList.remove('show'); syncMenuOpen();
     startRun();
     $('startFade').classList.remove('black');
     Game.input.mouseDown = false;
@@ -11596,7 +11759,7 @@ function continueRun() {
   Sound.init(); Sound.resume();
   $('startFade').classList.add('black');
   setTimeout(() => {
-    $('startScreen').classList.remove('show');
+    $('startScreen').classList.remove('show'); syncMenuOpen();
     const ok = Save.load();
     $('startFade').classList.remove('black');
     Game.input.mouseDown = false;
@@ -11613,7 +11776,7 @@ function continueRun() {
 }
 function restartRun() {
   $('deathOverlay').classList.remove('show');
-  $('victoryOverlay').classList.remove('show');
+  $('victoryOverlay').classList.remove('show'); syncMenuOpen();
   $('inventoryOverlay').classList.remove('show');
   $('shopOverlay').classList.remove('show');
   $('pauseOverlay').classList.remove('show');
@@ -11975,6 +12138,13 @@ function boot() {
   /* pre-bake tiles for all themes so floor transitions are instant */
   THEMES.forEach(th => TileArt.bake(th));
   if (Phone.detect()) Phone.enable();
+  /* watch every menu panel for .show changes and mirror that onto body */
+  document.querySelectorAll('#inventoryOverlay,#shopOverlay,#skillOverlay,#pauseOverlay,' +
+    '#deathOverlay,#victoryOverlay,#startScreen').forEach(el => {
+    if (!el) return;
+    new MutationObserver(syncMenuOpen).observe(el, { attributes: true, attributeFilter: ['class'] });
+  });
+  syncMenuOpen();
   Phone.checkOrientation();
   Game.state = 'menu';
   Game.titleEmbers = null;
