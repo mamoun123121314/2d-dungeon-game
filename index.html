@@ -1081,10 +1081,14 @@ body.is-phone #phoneRail{display:block;}
    ability buttons that live there: the hint covered a control the player was
    trying to press. It now sits under the top HUD, where portrait play has no
    controls. */
-#rotateNudge{position:fixed;left:50%;
-  bottom:auto;top:calc(env(safe-area-inset-top, 0px) + 74px);
-  transform:translateX(-50%);z-index:56;display:none;pointer-events:none;
-  max-width:calc(100vw - 24px);padding:7px 13px;border-radius:999px;
+/* Portrait layout has no free band: the vitals rail owns the top, the dungeon
+   the middle, the thumbstick and action rail the bottom. The BOUNTIES panel
+   sits at top:66px left:10px and only 126px wide, so the nudge is pinned to the
+   remaining space to its right instead of being centred across it. */
+#rotateNudge{position:fixed;left:auto;right:10px;
+  bottom:auto;top:calc(env(safe-area-inset-top, 0px) + 70px);
+  transform:none;z-index:56;display:none;pointer-events:none;
+  max-width:calc(58vw - 12px);padding:7px 13px;border-radius:999px;
   background:rgba(10,8,16,.9);border:1px solid rgba(217,181,107,.34);
   color:#bdb1c8;font-family:var(--font-ui);font-size:10.5px;letter-spacing:.04em;
   align-items:center;gap:8px;line-height:1.25;}
@@ -13487,7 +13491,30 @@ const Phone = {
     if (!el) return;
     if (!this.enabled) { el.classList.remove('show'); return; }
     const portrait = window.innerHeight > window.innerWidth * 1.06;
-    el.classList.toggle('show', portrait && Game.state === 'playing');
+    /* A one-time tip, not a permanent label. It has now twice been moved to
+       get it off something it covered (the ability buttons, then the BOUNTIES
+       panel), because there is no free band on a portrait phone: the top is
+       the vitals rail, the middle is the dungeon, the bottom is the thumbstick
+       and the action rail. Rather than chase a gap, the nudge retires itself —
+       it appears on the first portrait run, then goes away for good and stops
+       competing with live information. Rotating is still discovered, because
+       the tip is exactly what tells you to try it. */
+    const seenKey = 'dungeonRogue.rotateTipSeen.v1';
+    let seen = false;
+    try { seen = localStorage.getItem(seenKey) === '1'; } catch (e) {}
+    const show = portrait && Game.state === 'playing' && !seen;
+    if (show && !el.classList.contains('show')) {
+      /* only burn the flag once it has actually been on screen for a moment,
+         so a single frame mid-rotation does not waste it */
+      if (!this._tipTimer) {
+        this._tipTimer = setTimeout(() => {
+          this._tipTimer = null;
+          try { localStorage.setItem(seenKey, '1'); } catch (e) {}
+          el.classList.remove('show');
+        }, 6000);
+      }
+    }
+    el.classList.toggle('show', show);
   }
 };
 function drinkPotion() {

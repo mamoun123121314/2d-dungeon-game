@@ -147,6 +147,36 @@ try {
       });
       check('the portrait orientation hint covers no controls', nudge.covered.length === 0, nudge);
 
+      /* The hint has now twice been moved because it sat on top of something:
+         first the SLAM/PACK buttons, then the BOUNTIES panel. It is a one-time
+         tip, so the real fix is that it retires itself rather than hunting for
+         a permanently free band that a portrait phone does not have. */
+      const tip = await page.evaluate(async () => {
+        const rect = (id) => {
+          const el = document.getElementById(id);
+          if (!el) return null;
+          const b = el.getBoundingClientRect();
+          const cs = getComputedStyle(el);
+          return { shown: cs.display !== 'none' && b.height > 0,
+                   x: Math.round(b.x), y: Math.round(b.y), w: Math.round(b.width), h: Math.round(b.height) };
+        };
+        const hit = (a, b) => !!(a && b && a.shown && b.shown
+          && !(a.x + a.w <= b.x || b.x + b.w <= a.x || a.y + a.h <= b.y || b.y + b.h <= a.y));
+
+        localStorage.removeItem('dungeonRogue.rotateTipSeen.v1');
+        if (typeof rollBounties === 'function') rollBounties(2);
+        const bh = document.getElementById('bountyHud');
+        if (bh) bh.classList.remove('hidden');
+        if (typeof Phone !== 'undefined' && Phone.checkOrientation) Phone.checkOrientation();
+        await new Promise((r) => setTimeout(r, 120));
+
+        const n = rect('rotateNudge');
+        const bounty = rect('bountyHud');
+        const out = { nudge: n, bounty, overlapsBounty: hit(n, bounty) };
+        return out;
+      });
+      check('the orientation hint does not cover the bounty panel', tip.overlapsBounty === false, tip);
+
       /* ---- nothing is displayed twice, and no phone vital is missing ----
          The reported "double of everything": the top rail drew Ember's health
          bar AND the bottom-left chip drew her again, while the XP bar behind
