@@ -185,6 +185,12 @@ hit. Charge hits knock the player back with a proper decaying impulse.
   torch, clamped so the game never becomes unplayable.
 - **Meta progression.** Runs played, deepest floor, lifetime kills and gold, and
   Wardens felled are all recorded permanently and shown on the title screen.
+- **Expedition contracts.** Pick a run-wide ruleset in Settings before starting
+  a fresh descent: *Pilgrim’s Mercy* thins enemy groups and softens hits in
+  exchange for less gold; *The Reclaimer* crowds floors for richer purses; and
+  *Glass Covenant* trades fewer enemies for harder blows and stronger player
+  attacks. *Unbound* keeps the standard rules. A saved run keeps its chosen
+  contract even if you change the next-run selection.
 
 ### Saving
 A Minecraft-style autosave keeps a single run slot:
@@ -199,7 +205,9 @@ A Minecraft-style autosave keeps a single run slot:
 - Loading is defensive: ratings, ranks, item fields and slot names are all
   clamped and validated, and invalid run data is rejected rather than crashing
   the game.
-- Settings and profile name are stored locally. The utility menu can export or
+- Settings and profile name are stored locally. Settings include master volume,
+  sound, screen shake, reduced motion/flash, floating combat text, high contrast,
+  larger interface, and the next-run contract. The utility menu can export or
   import a JSON backup containing the run, meta progression, profile, and settings.
 - Save size and write time vary with the run and device; no server account is
   required. Clearing browser/site data can erase local progress, so export a
