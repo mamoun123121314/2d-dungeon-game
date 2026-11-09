@@ -1685,6 +1685,7 @@ body.is-phone .affixChip{font-size:7.5px;padding:2px 6px;}
       <label class="menuField" for="largeUISetting"><span>Larger interface</span><input id="largeUISetting" type="checkbox"></label>
       <label class="menuField" for="paletteSetting"><span>Dungeon colourway</span><select id="paletteSetting"><option value="cinder">Cinder &amp; gold</option><option value="moon">Moon-tide teal</option><option value="moss">Verdant relic</option></select></label>
       <label class="menuField" for="auraSetting"><span>Ember’s spirit trail</span><select id="auraSetting"><option value="none">Quiet paws</option><option value="ember">Foxfire orbit</option><option value="moon">Moon sigils</option></select></label>
+      <label class="menuField" for="heroAspectSetting"><span>Hero mantle</span><select id="heroAspectSetting"><option value="wayfarer">Ashen Wayfarer</option><option value="moonblade">Moonblade · silver orbit</option><option value="thornbound">Thornbound · leaf armor</option></select></label>
       <label class="menuField" for="contractSetting"><span>Next expedition contract</span><select id="contractSetting"><option value="standard">Unbound — standard descent</option><option value="pilgrim">Pilgrim’s Mercy — fewer foes, softer hits, less gold</option><option value="reclaimer">The Reclaimer — crowded floors, richer gold</option><option value="glass">Glass Covenant — fewer foes, harder hits, stronger strikes</option></select></label>
       <p class="menuLead">Contracts change the rules of a fresh run. Your current run keeps its original contract.</p>
       <div class="menuActions"><button class="bigBtn secondary" data-close-page="settingsOverlay">Done</button></div>
@@ -1980,7 +1981,7 @@ const $$ = (sel) => Array.prototype.slice.call(document.querySelectorAll(sel));
 /* Every sound is synthesised from oscillators and noise buffers at call time. */
 const Settings = {
   KEY: 'dungeonRogue.settings.v1',
-  value: { volume: 0.85, muted: false, screenShake: true, reducedMotion: false, damageNumbers: true, highContrast: false, largeUI: false, palette: 'cinder', companionAura: 'none', contract: 'standard' },
+  value: { volume: 0.85, muted: false, screenShake: true, reducedMotion: false, damageNumbers: true, highContrast: false, largeUI: false, palette: 'cinder', companionAura: 'none', heroAspect: 'wayfarer', contract: 'standard' },
   load() {
     try { const raw = JSON.parse(localStorage.getItem(this.KEY) || '{}'); this.value = Object.assign({}, this.value, raw); } catch (e) {}
     this.value.volume = clamp(Number(this.value.volume) || 0, 0, 1);
@@ -1992,6 +1993,7 @@ const Settings = {
     this.value.largeUI = !!this.value.largeUI;
     if (!['cinder','moon','moss'].includes(this.value.palette)) this.value.palette='cinder';
     if (!['none','ember','moon'].includes(this.value.companionAura)) this.value.companionAura='none';
+    if (!['wayfarer','moonblade','thornbound'].includes(this.value.heroAspect)) this.value.heroAspect='wayfarer';
     if (!['standard','pilgrim','reclaimer','glass'].includes(this.value.contract)) this.value.contract = 'standard';
     this.applyAccessibility();
     return this.value;
@@ -2016,6 +2018,7 @@ const Settings = {
     else if (key === 'largeUI') this.value.largeUI = !!value;
     else if (key === 'palette' && ['cinder','moon','moss'].includes(value)) this.value.palette = value;
     else if (key === 'companionAura' && ['none','ember','moon'].includes(value)) this.value.companionAura = value;
+    else if (key === 'heroAspect' && ['wayfarer','moonblade','thornbound'].includes(value)) this.value.heroAspect = value;
     else if (key === 'contract' && ['standard','pilgrim','reclaimer','glass'].includes(value)) this.value.contract = value;
     this.applyAccessibility();
     this.save();
@@ -6007,7 +6010,7 @@ function refreshSettingsPage() {
   const v=Settings.get();
   $('volumeSetting').value=Math.round(v.volume*100); $('volumeValue').textContent=Math.round(v.volume*100)+'%';
   $('shakeSetting').checked=v.screenShake; $('motionSetting').checked=v.reducedMotion; $('soundSetting').checked=!v.muted;
-  $('numbersSetting').checked=v.damageNumbers; $('contrastSetting').checked=v.highContrast; $('largeUISetting').checked=v.largeUI; $('paletteSetting').value=v.palette; $('auraSetting').value=v.companionAura; $('contractSetting').value=v.contract;
+  $('numbersSetting').checked=v.damageNumbers; $('contrastSetting').checked=v.highContrast; $('largeUISetting').checked=v.largeUI; $('paletteSetting').value=v.palette; $('auraSetting').value=v.companionAura; $('heroAspectSetting').value=v.heroAspect; $('contractSetting').value=v.contract;
 }
 function refreshMetaPages() {
   if(typeof COMPANION!=='undefined') COMPANION.coat=Save.meta().activeCoat||'ember';
@@ -6087,7 +6090,7 @@ function importBackupFile(file) {
       Save.writeMeta(data.meta);
       Profile.setName(data.profile&&data.profile.name||'');
       const cfg=data.settings||{};
-      Settings.set('volume',cfg.volume===undefined?0.85:cfg.volume); Settings.set('muted',!!cfg.muted); Settings.set('screenShake',cfg.screenShake!==false); Settings.set('reducedMotion',!!cfg.reducedMotion); Settings.set('damageNumbers',cfg.damageNumbers!==false); Settings.set('highContrast',!!cfg.highContrast); Settings.set('largeUI',!!cfg.largeUI); Settings.set('palette',['cinder','moon','moss'].includes(cfg.palette)?cfg.palette:'cinder'); Settings.set('companionAura',['none','ember','moon'].includes(cfg.companionAura)?cfg.companionAura:'none'); Settings.set('contract',['standard','pilgrim','reclaimer','glass'].includes(cfg.contract)?cfg.contract:'standard');
+      Settings.set('volume',cfg.volume===undefined?0.85:cfg.volume); Settings.set('muted',!!cfg.muted); Settings.set('screenShake',cfg.screenShake!==false); Settings.set('reducedMotion',!!cfg.reducedMotion); Settings.set('damageNumbers',cfg.damageNumbers!==false); Settings.set('highContrast',!!cfg.highContrast); Settings.set('largeUI',!!cfg.largeUI); Settings.set('palette',['cinder','moon','moss'].includes(cfg.palette)?cfg.palette:'cinder'); Settings.set('companionAura',['none','ember','moon'].includes(cfg.companionAura)?cfg.companionAura:'none'); Settings.set('heroAspect',['wayfarer','moonblade','thornbound'].includes(cfg.heroAspect)?cfg.heroAspect:'wayfarer'); Settings.set('contract',['standard','pilgrim','reclaimer','glass'].includes(cfg.contract)?cfg.contract:'standard');
       $('profileName').value=Profile.get().name;
       Save.refreshMenuControls(); refreshSettingsPage(); refreshMetaPages();
       $('backupStatus').textContent='Backup restored on this device. '+(data.run?'Your run is ready to continue.':'No active run was included.');
@@ -9342,13 +9345,21 @@ function drawHeroShape(ctx, p, t, bob, swingT, ghost) {
   const aim = p.aimAngle;
   const lookX = Math.cos(aim), lookY = Math.sin(aim);
   const eq = p.equipment;
+  const aspect = Settings.get().heroAspect;
+  const mantle = aspect === 'moonblade' ? ['#327c91','#102f45'] : aspect === 'thornbound' ? ['#54833d','#1d3d2c'] : ['#6d1f2b','#2f0d13'];
+  /* optional orbiting crescent gives the Moonblade a distinct animated silhouette */
+  if (!ghost && aspect === 'moonblade') {
+    ctx.save(); ctx.globalCompositeOperation='lighter'; ctx.rotate((Settings.get().reducedMotion?0:t)*.52);
+    ctx.strokeStyle='rgba(137,235,255,.58)'; ctx.lineWidth=1; ctx.beginPath(); ctx.ellipse(0,-3,18,23,-.25,-.82,1.04); ctx.stroke();
+    ctx.fillStyle='#b8f4ff'; ctx.beginPath(); ctx.arc(Math.cos(t*.52)*18,-3+Math.sin(t*.52)*23,1.6,0,TAU); ctx.fill(); ctx.restore();
+  }
   /* cape */
   const speedFactor = clamp(Math.hypot(p.vx, p.vy) / 220, 0, 1.6);
   const capeWave = Math.sin(t * 6 + p.walkT * 4) * 2 + speedFactor * 2.2;
   ctx.save();
   ctx.rotate(Math.atan2(lookY, lookX) * 0.06);
   const capeG = ctx.createLinearGradient(0, -6, 0, 16);
-  capeG.addColorStop(0, '#6d1f2b'); capeG.addColorStop(1, '#2f0d13');
+  capeG.addColorStop(0, mantle[0]); capeG.addColorStop(1, mantle[1]);
   ctx.fillStyle = capeG;
   ctx.beginPath();
   ctx.moveTo(-5, -6);
@@ -9406,12 +9417,21 @@ function drawHeroShape(ctx, p, t, bob, swingT, ghost) {
     ctx.strokeStyle = 'rgba(60,40,25,0.7)'; ctx.lineWidth = 1.6;
     ctx.beginPath(); ctx.moveTo(-7, -2); ctx.lineTo(6, 4); ctx.stroke();
   }
+  if(aspect!=='wayfarer'){
+    ctx.save(); ctx.globalCompositeOperation='lighter';
+    const sigil=aspect==='moonblade'?'#9cefff':'#b7e880';
+    ctx.fillStyle=sigil;ctx.shadowColor=sigil;ctx.shadowBlur=4;
+    if(aspect==='moonblade'){ctx.beginPath();ctx.arc(0,-2,2.5,-1.05,1.05);ctx.arc(1.4,-2,2.1,1.2,-1.2,true);ctx.closePath();ctx.fill();}
+    else{ctx.beginPath();ctx.moveTo(0,-7);ctx.lineTo(2,-2);ctx.lineTo(0,2);ctx.lineTo(-2,-2);ctx.closePath();ctx.fill();ctx.strokeStyle=sigil;ctx.lineWidth=.8;ctx.beginPath();ctx.moveTo(0,1);ctx.lineTo(0,5);ctx.moveTo(-3,2);ctx.lineTo(0,4);ctx.lineTo(3,2);ctx.stroke();}
+    ctx.restore();
+  }
   /* shoulders / pauldrons */
   for (const s of [-1, 1]) {
-    ctx.fillStyle = shade(armorC, s * 0.18 + 0.1);
-    ctx.beginPath(); ctx.arc(s * 8.4, -8, 4.4, 0, TAU); ctx.fill();
-    ctx.strokeStyle = 'rgba(0,0,0,0.35)'; ctx.lineWidth = 1;
-    ctx.beginPath(); ctx.arc(s * 8.4, -8, 4.4, 0, TAU); ctx.stroke();
+    ctx.fillStyle = aspect==='thornbound' ? shade('#79a94a',s*.12) : shade(armorC, s * 0.18 + 0.1);
+    ctx.beginPath();
+    if(aspect==='thornbound'){ctx.moveTo(s*5,-10);ctx.quadraticCurveTo(s*12,-15,s*14,-5);ctx.quadraticCurveTo(s*9,-4,s*5,-6);ctx.closePath();}
+    else ctx.arc(s * 8.4, -8, 4.4, 0, TAU);
+    ctx.fill(); ctx.strokeStyle='rgba(0,0,0,0.35)';ctx.lineWidth=1;ctx.stroke();
   }
   /* head */
   const headY = -16;
@@ -12124,6 +12144,7 @@ function setupInput() {
   $('largeUISetting').addEventListener('change',ev=>Settings.set('largeUI',ev.target.checked));
   $('paletteSetting').addEventListener('change',ev=>Settings.set('palette',ev.target.value));
   $('auraSetting').addEventListener('change',ev=>Settings.set('companionAura',ev.target.value));
+  $('heroAspectSetting').addEventListener('change',ev=>Settings.set('heroAspect',ev.target.value));
   $('contractSetting').addEventListener('change',ev=>Settings.set('contract',ev.target.value));
   $('profileName').addEventListener('change',ev=>{ev.target.value=Profile.setName(ev.target.value);Save.refreshMenuControls();});
   $('profileName').addEventListener('blur',ev=>{ev.target.value=Profile.setName(ev.target.value);Save.refreshMenuControls();});
