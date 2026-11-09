@@ -30,7 +30,8 @@ const check = (name, ok, detail = '') => {
 
 try {
   await page.goto(server.url, { waitUntil: 'load' });
-  await waitForBoot(page);
+  try { await waitForBoot(page); }
+  catch (e) { throw new Error(`boot never completed: ${e.message}`); }
   /* Begin a run without going through the start button.
      beginGame() (what #startBtn calls) shows window.confirm() when all three
      save slots are full — "starting a new run replaces the oldest". A confirm()
@@ -315,6 +316,18 @@ try {
         draw.noDoor ? 'no door' : `changed pixels: ${draw.diff}`);
 } catch (e) {
   console.error('  FAIL  threw:', e && e.message);
+  try {
+    const diag = await page.evaluate(() => ({
+      state: typeof Game !== 'undefined' ? Game.state : 'no Game',
+      hasStartRun: typeof window.startRun,
+      hasCanvas: !!document.querySelector('#game'),
+      dom: document.readyState,
+      slots: (typeof Save !== 'undefined' && Save.slotList) ? Save.slotList().filter(s => s.snap).length : 'n/a',
+      err: (typeof Game !== 'undefined' && Game.lastFrameError) || null,
+      frames: (typeof Game !== 'undefined' && Game.frameErrors) || 0,
+    }));
+    console.error('  diag:', JSON.stringify(diag));
+  } catch (e2) { console.error('  diag unavailable:', e2.message); }
   failures++;
 } finally {
   await browser.close();
