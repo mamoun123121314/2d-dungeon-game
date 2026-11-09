@@ -31,6 +31,12 @@ const check = (name, ok, detail = '') => {
 try {
   await page.goto(server.url, { waitUntil: 'load' });
   await waitForBoot(page);
+  /* Start the run once. startRun() clicks the start button and waits for
+     Game.state === 'playing'; calling it a second time later in the suite waits
+     forever, because the run is already in progress. That timed out on CI's
+     slower Chrome while passing locally — the flake was the suite, not the
+     game. */
+  await startRun(page);
 
   /* Walk the grid with the shut door treated as solid, the way repairConnectivity
      and the reachability probes must. Returns the reachable set. */
@@ -210,7 +216,6 @@ try {
      is the guaranteed source; measured before this check, 6 of 120 floors put
      it in a pocket the entrance could not reach, which made the door
      permanently locked and the floor's reward unobtainable. */
-  await startRun(page);
   const keys = await page.evaluate(`(() => {
     let floors = 0, missing = 0, unreachable = 0, samples = [];
     for (let i = 0; i < 60; i++) {
@@ -252,7 +257,6 @@ try {
   /* Rendering: the door must draw at the tile it occupies, and a locked door
      must be visually distinct from an unlocked one — "it does nothing there"
      can mean nothing appears where the player taps. */
-  await startRun(page);
   const draw = await page.evaluate(`(() => {
     Game.floor = 2;
     Game.dungeon = new Dungeon(2, 'vault-draw');
