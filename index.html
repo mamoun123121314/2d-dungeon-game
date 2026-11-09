@@ -641,7 +641,13 @@ body.is-phone .invFooter{font-size:10px;}
 .fieldLabel{display:block;font:9px var(--font-mono);letter-spacing:.16em;text-transform:uppercase;color:#9d90a6;margin:0 0 5px 2px;}
 .selectTrigger{display:flex;align-items:center;justify-content:space-between;gap:10px;width:100%;min-height:44px;padding:11px 13px;text-align:left;font-family:var(--font-ui);font-size:12.5px;color:#f0e2c4;background:linear-gradient(168deg,rgba(43,34,52,.94),rgba(14,11,21,.96));border:1px solid rgba(217,181,107,.3);border-left:2px solid var(--gold-dim);border-radius:4px;box-shadow:inset 0 1px 0 rgba(255,255,255,.05);transition:border-color .16s,box-shadow .16s,transform .16s;}
 .selectTrigger:hover,.selectTrigger:focus-visible{outline:none;border-color:rgba(243,217,154,.62);box-shadow:0 0 16px rgba(217,181,107,.14),inset 0 1px 0 rgba(255,255,255,.08);}
-.selectTrigger .stValue{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.selectTrigger .stArt{flex:0 0 auto;display:grid;place-items:center;width:42px;height:42px;border-radius:5px;overflow:hidden;border:1px solid rgba(217,181,107,.24);background:rgba(0,0,0,.35);}
+.selectTrigger .stBody{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px;}
+.selectTrigger .stValue{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.selectTrigger .stNote{display:block;font-size:10.5px;line-height:1.35;color:#9a8fa6;white-space:normal;}
+.selectTrigger .stNote[hidden]{display:none;}
+.previewCanvas{display:block;border-radius:3px;}
+@media(max-width:520px){.selectTrigger{gap:11px;padding:10px;align-items:center;}.selectTrigger .stArt{width:46px;height:46px;}}
 .selectTrigger .stGlyph{flex:0 0 auto;width:20px;height:20px;display:grid;place-items:center;font-size:10px;color:var(--sigil);border:1px solid rgba(217,181,107,.38);border-radius:50%;background:radial-gradient(circle,var(--sigil-glow),transparent 72%);transition:transform .2s;}
 .selectTrigger[aria-expanded="true"] .stGlyph{transform:rotate(180deg);}
 body.palette-moon .selectTrigger{border-color:rgba(98,207,219,.34);}
@@ -724,7 +730,25 @@ body.reduced-motion *,body.reduced-motion *::before,body.reduced-motion *::after
 .menuIdentity b{color:#e2c98e;font-weight:500;}
 .menuHub{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin:6px auto 12px;}
 .menuHub .bigBtn{width:auto;max-width:none;flex:1 1 155px;padding:11px 12px;font-size:10px;letter-spacing:.12em;}
+/* Menu buttons used to be four identical labels. Each now carries a glyph and
+   one line saying what is behind it, so the hub is self-explanatory. */
+.menuHub .menuTile{display:flex;align-items:center;gap:10px;text-align:left;padding:11px 12px;flex:1 1 210px;}
+.menuTile .mtGlyph{flex:0 0 auto;width:26px;height:26px;display:grid;place-items:center;font-size:11px;
+  color:var(--sigil);border:1px solid rgba(217,181,107,.34);border-radius:50%;
+  background:radial-gradient(circle,var(--sigil-glow),transparent 74%);}
+.menuTile .mtBody{display:flex;flex-direction:column;gap:1px;min-width:0;}
+.menuTile .mtBody b{font-family:var(--font-display);font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:#f0e2c4;font-weight:400;}
+.menuTile .mtBody small{font-family:var(--font-ui);font-size:9.5px;letter-spacing:.02em;text-transform:none;color:#8d8298;line-height:1.25;}
+@media(max-width:520px){.menuHub .menuTile{flex-basis:100%;}}
 /* ---------- saved-run shelf ---------- */
+/* a small portrait so "Adventurer name" is not just a bare text box */
+.profileCard{display:flex;align-items:center;gap:13px;padding:11px 13px;border:1px solid rgba(217,181,107,.24);border-radius:9px;
+  background:linear-gradient(120deg,rgba(255,255,255,.05),rgba(255,255,255,.012) 55%,rgba(217,181,107,.04));}
+.profileCard .pcArt{flex:0 0 auto;width:56px;height:56px;display:grid;place-items:center;border-radius:8px;overflow:hidden;
+  border:1px solid rgba(217,181,107,.3);background:radial-gradient(circle at 50% 35%,#2b2436,#0b0810);}
+.profileCard .pcBody{display:flex;flex-direction:column;gap:2px;min-width:0;}
+.profileCard b{font-family:var(--font-display);font-size:14px;letter-spacing:.06em;color:#f2e3c2;font-weight:400;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.profileCard small{font-size:10px;color:#928799;line-height:1.4;}
 .saveShelf{display:flex;flex-direction:column;gap:8px;}
 .saveSlot{display:grid;grid-template-columns:38px minmax(0,1fr) auto;align-items:center;gap:5px 11px;
   padding:11px 12px;border:1px solid rgba(217,181,107,.2);border-radius:8px;
@@ -757,13 +781,19 @@ body.reduced-motion *,body.reduced-motion *::before,body.reduced-motion *::after
 .smHead h3{margin:0;font:400 12.5px/1.3 var(--font-display);letter-spacing:.2em;text-transform:uppercase;color:var(--gold-bright);}
 .smHead .smDone{margin-left:auto;min-height:36px;padding:8px 14px;font-size:9.5px;border-radius:4px;}
 .smBody{overflow:auto;padding:8px;display:flex;flex-direction:column;gap:5px;-webkit-overflow-scrolling:touch;}
-.smOption{display:flex;align-items:center;gap:11px;width:100%;min-height:46px;padding:11px 12px;text-align:left;
+.smOption{display:flex;align-items:center;gap:11px;width:100%;min-height:64px;padding:9px 11px;text-align:left;
   border:1px solid transparent;border-radius:5px;background:rgba(255,255,255,.022);color:#ded3e6;
   font:12.5px/1.35 var(--font-ui);transition:background .14s,border-color .14s,color .14s;}
 .smOption:hover,.smOption:focus-visible{outline:none;background:rgba(217,181,107,.11);border-color:rgba(217,181,107,.4);color:#fff3d8;}
 .smOption .smRune{flex:0 0 auto;width:22px;height:22px;display:grid;place-items:center;font-size:10px;
   color:rgba(217,181,107,.5);border:1px solid rgba(217,181,107,.24);border-radius:50%;}
-.smOption .smText{flex:1;min-width:0;}
+.smOption .smArt{flex:0 0 auto;display:grid;place-items:center;width:52px;height:52px;border-radius:6px;overflow:hidden;
+  border:1px solid rgba(217,181,107,.22);background:rgba(0,0,0,.34);}
+.smOption .smText{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px;}
+.smOption .smText strong{font-weight:600;font-size:12.5px;color:inherit;}
+.smOption .smText small{font-size:10.5px;line-height:1.4;color:#9a8fa6;}
+.smOption[aria-selected="true"] .smText small{color:#cbbf9a;}
+.smOption .smArt canvas{width:100%!important;height:100%!important;object-fit:cover;}
 .smOption[aria-selected="true"]{background:linear-gradient(100deg,rgba(217,181,107,.19),rgba(217,181,107,.05));border-color:rgba(243,217,154,.6);color:#fff6e0;}
 .smOption[aria-selected="true"] .smRune{color:#1b1324;border-color:transparent;background:radial-gradient(circle,#f8e6b4,#c99f4d);box-shadow:0 0 12px rgba(217,181,107,.45);}
 body.palette-moon .smOption[aria-selected="true"]{background:linear-gradient(100deg,rgba(98,207,219,.2),rgba(98,207,219,.05));border-color:rgba(140,235,240,.6);}
@@ -1800,6 +1830,10 @@ body.is-phone .affixChip{font-size:7.5px;padding:2px 6px;}
     <div class="panelHead"><h2 id="profileTitle">Adventurer Profile</h2></div>
     <div class="menuPageBody">
       <p class="menuLead">Your optional local profile labels this device's progress. No email, password or personal details are needed.</p>
+      <div class="profileCard">
+        <span class="pcArt" id="profileArt" aria-hidden="true"></span>
+        <div class="pcBody"><b id="profileCardName">Wanderer</b><small id="profileCardNote">Your hero, as they look today</small></div>
+      </div>
       <label class="menuField" for="profileName"><span>Adventurer name</span><input id="profileName" type="text" maxlength="24" autocomplete="nickname" placeholder="Wanderer"></label>
       <div id="saveStatusLine" class="menuNote" aria-live="polite">Autosaves every few seconds while you play.</div>
       <h3 class="menuSection">Saved runs</h3>
@@ -1938,10 +1972,10 @@ body.is-phone .affixChip{font-size:7.5px;padding:2px 6px;}
     <div class="bestRecord hidden" id="bestRecord"></div>
     <div id="menuIdentity" class="menuIdentity"></div>
     <div class="menuHub" aria-label="Game options">
-      <button class="bigBtn secondary" id="menuSettingsBtn">Settings</button>
-      <button class="bigBtn secondary" id="menuProfileBtn">Profile &amp; Backup</button>
-      <button class="bigBtn secondary" id="menuRewardsBtn">Progress &amp; Rewards</button>
-      <button class="bigBtn secondary" id="menuShopBtn">Sanctuary Shop</button>
+      <button class="bigBtn secondary menuTile" id="menuSettingsBtn"><span class="mtGlyph" aria-hidden="true">✦</span><span class="mtBody"><b>Settings</b><small>Colourway, hero look, sound, contract</small></span></button>
+      <button class="bigBtn secondary menuTile" id="menuProfileBtn"><span class="mtGlyph" aria-hidden="true">▤</span><span class="mtBody"><b>Profile &amp; Backup</b><small>Your three saved runs and backups</small></span></button>
+      <button class="bigBtn secondary menuTile" id="menuRewardsBtn"><span class="mtGlyph" aria-hidden="true">◆</span><span class="mtBody"><b>Progress &amp; Rewards</b><small>Milestones and Ember Shards</small></span></button>
+      <button class="bigBtn secondary menuTile" id="menuShopBtn"><span class="mtGlyph" aria-hidden="true">⬥</span><span class="mtBody"><b>Sanctuary Shop</b><small>Spend shards on Ember and keepsakes</small></span></button>
     </div>
     <div class="startMeta">
       <span>Single-file · <b>0 KB</b> assets</span>
@@ -6269,7 +6303,7 @@ function openPage(id) {
   if(!document.querySelector('#settingsOverlay.show,#profileOverlay.show,#rewardsOverlay.show,#sanctuaryOverlay.show,#shrineOverlay.show')) utilityReturnFocus=document.activeElement;
   el.classList.add('show'); el.setAttribute('aria-hidden','false'); syncMenuOpen();
   if(id==='settingsOverlay') refreshSettingsPage();
-  if(id==='profileOverlay') $('profileName').value=Profile.get().name;
+  if(id==='profileOverlay') { $('profileName').value=Profile.get().name; refreshProfileCard(); }
   if(id==='rewardsOverlay'||id==='sanctuaryOverlay') refreshMetaPages();
   const first=el.querySelector('button:not([disabled]),input:not([type=hidden])'); if(first) setTimeout(()=>first.focus(),0);
 }
@@ -6323,10 +6357,60 @@ function syncSelectTriggers() {
     const chosen = sel.options[sel.selectedIndex];
     const trigger = field.querySelector('.selectTrigger');
     if (trigger) {
-      trigger.querySelector('.stValue').textContent = chosen ? chosen.textContent : '—';
-      trigger.setAttribute('aria-label', title + ': ' + (chosen ? chosen.textContent : ''));
+      const value = chosen ? chosen.value : '';
+      const info = optionInfo(sel.id, value);
+      const art = trigger.querySelector('.stArt');
+      if (art) { art.innerHTML = ''; art.appendChild(optionPreviewCanvas(sel.id, value, 34)); }
+      trigger.querySelector('.stValue').textContent = info && info.title ? info.title : (chosen ? chosen.textContent : '—');
+      const note = trigger.querySelector('.stNote');
+      if (note) { note.textContent = info ? info.note : ''; note.hidden = !info; }
+      trigger.setAttribute('aria-label', title + ': ' + (chosen ? chosen.textContent : '') + (info ? '. ' + info.note : ''));
     }
   });
+}
+
+/* One line of plain English per choice: what the player is actually getting.
+   Shown under the option in the list and under the trigger once chosen. */
+const OPTION_INFO = {
+  paletteSetting: {
+    cinder:  { title: 'Cinder & gold',  note: 'The default hall: cold grey stone under warm torchlight.' },
+    moon:    { title: 'Moon-tide teal', note: 'The same halls washed in sea-green moonlight.' },
+    moss:    { title: 'Verdant relic',  note: 'Old stone under a green canopy glow.' }
+  },
+  auraSetting: {
+    none: { title: 'Quiet paws',  note: 'Ember takes no trail. Easiest on the eyes.' },
+    ember:{ title: 'Foxfire orbit', note: 'Three drifting embers circle her as she runs.' },
+    moon: { title: 'Moon sigils',   note: 'Faint teal sigils ring her and glint in the dark.' }
+  },
+  heroAspectSetting: {
+    wayfarer:  { title: 'Ashen Wayfarer', note: 'Crimson cloak and iron pauldrons. The classic look.' },
+    moonblade: { title: 'Moonblade',      note: 'Teal cloak, silver crescent on the chest, a slow blue orbit.' },
+    thornbound:{ title: 'Thornbound',     note: 'Leaf-shaped armour and a sprout sigil. Grown, not forged.' }
+  },
+  contractSetting: {
+    standard:  { title: 'Unbound',          note: 'Standard descent: normal foes, normal gold.' },
+    pilgrim:   { title: 'Pilgrim’s Mercy',  note: 'Fewer foes and softer hits, but less gold.' },
+    reclaimer: { title: 'The Reclaimer',    note: 'Crowded floors and angry champions, far richer gold.' },
+    glass:     { title: 'Glass Covenant',   note: 'Fewer enemies, but they hit hard. Your strikes hit harder.' }
+  }
+};
+
+function optionInfo(selectId, value) {
+  const set = OPTION_INFO[selectId];
+  return (set && set[value]) || null;
+}
+
+function optionPreviewCanvas(selectId, value, size) {
+  const cv = document.createElement('canvas');
+  cv.width = cv.height = size * 2;              /* 2x for phone screens */
+  cv.style.width = cv.style.height = size + 'px';
+  cv.className = 'previewCanvas';
+  cv.setAttribute('aria-hidden', 'true');
+  if (selectId === 'paletteSetting') PREVIEW.dungeon(cv, value);
+  else if (selectId === 'auraSetting') PREVIEW.ember(cv, value);
+  else if (selectId === 'heroAspectSetting') PREVIEW.hero(cv, value);
+  else if (selectId === 'contractSetting') PREVIEW.contract(cv, value);
+  return cv;
 }
 
 function selectTriggerFor(id) {
@@ -6335,6 +6419,268 @@ function selectTriggerFor(id) {
 }
 
 /* open the in-game listbox for one of the four settings selects */
+/* ---------- option preview art ----------------------------------------
+   Every choice used to be a bare line of text ("Moon-tide teal", "Foxfire
+   orbit"), which tells a player nothing about what they are picking. Each
+   option now carries a small picture drawn from the same palette and shapes
+   the game itself uses, so the menu shows what the choice looks like before
+   it is made. Everything is canvas art: no image files, no network. */
+const PREVIEW = {
+  /* a tiny version of the hero's silhouette in the three mantles */
+  hero(cv, aspect) {
+    const ctx = cv.getContext('2d');
+    const w = cv.width, h = cv.height;
+    ctx.clearRect(0, 0, w, h);
+    const cx = w / 2, base = h * 0.86, s = h / 46;
+    const CAPE = { wayfarer: ['#6d1f2b', '#2f0d13'], moonblade: ['#327c91', '#102f45'], thornbound: ['#54833d', '#1d3d2c'] };
+    const TRIM = { wayfarer: '#c3903f', moonblade: '#8fe6f5', thornbound: '#b7e880' };
+    const cape = CAPE[aspect] || CAPE.wayfarer;
+    const trim = TRIM[aspect] || TRIM.wayfarer;
+    /* cloak */
+    const cg = ctx.createLinearGradient(0, base - 20 * s, 0, base);
+    cg.addColorStop(0, cape[0]); cg.addColorStop(1, cape[1]);
+    ctx.fillStyle = cg;
+    ctx.beginPath();
+    ctx.moveTo(cx - 4.5 * s, base - 17 * s);
+    ctx.quadraticCurveTo(cx - 8.5 * s, base - 9 * s, cx - 8 * s, base);
+    ctx.lineTo(cx + 8 * s, base);
+    ctx.quadraticCurveTo(cx + 8.5 * s, base - 9 * s, cx + 4.5 * s, base - 17 * s);
+    ctx.closePath(); ctx.fill();
+    /* body */
+    ctx.fillStyle = '#2a2434';
+    ctx.beginPath(); ctx.roundRect ? ctx.roundRect(cx - 4 * s, base - 18 * s, 8 * s, 12 * s, 2 * s) : ctx.rect(cx - 4 * s, base - 18 * s, 8 * s, 12 * s);
+    ctx.fill();
+    /* pauldrons: leaves for Thornbound, discs otherwise */
+    for (const d of [-1, 1]) {
+      ctx.fillStyle = aspect === 'thornbound' ? '#79a94a' : '#8d8171';
+      ctx.beginPath();
+      if (aspect === 'thornbound') {
+        ctx.moveTo(cx + d * 3 * s, base - 18 * s);
+        ctx.quadraticCurveTo(cx + d * 10 * s, base - 22 * s, cx + d * 11 * s, base - 14 * s);
+        ctx.quadraticCurveTo(cx + d * 6 * s, base - 13 * s, cx + d * 3 * s, base - 15 * s);
+      } else {
+        ctx.arc(cx + d * 5 * s, base - 16 * s, 2.6 * s, 0, TAU);
+      }
+      ctx.closePath(); ctx.fill();
+    }
+    /* head + hood */
+    ctx.fillStyle = '#c49a76';
+    ctx.beginPath(); ctx.arc(cx, base - 22.5 * s, 3.6 * s, 0, TAU); ctx.fill();
+    ctx.fillStyle = cape[1];
+    ctx.beginPath(); ctx.arc(cx, base - 23.6 * s, 4.2 * s, Math.PI * 1.05, Math.PI * 1.95); ctx.fill();
+    /* chest sigil / orbit */
+    ctx.fillStyle = trim; ctx.shadowColor = trim; ctx.shadowBlur = 6;
+    if (aspect === 'moonblade') {
+      ctx.beginPath(); ctx.arc(cx, base - 12.5 * s, 2 * s, -1.05, 1.05);
+      ctx.arc(cx + 1.1 * s, base - 12.5 * s, 1.7 * s, 1.2, -1.2, true); ctx.closePath(); ctx.fill();
+    } else if (aspect === 'thornbound') {
+      ctx.beginPath(); ctx.moveTo(cx, base - 16 * s); ctx.lineTo(cx + 1.6 * s, base - 12 * s);
+      ctx.lineTo(cx, base - 8 * s); ctx.lineTo(cx - 1.6 * s, base - 12 * s); ctx.closePath(); ctx.fill();
+    } else {
+      ctx.beginPath(); ctx.arc(cx, base - 12 * s, 1.4 * s, 0, TAU); ctx.fill();
+    }
+    ctx.shadowBlur = 0;
+    /* the Moonblade's silver orbit, the Thornbound's leaves */
+    if (aspect === 'moonblade') {
+      ctx.strokeStyle = 'rgba(143,230,245,.7)'; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.ellipse(cx, base - 14 * s, 9 * s, 8 * s, -0.35, -0.7, 1.0); ctx.stroke();
+    } else if (aspect === 'thornbound') {
+      ctx.fillStyle = 'rgba(183,232,128,.8)';
+      for (const [dx, dy] of [[-7, -20], [7, -19], [-6, -13], [6.5, -12]]) {
+        ctx.beginPath(); ctx.ellipse(cx + dx * s, base + dy * s, 1.6 * s, 0.8 * s, dx > 0 ? 0.6 : -0.6, 0, TAU); ctx.fill();
+      }
+    }
+  },
+
+  /* Ember with her three spirit trails: same coat colours as the game */
+  ember(cv, trail) {
+    const ctx = cv.getContext('2d');
+    const w = cv.width, h = cv.height;
+    ctx.clearRect(0, 0, w, h);
+    const cx = w / 2, base = h * 0.88, s = h / 46;
+    const coat = COMPANION_COATS.ember;
+    /* trail first, behind her */
+    if (trail === 'ember') {
+      for (let i = 0; i < 3; i++) {
+        const a = i * TAU / 3 - 0.6;
+        const gx = cx + Math.cos(a) * 8 * s, gy = base - 13 * s + Math.sin(a) * 7 * s;
+        const g = ctx.createRadialGradient(gx, gy, 0, gx, gy, 3.4 * s);
+        g.addColorStop(0, 'rgba(255,214,140,.95)'); g.addColorStop(0.45, 'rgba(255,140,60,.55)'); g.addColorStop(1, 'rgba(255,90,30,0)');
+        ctx.fillStyle = g; ctx.beginPath(); ctx.arc(gx, gy, 3.4 * s, 0, TAU); ctx.fill();
+      }
+    } else if (trail === 'moon') {
+      ctx.strokeStyle = 'rgba(150,230,245,.55)'; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.ellipse(cx, base - 13 * s, 10 * s, 6 * s, -0.25, 0, TAU); ctx.stroke();
+      for (const [dx, dy] of [[-10, -10], [7, -20], [10, -7]]) {
+        ctx.fillStyle = 'rgba(190,248,255,.95)';
+        ctx.beginPath(); ctx.arc(cx + dx * s, base + dy * s, 1.4 * s, 0, TAU); ctx.fill();
+        ctx.strokeStyle = 'rgba(150,230,245,.5)'; ctx.lineWidth = 0.6;
+        ctx.beginPath(); ctx.arc(cx + dx * s, base + dy * s, 2.6 * s, 0, TAU); ctx.stroke();
+      }
+    }
+    /* tail */
+    ctx.strokeStyle = coat.tail; ctx.lineWidth = 2.6 * s; ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.moveTo(cx + 4 * s, base - 5 * s);
+    ctx.quadraticCurveTo(cx + 11 * s, base - 8 * s, cx + 8.5 * s, base - 15 * s); ctx.stroke();
+    /* body */
+    const bg = ctx.createLinearGradient(0, base - 14 * s, 0, base);
+    bg.addColorStop(0, coat.body0); bg.addColorStop(1, coat.body1);
+    ctx.fillStyle = bg;
+    ctx.beginPath(); ctx.ellipse(cx, base - 6 * s, 7 * s, 5.2 * s, 0, 0, TAU); ctx.fill();
+    /* legs */
+    ctx.strokeStyle = coat.body1; ctx.lineWidth = 1.8 * s;
+    for (const d of [-1, 1]) { ctx.beginPath(); ctx.moveTo(cx + d * 3.4 * s, base - 3 * s); ctx.lineTo(cx + d * 3.4 * s, base); ctx.stroke(); }
+    /* head, ears, muzzle */
+    ctx.fillStyle = coat.head;
+    ctx.beginPath(); ctx.arc(cx - 6 * s, base - 13 * s, 4.2 * s, 0, TAU); ctx.fill();
+    ctx.fillStyle = coat.ear;
+    for (const d of [-1, 0]) {
+      ctx.beginPath();
+      ctx.moveTo(cx - 6 * s + d * 2.2 * s, base - 16.6 * s);
+      ctx.lineTo(cx - 6 * s + d * 3.4 * s - 0.6 * s, base - 19.6 * s);
+      ctx.lineTo(cx - 6 * s + d * 0.6 * s, base - 17.2 * s);
+      ctx.closePath(); ctx.fill();
+    }
+    ctx.fillStyle = coat.body0;
+    ctx.beginPath(); ctx.ellipse(cx - 9.6 * s, base - 12 * s, 2.2 * s, 1.6 * s, 0.2, 0, TAU); ctx.fill();
+    /* eye */
+    ctx.fillStyle = '#221a12';
+    ctx.beginPath(); ctx.arc(cx - 7.4 * s, base - 13.6 * s, 0.6 * s, 0, TAU); ctx.fill();
+  },
+
+  /* the dungeon floor itself, painted in each colourway */
+  dungeon(cv, palette) {
+    const ctx = cv.getContext('2d');
+    const w = cv.width, h = cv.height;
+    ctx.clearRect(0, 0, w, h);
+    const theme = THEMES[0];              /* colourways tint the base stone theme */
+    const tiles = TileArt.get(theme);
+    const T = Math.round(h / 3.2);
+    /* wall band filling the top, then floor tiles below */
+    const wallH = Math.round(T * 0.95);
+    for (let x = -1; x * T < w + T; x++) {
+      ctx.drawImage(tiles.wall[(x + 4) % tiles.wall.length], x * T, 0, T, wallH);
+    }
+    const rows = Math.ceil((h - wallH) / T);
+    for (let ty = 0; ty < rows; ty++) {
+      for (let tx = -1; tx * T < w + T; tx++) {
+        ctx.drawImage(tiles.floor[(tx * 3 + ty + 7) % tiles.floor.length], tx * T, wallH + ty * T, T, T);
+      }
+    }
+    /* torchlight in the game's own glow colour */
+    const g = ctx.createRadialGradient(w * 0.5, h * 0.34, 1, w * 0.5, h * 0.34, w * 0.8);
+    g.addColorStop(0, theme.glow); g.addColorStop(0.5, 'rgba(0,0,0,.04)'); g.addColorStop(1, theme.fog);
+    ctx.fillStyle = g; ctx.fillRect(0, 0, w, h);
+    ctx.fillStyle = theme.torchColor;
+    ctx.shadowColor = theme.torchColor; ctx.shadowBlur = 10;
+    ctx.beginPath(); ctx.arc(w * 0.5, h * 0.2, 1.7, 0, TAU); ctx.fill();
+    ctx.shadowBlur = 0;
+    /* a hero and Ember standing in it, so the palette reads as the whole scene */
+    const s = h / 46, base = h * 0.92, cx = w * 0.4;
+    ctx.fillStyle = 'rgba(0,0,0,.35)';
+    ctx.beginPath(); ctx.ellipse(cx, base, 5 * s, 1.4 * s, 0, 0, TAU); ctx.fill();
+    ctx.fillStyle = '#2a2434';
+    ctx.beginPath(); ctx.ellipse(cx, base - 5 * s, 3 * s, 5.2 * s, 0, 0, TAU); ctx.fill();
+    ctx.fillStyle = '#6d1f2b';
+    ctx.beginPath(); ctx.ellipse(cx, base - 4 * s, 3.6 * s, 4.4 * s, 0, 0, TAU); ctx.fill();
+    ctx.fillStyle = '#c49a76';
+    ctx.beginPath(); ctx.arc(cx, base - 12 * s, 2.3 * s, 0, TAU); ctx.fill();
+    ctx.fillStyle = COMPANION_COATS.ember.body0;
+    ctx.beginPath(); ctx.ellipse(cx + 7 * s, base - 2 * s, 3 * s, 2.2 * s, 0, 0, TAU); ctx.fill();
+    /* Apply the colourway by actually rotating hue and pushing saturation on
+       the pixels. The game tints #game with a CSS filter, but a filter cannot
+       travel with a canvas, so the preview would otherwise look identical for
+       all three choices. Values mirror the CSS: 155deg/1.18 and 72deg/1.12. */
+    const HUE = { cinder: 0, moon: 155, moss: 72 };
+    const SAT = { cinder: 1, moon: 1.18, moss: 1.12 };
+    const deg = HUE[palette] || 0, sat = SAT[palette] || 1;
+    if (deg || sat !== 1) {
+      const sx = [], cs = [], sn = [];
+      const a = deg * Math.PI / 180;
+      const s2 = sat;
+      cs[0] = Math.cos(a); sn[0] = Math.sin(a);
+      cs[1] = Math.cos(a + Math.PI * 2 / 3); sn[1] = Math.sin(a + Math.PI * 2 / 3);
+      cs[2] = Math.cos(a + Math.PI * 4 / 3); sn[2] = Math.sin(a + Math.PI * 4 / 3);
+      const m = [
+        0.213 + cs[0] * 0.787 - sn[0] * 0.213, 0.715 - cs[0] * 0.715 - sn[0] * 0.715, 0.072 - cs[0] * 0.072 + sn[0] * 0.928,
+        0.213 - cs[1] * 0.213 + sn[1] * 0.143, 0.715 + cs[1] * 0.285 + sn[1] * 0.140, 0.072 - cs[1] * 0.072 - sn[1] * 0.283,
+        0.213 - cs[2] * 0.213 - sn[2] * 0.787, 0.715 - cs[2] * 0.715 + sn[2] * 0.715, 0.072 + cs[2] * 0.928 + sn[2] * 0.072
+      ];
+      const sm = [
+        0.213 + 0.787 * s2, 0.715 - 0.715 * s2, 0.072 - 0.072 * s2,
+        0.213 - 0.213 * s2, 0.715 + 0.285 * s2, 0.072 - 0.072 * s2,
+        0.213 - 0.213 * s2, 0.715 - 0.715 * s2, 0.072 + 0.928 * s2
+      ];
+      try {
+        const img = ctx.getImageData(0, 0, w, h), d = img.data;
+        for (let i = 0; i < d.length; i += 4) {
+          const r = d[i], gg = d[i + 1], b = d[i + 2];
+          let r1 = r * m[0] + gg * m[1] + b * m[2];
+          let g1 = r * m[3] + gg * m[4] + b * m[5];
+          let b1 = r * m[6] + gg * m[7] + b * m[8];
+          d[i]     = clamp(r1 * sm[0] + g1 * sm[1] + b1 * sm[2], 0, 255);
+          d[i + 1] = clamp(r1 * sm[3] + g1 * sm[4] + b1 * sm[5], 0, 255);
+          d[i + 2] = clamp(r1 * sm[6] + g1 * sm[7] + b1 * sm[8], 0, 255);
+        }
+        ctx.putImageData(img, 0, 0);
+      } catch (e) { /* tainted or unsupported canvas: fall back to untinted art */ }
+    }
+  },
+
+  /* three rules of a contract, drawn as risk and reward */
+  contract(cv, key) {
+    const ctx = cv.getContext('2d');
+    const w = cv.width, h = cv.height;
+    ctx.clearRect(0, 0, w, h);
+    const rule = EXPEDITION_RULES[key] || EXPEDITION_RULES.standard;
+    const COLOUR = { standard: '#d9b56b', pilgrim: '#dfe6cf', reclaimer: '#c98a3f', glass: '#a9dcea' };
+    const col = COLOUR[key] || COLOUR.standard;
+    ctx.save();
+    ctx.fillStyle = 'rgba(10,8,15,.72)';
+    ctx.fillRect(0, 0, w, h);
+    /* frame */
+    ctx.strokeStyle = 'rgba(217,181,107,.35)'; ctx.strokeRect(0.5, 0.5, w - 1, h - 1);
+    /* a sigil per contract: crown, chalice, cart, shard */
+    const cx = w * 0.26, cy = h * 0.5, s = h * 0.3;
+    ctx.strokeStyle = col; ctx.fillStyle = col; ctx.lineWidth = 1.4;
+    if (key === 'pilgrim') {
+      ctx.beginPath(); ctx.moveTo(cx - s * 0.5, cy - s * 0.4); ctx.lineTo(cx - s * 0.5, cy + s * 0.5);
+      ctx.lineTo(cx + s * 0.5, cy + s * 0.5); ctx.lineTo(cx + s * 0.5, cy - s * 0.4); ctx.stroke();
+      ctx.beginPath(); ctx.arc(cx, cy - s * 0.35, s * 0.42, 0, Math.PI); ctx.stroke();
+    } else if (key === 'reclaimer') {
+      ctx.strokeRect(cx - s * 0.5, cy - s * 0.15, s, s * 0.6);
+      ctx.beginPath(); ctx.moveTo(cx - s * 0.7, cy - s * 0.15); ctx.lineTo(cx, cy - s * 0.62);
+      ctx.lineTo(cx + s * 0.7, cy - s * 0.15); ctx.stroke();
+      ctx.beginPath(); ctx.arc(cx - s * 0.35, cy + s * 0.62, s * 0.16, 0, TAU); ctx.stroke();
+      ctx.beginPath(); ctx.arc(cx + s * 0.35, cy + s * 0.62, s * 0.16, 0, TAU); ctx.stroke();
+    } else if (key === 'glass') {
+      ctx.beginPath(); ctx.moveTo(cx, cy - s * 0.72); ctx.lineTo(cx + s * 0.42, cy - s * 0.05);
+      ctx.lineTo(cx, cy + s * 0.62); ctx.lineTo(cx - s * 0.42, cy - s * 0.05); ctx.closePath(); ctx.stroke();
+      ctx.globalAlpha = 0.55; ctx.fill(); ctx.globalAlpha = 1;
+    } else {
+      ctx.beginPath(); ctx.moveTo(cx - s * 0.6, cy + s * 0.35); ctx.lineTo(cx - s * 0.6, cy - s * 0.3);
+      ctx.lineTo(cx - s * 0.15, cy + s * 0.05); ctx.lineTo(cx, cy - s * 0.45);
+      ctx.lineTo(cx + s * 0.15, cy + s * 0.05); ctx.lineTo(cx + s * 0.6, cy - s * 0.3);
+      ctx.lineTo(cx + s * 0.6, cy + s * 0.35); ctx.closePath(); ctx.stroke();
+    }
+    /* three bars: foes, danger, gold */
+    const bars = [
+      ['#8fb3e0', rule.enemyCount],
+      ['#e0785f', rule.enemyDamage],
+      ['#e3c063', rule.gold]
+    ];
+    const bx = w * 0.44, bw = w * 0.46;
+    bars.forEach(([c, v], i) => {
+      const by = h * 0.26 + i * h * 0.19;
+      ctx.fillStyle = 'rgba(255,255,255,.1)'; ctx.fillRect(bx, by, bw, h * 0.085);
+      ctx.fillStyle = c; ctx.globalAlpha = 0.85;
+      ctx.fillRect(bx, by, bw * clamp(v, 0.35, 1.45) / 1.45, h * 0.085);
+      ctx.globalAlpha = 1;
+    });
+    ctx.restore();
+  }
+};
+
 function openSelectMenu(id) {
   const sel = $(id);
   const menu = $('selectMenu');
@@ -6344,14 +6690,22 @@ function openSelectMenu(id) {
   const title = sel.getAttribute('aria-label') || 'Choose';
   const options = Array.prototype.map.call(sel.options, (opt, i) => {
     const selected = i === sel.selectedIndex;
+    const info = optionInfo(sel.id, opt.value);
     return '<button type="button" class="smOption" role="option" aria-selected="' + selected + '" data-option-index="' + i + '">' +
-      '<span class="smRune" aria-hidden="true">' + (selected ? '✦' : '◌') + '</span>' +
-      '<span class="smText">' + escapeHtml(opt.textContent) + '</span></button>';
+      '<span class="smArt" aria-hidden="true" data-art="' + i + '"></span>' +
+      '<span class="smText"><strong>' + escapeHtml(info ? info.title : opt.textContent) + '</strong>' +
+      (info ? '<small>' + escapeHtml(info.note) + '</small>' : '') + '</span>' +
+      '<span class="smRune" aria-hidden="true">' + (selected ? '✦' : '◌') + '</span></button>';
   }).join('');
   menu.innerHTML = '<div class="smPanel" role="dialog" aria-modal="true" aria-label="' + escapeHtml(title) + '">' +
     '<div class="smHead"><h3>' + escapeHtml(title) + '</h3>' +
     '<button type="button" class="bigBtn secondary smDone" data-sm-close>Done</button></div>' +
     '<div class="smBody" role="listbox" aria-label="' + escapeHtml(title) + '">' + options + '</div></div>';
+  /* paints every option's picture once the rows exist */
+  Array.prototype.forEach.call(sel.options, (opt, i) => {
+    const slot = menu.querySelector('[data-art="' + i + '"]');
+    if (slot) slot.appendChild(optionPreviewCanvas(id, opt.value, 44));
+  });
   menu.classList.add('show');
   menu.setAttribute('aria-hidden', 'false');
   const trigger = selectTriggerFor(id);
@@ -6394,7 +6748,9 @@ function setupMenuControls() {
     trigger.className = 'selectTrigger';
     trigger.setAttribute('aria-haspopup', 'listbox');
     trigger.setAttribute('aria-expanded', 'false');
-    trigger.innerHTML = '<span class="stValue"></span><span class="stGlyph" aria-hidden="true">▾</span>';
+    trigger.innerHTML = '<span class="stArt" aria-hidden="true"></span>'
+      + '<span class="stBody"><span class="stValue"></span><span class="stNote"></span></span>'
+      + '<span class="stGlyph" aria-hidden="true">▾</span>';
     trigger.addEventListener('click', () => openSelectMenu(sel.id));
     field.appendChild(trigger);
     sel.dataset.triggered = '1';
@@ -6420,6 +6776,27 @@ function setupMenuControls() {
         list[next].focus();
       }
     });
+  }
+}
+
+/* The profile portrait follows the chosen mantle and the typed name. */
+function refreshProfileCard() {
+  const art = $('profileArt');
+  if (art) {
+    art.innerHTML = '';
+    const cv = document.createElement('canvas');
+    cv.width = cv.height = 112;
+    cv.style.width = cv.style.height = '100%';
+    cv.className = 'previewCanvas';
+    PREVIEW.hero(cv, Settings.get().heroAspect);
+    art.appendChild(cv);
+  }
+  const nameEl = $('profileCardName');
+  if (nameEl) nameEl.textContent = Profile.get().name || 'Wanderer';
+  const note = $('profileCardNote');
+  if (note) {
+    const info = optionInfo('heroAspectSetting', Settings.get().heroAspect);
+    note.textContent = info ? info.title + ' · ' + info.note : 'Your hero, as they look today';
   }
 }
 
@@ -12584,9 +12961,9 @@ function setupInput() {
   setupMenuControls();
   $('paletteSetting').addEventListener('change',ev=>{Settings.set('palette',ev.target.value);syncSelectTriggers();});
   $('auraSetting').addEventListener('change',ev=>{Settings.set('companionAura',ev.target.value);syncSelectTriggers();});
-  $('heroAspectSetting').addEventListener('change',ev=>{Settings.set('heroAspect',ev.target.value);syncSelectTriggers();});
+  $('heroAspectSetting').addEventListener('change',ev=>{Settings.set('heroAspect',ev.target.value);syncSelectTriggers();refreshProfileCard();});
   $('contractSetting').addEventListener('change',ev=>{Settings.set('contract',ev.target.value);syncSelectTriggers();});
-  $('profileName').addEventListener('change',ev=>{ev.target.value=Profile.setName(ev.target.value);Save.refreshMenuControls();});
+  $('profileName').addEventListener('change',ev=>{ev.target.value=Profile.setName(ev.target.value);Save.refreshMenuControls();refreshProfileCard();});
   $('profileName').addEventListener('blur',ev=>{ev.target.value=Profile.setName(ev.target.value);Save.refreshMenuControls();});
   $('exportBackupBtn').addEventListener('click',exportBackup);
   $('importBackupBtn').addEventListener('click',()=>$('backupFileInput').click());

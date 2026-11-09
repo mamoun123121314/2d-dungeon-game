@@ -215,6 +215,12 @@ Ashes*, *Cinder Vault* and *Reliquary* — listed in **Profile & Backup**:
   sound, screen shake, reduced motion/flash, floating combat text, high contrast,
   larger interface, and the next-run contract. Lists and toggles are drawn by
   the game — never as a white system picker — so the menu keeps its palette.
+- Every visual and contract choice is **shown, not just named**: each option in
+  a list carries a small canvas preview (the floor in that colourway, Ember with
+  that trail, the hero in that mantle, the trade-off bars of that contract) and
+  a one-line explanation. The chosen option repeats its picture and note under
+  the row, the main menu buttons say what they open, and the profile page paints
+  the hero in the current mantle beside the name.
   **Export Backup** writes every slot plus profile, rewards and visuals into one
   JSON file; **Import Backup** restores them, and still reads single-run
   backups made by earlier versions.
