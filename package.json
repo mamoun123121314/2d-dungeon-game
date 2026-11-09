@@ -9,6 +9,7 @@
     "test:gameplay": "node tests/gameplay.mjs",
     "test:hero": "node tests/hero.mjs",
     "test:vault": "node tests/vault.mjs",
+    "shots:vault": "node tests/shot-vault.mjs",
     "test:perf": "node tests/perf.mjs",
     "test:save": "node tests/save.mjs"
   },
