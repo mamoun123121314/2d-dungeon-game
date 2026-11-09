@@ -1,10 +1,9 @@
 name: Deploy to GitHub Pages
 
-# Publishes index.html so the game is playable at
+# The single canonical GitHub Pages deployment workflow. Keep other Pages
+# deploy workflows out of this repository to avoid racing deployments.
+# Publishes index.html at:
 #   https://mamoun123121314.github.io/2d-dungeon-game/
-#
-# Enable once: repository Settings → Pages → Build and deployment →
-#   Source: "GitHub Actions"
 on:
   push:
     branches: [main]
@@ -17,7 +16,7 @@ permissions:
 
 concurrency:
   group: pages
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
   deploy:
@@ -27,6 +26,8 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - uses: actions/checkout@v4
+      - name: Check static game files
+        run: python3 scripts/check_site.py
       - uses: actions/configure-pages@v5
         with:
           enablement: true
