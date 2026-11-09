@@ -203,11 +203,26 @@ try {
   section('Input');
   const moved = await page.evaluate(async () => {
     const p = Game.player;
+    /* Walk in whichever direction is actually open. The player respawns beside
+       the entrance, which is often a corridor with a wall directly above it, so
+       holding "up" moved nothing through no fault of the game — that made this
+       check fail on CI depending only on which floor was generated. */
+    const dirs = ['up', 'down', 'left', 'right'];
+    const open = dirs.filter((d) => {
+      const tx = Math.floor(p.x / TILE) + (d === 'left' ? -1 : d === 'right' ? 1 : 0);
+      const ty = Math.floor(p.y / TILE) + (d === 'up' ? -1 : d === 'down' ? 1 : 0);
+      return Game.dungeon.isWalkable(tx, ty);
+    });
+    if (!open.length) return { moved: 0, hopeless: true, from: [p.x, p.y], to: [p.x, p.y] };
+    const dir = open[0];
     const x0 = p.x, y0 = p.y;
-    Game.input.up = true;
+    Game.input[dir] = true;
     await new Promise((r) => setTimeout(r, 500));
-    Game.input.up = false;
-    return { moved: Math.hypot(p.x - x0, p.y - y0), from: [x0, y0], to: [p.x, p.y] };
+    Game.input[dir] = false;
+    return {
+      moved: Math.hypot(p.x - x0, p.y - y0),
+      dir, openDirs: open, from: [x0, y0], to: [p.x, p.y],
+    };
   });
   check('the hero moves on input', moved.moved > 2, moved);
 
