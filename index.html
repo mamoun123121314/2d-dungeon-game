@@ -347,6 +347,35 @@ canvas{display:block;}
 #tooltip .ttHint{margin-top:7px;font-size:9px;letter-spacing:.05em;color:#7a7185;text-transform:uppercase;}
 
 /* touch tooltip: bigger type, pinned centred, with real buttons */
+/* ---------------- story chapter card ---------------- */
+#storyCard{position:fixed;inset:0;z-index:130;display:none;flex-direction:column;
+  align-items:center;justify-content:center;padding:5vh 5vw;text-align:center;
+  background:radial-gradient(ellipse at 50% 45%,rgba(14,10,22,.96),rgba(3,2,6,.985) 72%);
+  opacity:0;transition:opacity .5s ease;}
+#storyCard.show{display:flex;opacity:1;}
+.scKicker{font-family:var(--font-mono);font-size:10px;letter-spacing:.52em;
+  color:#9e8555;text-transform:uppercase;margin-bottom:14px;}
+.scTitle{font-family:var(--font-display);font-size:clamp(30px,5.2vw,56px);
+  letter-spacing:.10em;text-transform:uppercase;line-height:1.08;
+  background:linear-gradient(180deg,#fff5d2 0%,#f0d187 40%,#b98a3e 75%,#f4dd9f 100%);
+  -webkit-background-clip:text;background-clip:text;color:transparent;
+  filter:drop-shadow(0 2px 0 rgba(45,29,8,.9)) drop-shadow(0 0 34px rgba(240,190,90,.22));}
+.scRule{width:min(300px,60vw);height:1px;margin:20px 0 22px;
+  background:linear-gradient(90deg,transparent,rgba(217,181,107,.6),transparent);}
+.scLines{max-width:min(620px,86vw);}
+.scLines p{font-family:var(--font-body,Georgia,serif);font-size:clamp(14px,2.1vw,18.5px);
+  line-height:1.72;color:#cfc4b4;margin:0 0 13px;font-style:italic;}
+.scLines p:last-child{color:#e8dcc4;}
+.scBtn{margin-top:18px;font-family:var(--font-mono);font-size:11px;letter-spacing:.22em;
+  text-transform:uppercase;padding:14px 40px;border-radius:5px;cursor:pointer;
+  color:#f3e6c8;background:linear-gradient(180deg,rgba(92,70,36,.55),rgba(30,22,12,.7));
+  border:1px solid rgba(217,181,107,.5);min-height:44px;}
+.scBtn:hover{background:linear-gradient(180deg,rgba(120,92,46,.7),rgba(40,30,16,.8));}
+.scBtn:active{transform:scale(.98);}
+body.is-phone .scLines p{font-size:14.5px;line-height:1.62;}
+body.is-phone #storyCard{padding:4vh 6vw;}
+body.is-phone .scTitle{font-size:clamp(26px,8vw,40px);}
+
 #tooltip.touch{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);
   max-width:min(340px,calc(100vw - 28px));pointer-events:auto;z-index:120;
   padding:16px 18px;}
@@ -758,6 +787,7 @@ body.is-phone #phoneRail{display:block;}
   transition:width .18s ease;}
 #phoneRail .pBar.hp i{background:linear-gradient(90deg,#8f1f1f,#e0554d 60%,#ff8a72);}
 #phoneRail .pBar.mp i{background:linear-gradient(90deg,#1d3f7a,#3f7dd6 60%,#79b6ff);}
+#phoneRail .pBar.emb i{background:linear-gradient(90deg,#8a4a1c,#e0954a 60%,#ffd0a0);}
 #phoneRail .pBar em{position:absolute;inset:0;font-style:normal;font-family:var(--font-mono);
   font-size:8px;line-height:11px;text-align:center;color:#f6ead2;text-shadow:0 1px 2px #000;letter-spacing:.04em;}
 #phoneRail .pLvl{font-family:var(--font-mono);font-size:9px;color:var(--gold-bright);
@@ -1037,6 +1067,22 @@ body.is-phone #startScreen .phoneStart{display:flex;}
 .bountyRow.done .bReward { color: #8fe0a8; }
 
 /* ---------------- combo meter ---------------- */
+#compHud { position: absolute; left: 16px; bottom: 96px; display: flex;
+  align-items: center; gap: 8px; padding: 5px 10px; border-radius: 999px;
+  background: rgba(8,6,12,.62); border: 1px solid rgba(200,140,80,.30);
+  font-family: var(--mono, monospace); font-size: 9px; letter-spacing: .12em;
+  color: #e0c09a; pointer-events: none; z-index: 3; transition: opacity .25s; }
+#compHud.hidden { display: none; }
+#compHud.down { opacity: .45; border-color: rgba(224,85,77,.4); }
+.chName { color: #ffb867; }
+.chBar { width: 54px; height: 4px; border-radius: 2px; overflow: hidden;
+  background: rgba(255,255,255,.14); }
+.chBar i { display: block; height: 100%; border-radius: 2px;
+  background: linear-gradient(90deg,#c98a4a,#ffd0a0); transition: width .2s; }
+.chBond { color: #9aa4b6; }
+@media (max-width: 760px) { #compHud { display: none; } }
+body.is-phone #compHud { display: none; }
+
 #comboHud { position: absolute; right: 14px; bottom: 120px; width: 150px;
   text-align: right; pointer-events: none; z-index: 3; opacity: 0; transition: opacity .18s; }
 #comboHud.show { opacity: 1; }
@@ -1190,6 +1236,11 @@ body.is-phone .affixChip{font-size:7.5px;padding:2px 6px;}
   <div id="bountyHud" class="hidden"></div>
   <div id="comboHud" class="hidden"><span class="cX" id="comboX">x1</span><span class="cLabel">COMBO</span>
     <div class="cTrack"><div class="cFill" id="comboFill"></div></div></div>
+<div id="compHud" class="hidden">
+  <span class="chName">EMBER</span>
+  <div class="chBar"><i id="compHpFill" style="width:100%"></i></div>
+  <span class="chBond" id="compBond">BOND 0</span>
+</div>
 <div id="saveToast" aria-hidden="true"><span class="svDot"></span>SAVED</div>
 <div id="lootReveal"></div>
   <div id="toastLog"></div>
@@ -1256,6 +1307,10 @@ body.is-phone .affixChip{font-size:7.5px;padding:2px 6px;}
     <span class="pLvl" style="visibility:hidden">LV</span>
     <div class="pBar mp"><i id="pMpFill" style="width:100%"></i><em id="pMpText">40/40</em></div>
   </div>
+  <div class="pRow pEmber" style="margin-top:2px;">
+    <span class="pLvl" style="visibility:hidden">LV</span>
+    <div class="pBar emb"><i id="pEmbFill" style="width:100%"></i><em id="pEmbText">EMBER</em></div>
+  </div>
   <div class="pCur">
     <span>G <b id="pGold">0</b></span>
     <span>K <b id="pKeys">0</b></span>
@@ -1299,6 +1354,9 @@ body.is-phone .affixChip{font-size:7.5px;padding:2px 6px;}
 
 <!-- ============================ TOOLTIP ============================ -->
 <div id="tooltip" class="hidden"></div>
+
+<!-- ============================ STORY CARD ============================ -->
+<div id="storyCard" class="hidden"></div>
 
 <!-- ============================ INVENTORY ============================ -->
 <div class="overlay" id="inventoryOverlay">
@@ -4155,6 +4213,7 @@ class Player {
     this.potionCd = 0;
     this.dodgeCd = 0;
     this.dodging = 0;
+    this.landT = 0;        /* landing squash after a roll */
     this.dodgeAngle = 0;
     this.invuln = 0;
     this.swing = 0;
@@ -4944,6 +5003,169 @@ const FX = {
   }
 };
 
+/* ============================== STORY MODE ===============================
+   Ten chapters, one per floor. The arc is deliberately small and personal:
+   you are not here to save the world, you are here to find out what the
+   Heartstone took from you — and Ember is the only witness.
+
+   Each chapter fires once when the floor loads: a title card, a short beat,
+   and (from chapter 3) a piece of the truth. Chapters 7 and 9 turn the story:
+   Ember recognises the crypt, and the Warden speaks with your own voice.
+   ======================================================================== */
+const STORY = {
+  enabled: true,
+  seen: {},          /* chapter index -> true */
+  chapter: 0,
+
+  chapters: [
+    {
+      title: 'The Threshold',
+      kicker: 'Chapter I',
+      lines: [
+        'You have descended nine times and climbed back eight.',
+        'You remember the stairs. You do not remember why you keep taking them.',
+        'A dog is waiting at the door. She looks at you like she has been waiting a long time.'
+      ],
+      whisper: 'Ember presses her nose to your hand. She does not bark. She never does, down here.'
+    },
+    {
+      title: 'The Sleeping Ward',
+      kicker: 'Chapter II',
+      lines: [
+        'This corridor used to have beds in it. You are certain of that, and certain of nothing else.',
+        'Something in the walls hums the way a lullaby is hummed — half of it, then the same half again.',
+        'Ember will not walk ahead of you here.'
+      ],
+      whisper: 'Scratched into a bedpost, in a child\'s hand: DO NOT WAKE THE WARDEN.'
+    },
+    {
+      title: 'The Cartographer',
+      kicker: 'Chapter III',
+      lines: [
+        'A dead man sits upright against the wall with a map on his knees.',
+        'The map is of this floor. It is accurate. It is also four hundred years old.',
+        'Someone has drawn a small dog in the corner, in the same ink.'
+      ],
+      whisper: 'The map bears your handwriting. You have never been here before.'
+    },
+    {
+      title: 'The Cold Kitchen',
+      kicker: 'Chapter IV',
+      lines: [
+        'Two bowls are set out on the table. One is larger. Both are clean.',
+        'Ember goes straight to the smaller one and sits, the way a dog sits when the habit is older than the hunger.',
+        'The bread in the cupboard is fresh. Nothing down here is ever fresh.'
+      ],
+      whisper: 'You have done this before. You do not know how many times.'
+    },
+    {
+      title: 'The Oath Room',
+      kicker: 'Chapter V',
+      lines: [
+        'A ring of kneeling statues, all facing inward, all hooded.',
+        'The figure in the middle is unhooded. Its face has been carefully chiselled away — not smashed. Chiselled.',
+        'Ember growls at it. It is the first sound she has made since the threshold.'
+      ],
+      whisper: 'The statue is holding a leash. The leash is empty.'
+    },
+    {
+      title: 'The Long Hall',
+      kicker: 'Chapter VI',
+      lines: [
+        'Portraits line the walls, each one the same person at a different age.',
+        'The earliest wears your face. The latest has been painted over so many times the canvas has gone soft.',
+        'Under the last one, a brass plate: THE WARDEN, WHO WOULD NOT LET GO.'
+      ],
+      whisper: 'Ember sits beneath your portrait and looks up at it, waiting for it to do something.'
+    },
+    {
+      title: 'The Names',
+      kicker: 'Chapter VII',
+      lines: [
+        'This is the crypt. Ember\'s ears flatten the moment the door opens and she walks in low, tail down, as though she has been beaten here.',
+        'Every tomb bears a name you know. Yours is among them, and it is not the oldest.',
+        'One small stone at the end of the row reads simply: EMBER — WHO WAITED.'
+      ],
+      whisper: '"You were not supposed to come back," the tomb says. Then, quietly: "You always come back."'
+    },
+    {
+      title: 'The Guttering',
+      kicker: 'Chapter VIII',
+      lines: [
+        'The torches are going out one by one, in order, like someone walking the hall and pinching them.',
+        'Where each flame dies, the stone remembers being warm.',
+        'Ember stops walking. She turns around and looks at the way you came, and does not move.'
+      ],
+      whisper: 'She is not afraid of what is ahead of you. She is afraid of what is behind.' 
+    },
+    {
+      title: 'The Warden',
+      kicker: 'Chapter IX',
+      lines: [
+        'It is not a monster. It is a machine made of every ending you have ever had, welded together.',
+        'When it speaks, it speaks in your voice, and it is tired in exactly the way you are tired.',
+        '"You keep bringing the dog," it says. "I keep having to put her down. Neither of us enjoys this."'
+      ],
+      whisper: 'Ember steps in front of you. She is small. She does not move.'
+    },
+    {
+      title: 'The Heartstone',
+      kicker: 'Chapter X',
+      lines: [
+        'The stone is warm. It has been keeping something for you.',
+        'You came down here to take it back. You cannot remember what it is.',
+        'Ember puts her paw on your knee. Whatever it was, she seems to think you can leave without it.'
+      ],
+      whisper: 'When you climb the stairs this time, you are allowed to be someone who left.'
+    }
+  ],
+
+  /* Fire the chapter for this floor once. */
+  enter(floorN) {
+    if (!this.enabled) return;
+    const idx = Math.min(this.chapters.length - 1, Math.max(0, floorN - 1));
+    if (this.seen[idx]) return;
+    this.seen[idx] = true;
+    this.chapter = idx;
+    const ch = this.chapters[idx];
+    if (!ch) return;
+    /* Stagger the card slightly after the floor transition so it does not
+       collide with the "Floor N" banner. */
+    setTimeout(() => {
+      if (Game.state !== 'playing') return;
+      this.showCard(ch);
+    }, 900);
+  },
+
+  showCard(ch) {
+    const el = $('storyCard');
+    if (!el) return;
+    el.innerHTML = `
+      <div class="scKicker">${escapeHtml(ch.kicker)}</div>
+      <div class="scTitle">${escapeHtml(ch.title)}</div>
+      <div class="scRule"></div>
+      <div class="scLines">${ch.lines.map(l => `<p>${escapeHtml(l)}</p>`).join('')}</div>
+      <button class="scBtn" id="storyNext">Continue</button>`;
+    el.classList.add('show');
+    Game.paused = true;
+    Sound.play('ui');
+    const close = () => {
+      el.classList.remove('show');
+      Game.paused = Game.invOpen || Game.shopOpen || Game.skillOpen;
+      if (ch.whisper) setTimeout(() => toast(ch.whisper, 'lore'), 400);
+      Sound.play('ui');
+    };
+    const btn = $('storyNext');
+    if (btn) btn.addEventListener('click', close, { once: true });
+    /* a tap anywhere on the card advances it too */
+    el.addEventListener('click', (ev) => {
+      if (ev.target === el) close();
+    }, { once: true });
+  },
+
+  reset() { this.seen = {}; this.chapter = 0; }
+};
+
 /* ============================== SAVE SYSTEM ============================= */
 /* Minecraft-style persistence: the run autosaves every few seconds and on
    every floor change, so closing the tab never costs progress. A single slot
@@ -5479,6 +5701,8 @@ function buildFloor(n, first = false, seed) {
   rollBounties(n);
   spawnProps(d);
   spawnEnemies(d);
+  /* every floor opens a chapter the first time you reach it */
+  STORY.enter(n);
   /* Ember comes with you. She is re-placed beside the hero on every floor so
      she is never left behind in a wall. */
   if (Game.companionActive) {
@@ -6004,6 +6228,19 @@ function grantBounty(b) {
   updateHud();
 }
 /* One compact panel: each bounty gets a live progress bar. */
+function updateCompanionHud() {
+  const el = $('compHud');
+  if (!el) return;
+  if (!COMPANION.active || !Game.player) { el.classList.add('hidden'); return; }
+  el.classList.remove('hidden');
+  el.classList.toggle('down', COMPANION.downT > 0);
+  const fill = $('compHpFill');
+  if (fill) fill.style.width = clamp(COMPANION.hp / COMPANION.maxHp * 100, 0, 100) + '%';
+  const bond = $('compBond');
+  const label = COMPANION.downT > 0 ? 'DOWN' : 'BOND ' + Math.round(COMPANION.bond);
+  if (bond && bond.textContent !== label) bond.textContent = label;
+}
+
 function renderBountyHud() {
   const el = $('bountyHud');
   if (!el) return;
@@ -8296,7 +8533,18 @@ function drawPlayer(ctx, p, cam, t) {
   ctx.beginPath(); ctx.ellipse(x, y + 12, 13, 6, 0, 0, TAU); ctx.fill();
 
   const swingT = p.swing > 0 ? p.swing / 0.26 : 0;
-  const bob = p.moving ? Math.sin(p.walkT * 11) * 1.5 : Math.sin(t * 2) * 0.8;
+  /* Breathing when still, a two-beat gait when moving, plus a landing squash
+     after a roll. Small amplitudes, but the character stops looking pinned. */
+  const breath = Math.sin(t * 2.1) * 0.9 + Math.sin(t * 3.7) * 0.25;
+  const gait = Math.sin(p.walkT * 11);
+  const gait2 = Math.sin(p.walkT * 22) * 0.35;   /* second harmonic = footfall */
+  const bob = p.moving ? gait * 1.7 + gait2 : breath;
+  const landSquash = p.dodging > 0 ? 1 : (p.landT > 0 ? p.landT * 0.18 : 0);
+
+  /* lean into the direction of travel so momentum reads */
+  if (p.moving && Math.hypot(p.vx, p.vy) > 20) {
+    ctx.rotate(clamp((p.vx / 400) * 0.06, -0.09, 0.09));
+  }
   const dodgeAlpha = p.dodging > 0 ? 0.55 : 1;
   /* motion blur ghost while dodging */
   if (p.dodging > 0) {
@@ -8309,7 +8557,9 @@ function drawPlayer(ctx, p, cam, t) {
     }
   }
   ctx.globalAlpha = dodgeAlpha;
-  ctx.translate(x, y + bob);
+  ctx.translate(x, y + bob + landSquash * 6);
+  /* the landing beat compresses vertically for a few frames */
+  if (landSquash > 0) ctx.scale(1 + landSquash * 0.16, 1 - landSquash * 0.16);
   drawHeroShape(ctx, p, t, bob, swingT, false);
   ctx.restore();
 
@@ -8399,7 +8649,8 @@ function drawHeroShape(ctx, p, t, bob, swingT, ghost) {
   const lookX = Math.cos(aim), lookY = Math.sin(aim);
   const eq = p.equipment;
   /* cape */
-  const capeWave = Math.sin(t * 6 + p.walkT * 4) * 2;
+  const speedFactor = clamp(Math.hypot(p.vx, p.vy) / 220, 0, 1.6);
+  const capeWave = Math.sin(t * 6 + p.walkT * 4) * 2 + speedFactor * 2.2;
   ctx.save();
   ctx.rotate(Math.atan2(lookY, lookX) * 0.06);
   const capeG = ctx.createLinearGradient(0, -6, 0, 16);
@@ -8413,16 +8664,25 @@ function drawHeroShape(ctx, p, t, bob, swingT, ghost) {
   ctx.quadraticCurveTo(13, 4, 6, -6);
   ctx.closePath(); ctx.fill();
   ctx.restore();
-  /* legs */
-  const legSwing = p.moving ? Math.sin(p.walkT * 11) * 4.6 : 0;
+  /* legs — alternating stride with a lift on the passing leg */
+  const stride = p.moving ? Math.sin(p.walkT * 11) : 0;
   const bootC = eq.boots ? (eq.boots.leather || '#5a3d24') : '#33291f';
   for (const s of [-1, 1]) {
+    const ph = s > 0 ? stride : -stride;          /* legs in opposition */
+    const lift = p.moving ? Math.max(0, ph) * 2.4 : 0;
+    const reach = p.moving ? ph * 3.4 : 0;
     ctx.save();
-    ctx.translate(s * 4.4, 6 + s * legSwing * 0.6);
+    ctx.translate(s * 4.4 + reach * 0.5, 6 - lift + s * ph * 0.7);
+    ctx.rotate(ph * 0.16 * s);
     ctx.fillStyle = shade(bootC, s * 0.08);
-    ctx.beginPath(); ctx.roundRect(-3, 0, 6, 9, 2.2); ctx.fill();
+    ctx.beginPath(); ctx.roundRect(-3, 0, 6, 9 - lift * 0.3, 2.2); ctx.fill();
     ctx.fillStyle = 'rgba(10,8,6,0.7)';
-    ctx.fillRect(-3, 7, 6, 2);
+    ctx.fillRect(-3, 7 - lift * 0.3, 6, 2);
+    /* sole highlight catches the torch light as the foot plants */
+    if (p.moving) {
+      ctx.fillStyle = 'rgba(255,220,160,' + (0.10 + Math.max(0, ph) * 0.18) + ')';
+      ctx.fillRect(-3, 8.4 - lift * 0.3, 6, 1);
+    }
     ctx.restore();
   }
   /* torso */
@@ -9835,6 +10095,7 @@ function updateHud(force = false) {
   $('goldText').textContent = fmt(p.gold);
   $('keyText').textContent = p.keys;
   $('potionText').textContent = p.potions;
+  updateCompanionHud();
   /* low-health pulse */
   const hpBar = $('hpBar');
   if (hpPct < 0.3 && p.hp > 0) hpBar.style.filter = `brightness(${1 + Math.sin(Game.time * 5) * 0.16})`;
@@ -11214,6 +11475,11 @@ const Phone = {
     set('pGold', fmt(p.gold));
     set('pKeys', String(p.keys));
     set('pPotions', String(p.potions));
+    /* Ember's bar, so she is legible on a phone too */
+    if (COMPANION.active) {
+      wid('pEmbFill', COMPANION.hp / COMPANION.maxHp * 100);
+      set('pEmbText', COMPANION.downT > 0 ? 'EMBER DOWN' : 'EMBER ' + Math.ceil(COMPANION.hp));
+    }
     /* radial cooldown sweeps */
     const cd = (id, ratio) => {
       const el = $(id);
@@ -11389,6 +11655,16 @@ function updatePlayer(dt) {
   p.castAnim = Math.max(0, p.castAnim - dt);
   p.slamAnim = Math.max(0, p.slamAnim - dt);
   p.healT = Math.max(0, p.healT - dt);
+  /* rolling ends with a small landing beat: dust plus a squash frame */
+  if (p.dodging > 0) {
+    const was = p.dodging;
+    p.dodging = Math.max(0, p.dodging - dt);
+    if (was > 0 && p.dodging === 0) {
+      p.landT = 1;
+      FX.dustPuff(p.x, p.y + 9, 5, 'rgba(190,180,160,0.30)');
+    }
+  }
+  p.landT = Math.max(0, p.landT - dt * 4.5);
   /* boss knockback impulse, decaying so it never fights normal input */
   if (p.knockT > 0) {
     p.knockT -= dt;
