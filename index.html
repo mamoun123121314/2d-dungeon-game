@@ -494,16 +494,12 @@ body.is-phone #shopOverlay.sheet-open .shopList{padding-bottom:150px;}
 .equipSlot img{width:48px;height:48px;pointer-events:none;}
 .equipSlot .emp{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;opacity:.16;}
 .equipSlot .emp canvas{width:38px;height:38px;}
-.dollCenter{
-  align-self:center;justify-self:center;
-  width:66px;height:66px;border-radius:50%;
-  border:1px solid rgba(217,181,107,.2);
-  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;
-  background:radial-gradient(circle,rgba(60,44,24,.4),transparent 70%);
-  font-family:var(--font-mono);font-size:9px;color:var(--gold);letter-spacing:.08em;
-  text-align:center;
-}
-.dollCenter small{font-size:7.5px;color:#887a92;letter-spacing:.08em;}
+.dollCenter{position:absolute;left:50%;top:5px;transform:translateX(-50%);z-index:2;
+  display:flex;align-items:center;justify-content:center;padding:4px 9px;border-radius:999px;
+  border:1px solid rgba(217,181,107,.35);background:rgba(9,7,12,.84);
+  font-family:var(--font-mono);font-size:9px;color:var(--gold);letter-spacing:.08em;pointer-events:none;}
+.dollCenter span{display:none;}
+.dollCenter small{font-size:8px;color:#e5cf9d;letter-spacing:.08em;}
 
 .statList{
   display:grid;grid-template-columns:1fr 1fr;gap:3px 12px;
@@ -536,11 +532,16 @@ body.is-phone #shopOverlay.sheet-open .shopList{padding-bottom:150px;}
 .invCell.filled{cursor:pointer;}
 .invCell.filled:hover{transform:translateY(-2px);box-shadow:0 6px 16px rgba(0,0,0,.55);}
 .invCell.dragOver{border-color:#7fd6a0 !important;box-shadow:0 0 14px rgba(110,220,150,.3);}
-.invCell img{width:82%;height:82%;pointer-events:none;object-fit:contain;}
-.invCell .cellLvl{
-  position:absolute;bottom:1px;right:3px;font-family:var(--font-mono);
-  font-size:7px;color:rgba(235,225,205,.5);pointer-events:none;
-}
+.invCell img{width:76%;height:70%;margin-top:-5px;pointer-events:none;object-fit:contain;}
+.invCell .cellLvl{position:absolute;top:3px;right:4px;padding:1px 3px;border-radius:3px;
+  background:rgba(5,4,8,.72);font-family:var(--font-mono);font-size:7px;color:rgba(235,225,205,.75);pointer-events:none;}
+.invCell .cellName{position:absolute;left:3px;right:3px;bottom:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+  z-index:2;padding:2px 3px;border-radius:2px;background:linear-gradient(90deg,rgba(5,4,8,.88),rgba(5,4,8,.65));
+  color:#e7dcc7;font-size:8px;line-height:1.15;text-align:center;pointer-events:none;}
+body.is-phone .invCell .cellName{left:2px;right:2px;bottom:1px;font-size:6.5px;padding:2px 1px;}
+.equipSlot .equipName{position:absolute;left:1px;right:1px;bottom:1px;z-index:2;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+  padding:1px 2px;border-radius:2px;background:rgba(5,4,8,.82);color:#e7dcc7;font:6.5px/1.2 var(--font-mono);text-align:center;pointer-events:none;}
+.equipSlot img{width:42px;height:42px;margin-top:-7px;pointer-events:none;}
 .invCell .cellDot{position:absolute;top:4px;left:4px;width:4px;height:4px;border-radius:50%;box-shadow:0 0 5px currentColor;pointer-events:none;}
 .invCell.rarity-common{border-color:rgba(179,189,201,.35);background:linear-gradient(155deg,rgba(45,45,52,.5),rgba(11,9,16,.92));}
 .invCell.rarity-rare{border-color:rgba(77,163,255,.55);background:linear-gradient(155deg,rgba(30,52,80,.55),rgba(9,12,20,.93));}
@@ -626,6 +627,7 @@ body.is-phone .invFooter{font-size:10px;}
 .rewardCard small,.storeCard small{grid-column:1;color:#9b91a4;font-size:10px;line-height:1.5;}
 .rewardCard .bigBtn,.storeCard .bigBtn{grid-column:2;grid-row:1 / span 2;width:auto;min-width:112px;padding:10px 12px;font-size:10px;letter-spacing:.12em;}
 .menuCurrency{color:#ffd88a;font:12px var(--font-mono);text-align:center;}
+.sanctuarySection{margin:4px 0 -5px;color:#d9b56b;font:10px var(--font-mono);letter-spacing:.16em;text-transform:uppercase;}
 
 body.reduced-motion *,body.reduced-motion *::before,body.reduced-motion *::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important;scroll-behavior:auto!important;}
 .menuIdentity{font-size:10px;color:#9d91a5;letter-spacing:.08em;margin:8px auto 0;}
@@ -1488,7 +1490,7 @@ body.is-phone .affixChip{font-size:7.5px;padding:2px 6px;}
           <div class="dollGrid">
             <div class="dollCell"><div class="equipSlot" data-slot="helmet">
               <div class="slotGlyph">Helmet</div><span class="slotLabel">Helmet</span></div></div>
-            <div class="dollCell"><div class="dollCenter"><span style="font-size:16px;line-height:1">✦</span><small id="dollLvl">LV 1</small></div></div>
+            <div class="dollCell"><div class="dollCenter"><small id="dollLvl">LV 1</small></div></div>
             <div class="dollCell"><div class="equipSlot" data-slot="ring">
               <div class="slotGlyph">Ring</div><span class="slotLabel">Ring</span></div></div>
             <div class="dollCell"><div class="equipSlot" data-slot="weapon">
@@ -1654,8 +1656,10 @@ body.is-phone .affixChip{font-size:7.5px;padding:2px 6px;}
 <div class="overlay" id="sanctuaryOverlay" aria-hidden="true">
   <section class="panel menuPage" role="dialog" aria-modal="true" aria-labelledby="sanctuaryTitle">
     <div class="panelHead"><h2 id="sanctuaryTitle">Sanctuary · Permanent Keepsakes</h2></div>
-    <div class="menuPageBody"><p class="menuLead">Spend earned Ember Shards on cosmetic companions. These are permanent and never affect combat power.</p>
-      <div id="sanctuaryBalance" class="menuCurrency"></div><div id="sanctuaryItems"></div>
+    <div class="menuPageBody"><p class="menuLead">Spend earned Ember Shards on permanent companion upgrades and keepsakes. No real-money purchase is required.</p>
+      <div id="sanctuaryBalance" class="menuCurrency"></div>
+      <h3 class="sanctuarySection">Companion Training</h3><div id="companionUpgradeItems"></div>
+      <h3 class="sanctuarySection">Cosmetic Keepsakes</h3><div id="sanctuaryItems"></div>
       <div class="menuNote"><b>Real-money purchases:</b> checkout is not enabled. This game is hosted as a static page and has no payment provider or secure purchase server; no real-money items are offered or charged.</div>
       <div class="menuActions"><button class="bigBtn secondary" data-close-page="sanctuaryOverlay">Done</button></div>
     </div>
@@ -4622,7 +4626,9 @@ const COMPANION = {
   name: 'Ember',
   x: 0, y: 0, vx: 0, vy: 0,
   radius: 11,
-  hp: 60, maxHp: 60,
+  hp: 60,
+  upgrades: { health: 0, fangs: 0, paws: 0 },
+  get maxHp() { return 60 + (this.upgrades.health || 0) * 20; },
   active: false,
   hungry: 0,          /* seconds since last feeding: she slows when starving */
   mood: 'happy',      /* happy | wary | hurt | guarding */
@@ -4632,18 +4638,19 @@ const COMPANION = {
   walkT: 0,
   hurtFlash: 0,
   downT: 0,           /* seconds spent downed; she revives after a while */
+  stuckT: 0,          /* recovers if wall collision traps her away from the hero */
   bond: 0,            /* 0..100 — grows with kills shared and floors cleared */
   treasureSniff: 0,   /* cooldown on the "she found something" hint */
 
   /* her damage scales with the hero so she stays useful, never carries you */
   get damage() {
     const p = Game.player;
-    return Math.max(6, Math.round((p ? p.attackPower : 10) * 0.42 + this.bond * 0.15));
+    return Math.max(6, Math.round((p ? p.attackPower : 10) * 0.42 + this.bond * 0.15)) + (this.upgrades.fangs || 0) * 3;
   },
 
   spawn(x, y) {
     this.x = x; this.y = y; this.vx = 0; this.vy = 0;
-    this.hp = this.maxHp; this.active = true; this.downT = 0;
+    this.hp = this.maxHp; this.active = true; this.downT = 0; this.stuckT = 0;
     this.mood = 'happy';
   },
 
@@ -4697,7 +4704,7 @@ const COMPANION = {
     const d = Math.hypot(dx, dy) || 1;
     /* starving slows her down — the player is nudged to feed her */
     const speedMul = this.hungry > 120 ? 0.55 : 1;
-    const speed = (target ? 210 : 185) * speedMul;
+    const speed = (target ? 235 : 220) * speedMul * (1 + (this.upgrades.paws || 0) * 0.12);
     const want = d > 8 ? speed : 0;
     const accel = 1 - Math.pow(0.00004, dt);
     this.vx = lerp(this.vx, (dx / d) * want, accel);
@@ -4706,7 +4713,22 @@ const COMPANION = {
     this.walkT += dt * (Math.hypot(this.vx, this.vy) / 120);
 
     /* move with the same wall collision the player uses */
+    const oldX=this.x, oldY=this.y;
     moveWithCollision(this, this.vx * dt, this.vy * dt);
+    const moved=Math.hypot(this.x-oldX,this.y-oldY);
+    const playerGap=Math.hypot(this.x-p.x,this.y-p.y);
+    /* Unlike the hero she has no pathfinder. A wall can trap the old follower
+       forever; detect the no-progress case and quietly regroup on a nearby
+       walkable tile. The hard leash also protects short landscape screens. */
+    if(playerGap>118 && moved<Math.max(1, speed*dt*0.16)) this.stuckT+=dt;
+    else if(playerGap<92) this.stuckT=0;
+    else this.stuckT=Math.max(0,this.stuckT-dt*1.5);
+    if(playerGap>155 || this.stuckT>0.85){
+      const followX=p.x-Math.cos(p.aimAngle)*42, followY=p.y-Math.sin(p.aimAngle)*42;
+      let regroup=findFreeSpot(followX,followY,this.radius);
+      if(circleHitsWalls(regroup.x,regroup.y,this.radius)) regroup=findFreeSpot(p.x,p.y,this.radius);
+      this.x=regroup.x; this.y=regroup.y; this.vx=0; this.vy=0; this.stuckT=0;
+    }
 
     /* bite */
     if (target && this.attackCd <= 0 && dist2(target.x, target.y, this.x, this.y) < 44 * 44) {
@@ -4762,73 +4784,54 @@ const COMPANION = {
 
   draw(ctx, cam, t) {
     if (!this.active) return;
-    const sx = this.x - cam.x, sy = this.y - cam.y;
-    ctx.save();
-    ctx.translate(sx, sy);
-    ctx.scale(1.28,1.28); /* readable at phone scale */
+    const sx=this.x-cam.x, sy=this.y-cam.y;
     const coat=COMPANION_COATS[this.coat]||COMPANION_COATS.ember;
-    ctx.fillStyle='rgba(255,205,120,.13)'; ctx.beginPath(); ctx.arc(0,0,17,0,TAU); ctx.fill();
-
-    /* shadow */
-    ctx.fillStyle = 'rgba(0,0,0,0.38)';
-    ctx.beginPath(); ctx.ellipse(0, 8, 11, 5, 0, 0, TAU); ctx.fill();
-
-    if (this.downT > 0) {
-      /* lying on her side, softly pulsing so she reads as "hurt, not gone" */
-      ctx.globalAlpha = 0.55 + Math.sin(t * 4) * 0.15;
-      ctx.fillStyle = '#8a5a34';
-      ctx.beginPath(); ctx.ellipse(0, 4, 12, 6, 0.4, 0, TAU); ctx.fill();
-      ctx.globalAlpha = 1;
-      ctx.restore();
-      return;
+    ctx.save(); ctx.translate(sx,sy); ctx.scale(1.48,1.48);
+    /* Warm outline and shadow keep Ember readable against dark stone. */
+    ctx.fillStyle='rgba(255,205,120,.16)'; ctx.beginPath(); ctx.ellipse(0,1,23,17,0,0,TAU); ctx.fill();
+    ctx.fillStyle='rgba(0,0,0,.42)'; ctx.beginPath(); ctx.ellipse(0,10,18,7,0,0,TAU); ctx.fill();
+    if(this.downT>0){
+      ctx.globalAlpha=.58+Math.sin(t*4)*.12; ctx.fillStyle=coat.body1;
+      ctx.beginPath(); ctx.ellipse(0,4,18,9,.25,0,TAU); ctx.fill();
+      ctx.fillStyle=coat.ear; ctx.beginPath(); ctx.ellipse(11,-1,5,3,.6,0,TAU); ctx.fill();
+      ctx.restore(); return;
     }
-
-    const bob = Math.sin(this.walkT * 9) * 1.6;
-    const lunge = this.lunge > 0 ? 1 : 0;
-
-    /* tail — wags faster when the hero is close, which is most of the charm */
-    const wag = Math.sin(t * 12 + this.walkT * 6) * 0.5;
-    ctx.save();
-    ctx.translate(-7 * this.face, -2 + bob);
-    ctx.rotate(wag - 0.6 * this.face);
-    ctx.fillStyle = coat.tail;
-    ctx.beginPath(); ctx.roundRect(-2, -9, 4, 11, 2); ctx.fill();
-    ctx.restore();
-
-    /* body */
-    const bodyG = ctx.createLinearGradient(0, -8, 0, 8);
-    bodyG.addColorStop(0, this.hurtFlash > 0 ? '#ff9b8a' : coat.body0);
-    bodyG.addColorStop(1, coat.body1);
-    ctx.fillStyle = bodyG;
-    ctx.beginPath(); ctx.ellipse(0, bob, 11, 7, 0, 0, TAU); ctx.fill();
-
-    /* legs */
-    const step = Math.sin(this.walkT * 11) * 3;
-    ctx.fillStyle = '#5f3a1f';
-    for (const s of [-1, 1]) {
-      ctx.beginPath(); ctx.roundRect(s * 5 - 1.5, 4 + bob + (s > 0 ? step : -step) * 0.5, 3, 6, 1.2); ctx.fill();
-      ctx.beginPath(); ctx.roundRect(s * 5 - 1.5, 4 + bob - (s > 0 ? step : -step) * 0.5, 3, 6, 1.2); ctx.fill();
+    const bob=Math.sin(this.walkT*9)*1.2;
+    const step=this.mood==='guarding'?Math.sin(t*18)*1.4:Math.sin(this.walkT*11)*2.2;
+    const lunge=this.lunge>0?1:0;
+    /* Mirror a side profile so the head, muzzle and tail always read clearly. */
+    ctx.scale(this.face||1,1);
+    /* wagging tail behind the rump */
+    const wag=Math.sin(t*12+this.walkT*6)*.48;
+    ctx.save(); ctx.translate(-12,-3+bob); ctx.rotate(-.55+wag);
+    ctx.strokeStyle=coat.tail; ctx.lineWidth=5; ctx.lineCap='round';
+    ctx.beginPath(); ctx.moveTo(0,0); ctx.quadraticCurveTo(-5,-5,-10,-10); ctx.stroke();
+    ctx.fillStyle='#f0d3a1'; ctx.beginPath(); ctx.arc(-10,-10,2.2,0,TAU); ctx.fill(); ctx.restore();
+    /* four short legs and paws */
+    const legColor=coat.ear;
+    for(const x of [-8,8]) for(const side of [-1,1]){
+      const stride=(x<0?-step:step)*.42;
+      ctx.fillStyle=legColor;
+      ctx.beginPath(); ctx.roundRect(x-2.2,3+bob+side*4+stride,4.5,8,2); ctx.fill();
+      ctx.fillStyle='#e4c99f'; ctx.beginPath(); ctx.ellipse(x,10+bob+side*4+stride,2.6,1.8,0,0,TAU); ctx.fill();
     }
-
-    /* head, pushed forward on a lunge */
-    const hx = (9 + lunge * 3) * this.face;
-    ctx.fillStyle = coat.head;
-    ctx.beginPath(); ctx.ellipse(hx, -3 + bob, 6.4, 5.4, 0, 0, TAU); ctx.fill();
-    /* ears */
-    ctx.fillStyle = coat.ear;
-    ctx.beginPath(); ctx.moveTo(hx - 2 * this.face, -8 + bob);
-    ctx.lineTo(hx - 5 * this.face, -2 + bob); ctx.lineTo(hx + 1 * this.face, -3 + bob); ctx.closePath(); ctx.fill();
-    /* snout + eye */
-    ctx.fillStyle = '#5f3a1f';
-    ctx.beginPath(); ctx.ellipse(hx + 4 * this.face, -1 + bob, 2.6, 2, 0, 0, TAU); ctx.fill();
-    ctx.fillStyle = '#1a1208';
-    ctx.beginPath(); ctx.arc(hx + 1.4 * this.face, -4.6 + bob, 1.15, 0, TAU); ctx.fill();
-    /* a tiny ember glow on the collar: her namesake */
-    ctx.globalCompositeOperation = 'lighter';
-    ctx.fillStyle = 'rgba(255,150,60,0.55)';
-    ctx.beginPath(); ctx.arc(-1 * this.face, 1 + bob, 2.6, 0, TAU); ctx.fill();
-    ctx.globalCompositeOperation = 'source-over';
-
+    /* sturdy, elongated body with a cream chest patch */
+    const body=ctx.createLinearGradient(0,-9,0,10);
+    body.addColorStop(0,this.hurtFlash>0?'#ff9b8a':coat.body0); body.addColorStop(1,coat.body1);
+    ctx.fillStyle=body; ctx.beginPath(); ctx.ellipse(0,bob,16,10,0,0,TAU); ctx.fill();
+    ctx.fillStyle='rgba(255,230,192,.82)'; ctx.beginPath(); ctx.ellipse(9,2+bob,5.3,7, -.18,0,TAU); ctx.fill();
+    /* head, floppy ears, muzzle and nose */
+    const hx=12+lunge*3, hy=-5+bob;
+    ctx.fillStyle=coat.head; ctx.beginPath(); ctx.ellipse(hx,hy,9,7.8,.12,0,TAU); ctx.fill();
+    ctx.fillStyle=coat.ear;
+    ctx.beginPath(); ctx.ellipse(hx-3,hy-6,3.2,5.5,-.3,0,TAU); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(hx+2,hy+5,3,4.8,.35,0,TAU); ctx.fill();
+    ctx.fillStyle='#f0d5b2'; ctx.beginPath(); ctx.ellipse(hx+6,hy+2,6.2,4.1,.1,0,TAU); ctx.fill();
+    ctx.fillStyle='#3a251e'; ctx.beginPath(); ctx.ellipse(hx+11,hy+1,2.1,1.7,0,0,TAU); ctx.fill();
+    ctx.fillStyle='#241713'; ctx.beginPath(); ctx.arc(hx+2,hy-3,1.25,0,TAU); ctx.fill();
+    /* bright collar + little tag: unmistakably a companion, not a blob */
+    ctx.strokeStyle='#a83438'; ctx.lineWidth=2.7; ctx.beginPath(); ctx.moveTo(7,bob-1); ctx.lineTo(9,bob+5); ctx.stroke();
+    ctx.fillStyle='#ffd16f'; ctx.beginPath(); ctx.moveTo(8,bob+4); ctx.lineTo(10.4,bob+6.5); ctx.lineTo(8,bob+9); ctx.lineTo(5.6,bob+6.5); ctx.closePath(); ctx.fill();
     ctx.restore();
   }
 };
@@ -5639,6 +5642,7 @@ const Save = {
       Game.loadingSave = false;
       COMPANION.active = true;
       COMPANION.coat = this.meta().activeCoat || 'ember';
+      COMPANION.upgrades = Object.assign({},this.meta().companionUpgrades);
       if (snap.companion && typeof snap.companion === 'object') {
         COMPANION.downT = clamp(Number(snap.companion.downT) || 0, 0, 9);
         const savedEmberHp=Number(snap.companion.hp);
@@ -5732,7 +5736,7 @@ const Save = {
   meta() {
     const empty = { runs: 0, deepestFloor: 0, totalKills: 0, totalGold: 0,
                     bossesSlain: 0, bestTime: 0, unlocked: {}, deaths: 0,
-                    shards: 0, claimedRewards: [], unlockedCoats: ['ember'], activeCoat: 'ember' };
+                    shards: 0, claimedRewards: [], unlockedCoats: ['ember'], activeCoat: 'ember', companionUpgrades: {health:0,fangs:0,paws:0} };
     if (!this.available()) return empty;
     try {
       const raw = JSON.parse(window.localStorage.getItem(this.META_KEY));
@@ -5746,6 +5750,8 @@ const Save = {
       out.claimedRewards = Array.isArray(raw.claimedRewards) ? raw.claimedRewards.map(String).slice(0,100) : [];
       out.unlockedCoats = Array.isArray(raw.unlockedCoats) ? [...new Set(['ember', ...raw.unlockedCoats.filter(k => ['frost','moon','moss'].includes(k))])] : ['ember'];
       out.activeCoat = ['ember','frost','moon','moss'].includes(raw.activeCoat) && out.unlockedCoats.includes(raw.activeCoat) ? raw.activeCoat : 'ember';
+      const ranks=raw.companionUpgrades&&typeof raw.companionUpgrades==='object'?raw.companionUpgrades:{};
+      out.companionUpgrades={health:clamp(Math.floor(Number(ranks.health)||0),0,3),fangs:clamp(Math.floor(Number(ranks.fangs)||0),0,3),paws:clamp(Math.floor(Number(ranks.paws)||0),0,3)};
       if (raw.unlocked && typeof raw.unlocked === 'object') {
         for (const k in raw.unlocked) if (raw.unlocked[k]) out.unlocked[k] = true;
       }
@@ -5842,6 +5848,11 @@ const SANCTUARY_COATS = [
   {id:'moon',name:'Moonshade',desc:'A twilight-violet coat with a soft glow.',cost:40},
   {id:'moss',name:'Mossrunner',desc:'A quiet green coat from the old woods.',cost:55}
 ];
+const COMPANION_UPGRADES = [
+  {id:'health',name:'Sturdy Harness',desc:'+20 maximum health per rank',cost:18},
+  {id:'fangs',name:'Honed Fangs',desc:'+3 bite damage per rank',cost:22},
+  {id:'paws',name:'Swift Paws',desc:'+12% movement speed per rank',cost:16}
+];
 let utilityReturnFocus=null;
 function openPage(id) {
   const el=$(id); if(!el) return;
@@ -5878,6 +5889,13 @@ function refreshMetaPages() {
       '<button class="bigBtn '+(ready&&!done?'':'secondary')+'" data-claim-reward="'+r.id+'" '+(!ready||done?'disabled':'')+'>'+(done?'Claimed':ready?'Claim':'Locked')+'</button></div>';
   }).join('');
   const balance=$('sanctuaryBalance'); if(balance) balance.textContent='✦ '+fmt(m.shards)+' EMBER SHARDS';
+  if(typeof COMPANION!=='undefined') COMPANION.upgrades=Object.assign({health:0,fangs:0,paws:0},m.companionUpgrades);
+  const upgradeList=$('companionUpgradeItems');
+  if(upgradeList) upgradeList.innerHTML=COMPANION_UPGRADES.map(u=>{
+    const rank=m.companionUpgrades[u.id]||0, cost=u.cost*(rank+1);
+    return '<div class="storeCard"><strong>'+escapeHtml(u.name)+' · Rank '+rank+'/3</strong><small>'+escapeHtml(u.desc)+(rank>=3?' · MAX RANK':' · Next: ✦ '+cost)+'</small>'+
+      '<button class="bigBtn '+(rank>=3?'secondary':'')+'" data-comp-upgrade="'+u.id+'" '+(rank>=3||m.shards<cost?'disabled':'')+'>'+(rank>=3?'Maxed':m.shards<cost?'Need shards':'Upgrade')+'</button></div>';
+  }).join('');
   const shop=$('sanctuaryItems');
   if(shop) shop.innerHTML=SANCTUARY_COATS.map(c=>{
     const owned=m.unlockedCoats.includes(c.id), active=m.activeCoat===c.id;
@@ -5899,6 +5917,17 @@ function buySanctuaryCoat(id) {
   else { if(m.shards<c.cost) { toast('Not enough Ember Shards yet.','danger'); return false; }
     m.shards-=c.cost; m.unlockedCoats.push(id); m.activeCoat=id; }
   Save.writeMeta(m); refreshMetaPages(); Sound.play('loot'); return true;
+}
+function buyCompanionUpgrade(id) {
+  const spec=COMPANION_UPGRADES.find(x=>x.id===id); if(!spec) return false;
+  const m=Save.meta(), rank=m.companionUpgrades[id]||0, cost=spec.cost*(rank+1);
+  if(rank>=3||m.shards<cost) return false;
+  const oldMax=COMPANION.maxHp, oldHp=COMPANION.hp;
+  m.shards-=cost; m.companionUpgrades[id]=rank+1; Save.writeMeta(m);
+  COMPANION.upgrades=Object.assign({health:0,fangs:0,paws:0},m.companionUpgrades);
+  if(id==='health') COMPANION.hp=Math.min(COMPANION.maxHp,oldHp+(COMPANION.maxHp-oldMax));
+  refreshMetaPages(); Sound.play('loot');
+  toast(spec.name+' upgraded to Rank '+(rank+1)+'.','gold'); return true;
 }
 function exportBackup() {
   let freshRun=true;
@@ -10828,6 +10857,8 @@ function refreshInventoryUI() {
     cell.className = 'invCell' + (item ? ' filled rarity-' + RARITIES[item.rarity].key : ' empty');
     cell.dataset.index = i;
     if (item) {
+      cell.title=item.name+' · '+RARITIES[item.rarity].name+' · Item Level '+item.level;
+      cell.setAttribute('aria-label',cell.title);
       const img = new Image();
       img.src = Sprite.itemURL(item, 96);
       img.alt = item.name;
@@ -10841,6 +10872,8 @@ function refreshInventoryUI() {
       lv.className = 'cellLvl';
       lv.textContent = 'i' + item.tier;
       cell.appendChild(lv);
+      const name=document.createElement('span'); name.className='cellName'; name.textContent=item.name;
+      cell.appendChild(name);
       cell.draggable = true;
       cell.addEventListener('dragstart', (ev) => {
         Game.dragItem = item; Game.dragFrom = { type: 'inv', index: i };
@@ -10890,7 +10923,11 @@ function refreshInventoryUI() {
       const img = new Image();
       img.src = Sprite.itemURL(item, 96);
       img.alt = item.name;
+      slotEl.title=item.name+' · '+RARITIES[item.rarity].name+' · Item Level '+item.level;
+      slotEl.setAttribute('aria-label',slotEl.title);
       slotEl.appendChild(img);
+      const name=document.createElement('span'); name.className='equipName'; name.textContent=item.name;
+      slotEl.appendChild(name);
       slotEl.style.borderColor = RARITY_COLOR[item.rarity];
       slotEl.style.boxShadow = item.rarity >= 2 ? `0 0 14px ${rgba(RARITY_COLOR[item.rarity], 0.35)}, inset 0 0 12px rgba(0,0,0,.7)` : 'inset 0 0 12px rgba(0,0,0,.7)';
       slotEl.draggable = true;
@@ -11066,17 +11103,12 @@ function drawPaperdollBackdrop() {
     ctx.lineTo(cx + Math.cos(a) * r2, cy + Math.sin(a) * r2);
     ctx.stroke();
   }
-  /* faint hero silhouette in the middle */
-  ctx.globalAlpha = 0.16;
-  ctx.fillStyle = '#e8d9b6';
-  ctx.beginPath(); ctx.ellipse(cx, cy - H * 0.22, W * 0.055, H * 0.06, 0, 0, TAU); ctx.fill();
-  ctx.beginPath();
-  ctx.moveTo(cx - W * 0.09, cy - H * 0.14);
-  ctx.lineTo(cx + W * 0.09, cy - H * 0.14);
-  ctx.lineTo(cx + W * 0.07, cy + H * 0.12);
-  ctx.lineTo(cx - W * 0.07, cy + H * 0.12);
-  ctx.closePath(); ctx.fill();
-  ctx.globalAlpha = 1;
+  /* Render the real equipped hero, not a faint placeholder silhouette. */
+  if(Game.player){
+    ctx.save(); ctx.translate(cx,cy+8); ctx.scale(4,4);
+    drawHeroShape(ctx,Game.player,Game.time||0,0,0,false);
+    ctx.restore();
+  }
   ctx.restore();
 }
 
@@ -11849,6 +11881,7 @@ function setupInput() {
   $('backupFileInput').addEventListener('change',ev=>{importBackupFile(ev.target.files&&ev.target.files[0]);ev.target.value='';});
   $('rewardList').addEventListener('click',ev=>{const b=ev.target.closest('[data-claim-reward]');if(b)claimMetaReward(b.dataset.claimReward);});
   $('sanctuaryItems').addEventListener('click',ev=>{const b=ev.target.closest('[data-coat]');if(b&&buySanctuaryCoat(b.dataset.coat))toast('Ember’s keepsake is ready.','good');});
+  $('companionUpgradeItems').addEventListener('click',ev=>{const b=ev.target.closest('[data-comp-upgrade]');if(b)buyCompanionUpgrade(b.dataset.compUpgrade);});
 
   $('continueBtn').addEventListener('click', continueRun);
   $('deleteSaveBtn').addEventListener('click', () => {
