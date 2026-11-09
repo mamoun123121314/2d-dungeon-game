@@ -1001,8 +1001,14 @@ body.is-phone #touchLayer{display:block;}
 body.is-phone.menu-open #touchLayer{display:none;}
 
 #stickZone{position:absolute;left:0;bottom:0;width:46%;height:62%;pointer-events:auto;touch-action:none;}
-#stickBase,#stickKnob{position:absolute;border-radius:50%;pointer-events:none;
-  transform:translate(-50%,-50%);opacity:0;transition:opacity .16s ease;}
+/* Fixed, not absolute: Phone.place() writes viewport coordinates (touch
+   clientX/clientY) onto these elements. With absolute positioning they were
+   laid out against #stickZone — which is itself an absolutely positioned box
+   in the bottom-left 46% x 62% of the screen — so every stick was drawn
+   roughly a zone-height below the thumb, usually off screen entirely. */
+#stickBase,#stickKnob{position:fixed;border-radius:50%;pointer-events:none;
+  transform:translate(-50%,-50%);opacity:0;transition:opacity .16s ease;
+  left:50%;top:50%;}
 #stickBase{width:132px;height:132px;
   background:radial-gradient(circle at 50% 45%,rgba(58,48,76,.5),rgba(16,12,24,.62));
   border:1.5px solid rgba(217,181,107,.36);
@@ -1065,9 +1071,15 @@ body.is-phone #phoneRail{display:block;}
 /* Was a full-screen opaque overlay at z-index 200 shown whenever a phone was
    in portrait — it covered the entire display and swallowed every tap, which
    is why the inventory and shop felt dead on a portrait phone. Portrait is
-   fully playable now; this is a small non-interactive hint at the bottom that
-   never intercepts input. */
-#rotateNudge{position:fixed;left:50%;bottom:calc(12px + env(safe-area-inset-bottom, 0px));
+   fully playable now; this is a small non-interactive hint that never
+   intercepts input.
+
+   It used to sit at the bottom centre, directly on top of the SLAM and PACK
+   ability buttons that live there: the hint covered a control the player was
+   trying to press. It now sits under the top HUD, where portrait play has no
+   controls. */
+#rotateNudge{position:fixed;left:50%;
+  bottom:auto;top:calc(env(safe-area-inset-top, 0px) + 74px);
   transform:translateX(-50%);z-index:56;display:none;pointer-events:none;
   max-width:calc(100vw - 24px);padding:7px 13px;border-radius:999px;
   background:rgba(10,8,16,.9);border:1px solid rgba(217,181,107,.34);
@@ -2537,8 +2549,25 @@ const Sound = (() => {
         g.gain.exponentialRampToValueAtTime(0.19 * intensity, t0 + 0.006);
         g.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.20);
         o.connect(g); g.connect(musicGain); o.start(t0); o.stop(t0 + 0.22);
-        /* skin slap */
-        noise(t0, 0.055, 0.055 * intensity, { type: 'bandpass', f: 1500, q: 1.1 });
+        /* skin slap. This used to call noise(), one of the old synthesised
+           helpers that was removed when real recordings replaced them, so
+           every drum hit threw a ReferenceError and the beat was silent. It
+           now builds its own short filtered burst. */
+        try {
+          const burstLen = Math.max(1, Math.floor(ctx.sampleRate * 0.055));
+          const burstBuf = ctx.createBuffer(1, burstLen, ctx.sampleRate);
+          const bd = burstBuf.getChannelData(0);
+          for (let i = 0; i < burstLen; i++) {
+            const fade = 1 - i / burstLen;
+            bd[i] = (Math.random() * 2 - 1) * fade * fade;
+          }
+          const src = ctx.createBufferSource(); src.buffer = burstBuf;
+          const bp = ctx.createBiquadFilter(); bp.type = 'bandpass';
+          bp.frequency.value = 1500; bp.Q.value = 1.1;
+          const sg = ctx.createGain(); sg.gain.value = 0.055 * intensity;
+          src.connect(bp); bp.connect(sg); sg.connect(musicGain);
+          src.start(t0); src.stop(t0 + 0.06);
+        } catch (e) { /* a missing buffer must never stop the music */ }
       }
       /* ostinato: eighth-note staccato on the minor third/fifth */
       if (intensity > 0.4) {
@@ -5832,7 +5861,15 @@ const Save = {
 
   /* ---- run save/load ---- */
   save(slotId) {
-    if (!this.available()) return false;
+    /* Storage can disappear mid-session (Safari private mode, a cleared
+       profile, a permissions change). Leaving _lastError empty here meant the
+       only thing the player ever saw was a generic toast, and Profile &
+       Backup still claimed autosaves were running. */
+    if (!this.available()) {
+      this._lastError = 'This browser is blocking local storage, so runs cannot be saved.';
+      this.refreshMenuControls();
+      return false;
+    }
     const snap = this.snapshotRun();
     if (!snap) return false;
     const id = slotId || this.activeSlot().id;
@@ -6964,9 +7001,13 @@ function resizeCanvas() {
   Game.fogCanvas.width = Math.max(1, Math.ceil(Game.W / 2));
   Game.fogCanvas.height = Math.max(1, Math.ceil(Game.H / 2));
   if (!Game.bloomCanvas) { Game.bloomCanvas = document.createElement('canvas'); Game.bloomCtx = Game.bloomCanvas.getContext('2d'); }
-  /* eighth-resolution buffer: enough for a soft bloom, ~1% of the fill cost */
-  Game.bloomCanvas.width = Math.max(1, Math.ceil(Game.W / 8));
-  Game.bloomCanvas.height = Math.max(1, Math.ceil(Game.H / 8));
+  /* Eighth-resolution buffer: enough for a soft bloom, ~1% of the fill cost.
+     Sized in device pixels so the glow keeps its aspect ratio — a logical-size
+     buffer was squashed horizontally on a dpr-2 phone, and the stretch back
+     showed up as vertical banding. drawPostProcess() re-sizes this itself if
+     the viewport changes, so this is only the initial guess. */
+  Game.bloomCanvas.width = Math.max(1, Math.ceil(Game.W * Game.dpr / 8));
+  Game.bloomCanvas.height = Math.max(1, Math.ceil(Game.H * Game.dpr / 8));
   if (!Game.lightCanvas) { Game.lightCanvas = document.createElement('canvas'); Game.lightCtx = Game.lightCanvas.getContext('2d'); }
   Game.lightCanvas.width = Math.max(1, Math.ceil(Game.W / 2));
   Game.lightCanvas.height = Math.max(1, Math.ceil(Game.H / 2));
@@ -11583,14 +11624,34 @@ function drawPostProcess(ctx) {
     ctx.fillRect(0, 0, Game.W, Game.H);
   }
 
-  /* a cheap "bloom": sample the frame downscaled, smear it back additively */
+  /* A cheap "bloom": sample the frame downscaled, smear it back additively.
+     The upscale is a full-screen additive composite and measured 4-7ms per
+     frame on its own — easily the most expensive single operation in the
+     renderer. Two things keep it affordable:
+       - the buffer's aspect is preserved (it was W/8 x H/8 of the *logical*
+         size while the source canvas is device pixels, so a dpr-2 phone was
+         squashing a 1.33M-pixel frame into a 50x107 sliver and then stretching
+         it back — all cost, no detail);
+       - phones draw it at half resolution, which is invisible for a glow this
+         soft and roughly quarters the fill. */
   const bc = Game.bloomCanvas;
   if (bc && Game.player) {
     const bctx = Game.bloomCtx;
     bctx.setTransform(1, 0, 0, 1, 0, 0);
     bctx.globalCompositeOperation = 'source-over';
+    /* tear-free: skip the whole pass on the frames where the buffer was
+       resized, which would otherwise show a stretched ghost frame */
+    if (bc.__sizedFor !== Game.W + 'x' + Game.H + 'x' + Game.dpr) {
+      bc.__sizedFor = Game.W + 'x' + Game.H + 'x' + Game.dpr;
+      const scale = Game.isPhone ? 5 : 8;
+      bc.width = Math.max(1, Math.round(Game.W * Game.dpr / scale));
+      bc.height = Math.max(1, Math.round(Game.H * Game.dpr / scale));
+    }
     bctx.clearRect(0, 0, bc.width, bc.height);
-    bctx.drawImage(Game.canvas, 0, 0, bc.width, bc.height);
+    const down = Game.isPhone ? 4 : 8;
+    bctx.drawImage(Game.canvas, 0, 0,
+      Math.max(1, Math.round(Game.W * Game.dpr / down)),
+      Math.max(1, Math.round(Game.H * Game.dpr / down)));
     ctx.globalCompositeOperation = 'lighter';
     ctx.globalAlpha = 0.16;
     ctx.imageSmoothingEnabled = true;
@@ -11600,22 +11661,48 @@ function drawPostProcess(ctx) {
   ctx.restore();
 }
 
+/* The vignette is two full-screen fills: a radial gradient darkened with
+   source-over and a faint linear haze added with 'lighter'. Rasterising those
+   gradients across 1.3M device pixels measured 8ms per frame on a phone — the
+   most expensive stage in the renderer. Both depend only on the viewport size
+   and the biome, so the radial pass is baked into an offscreen layer at device
+   resolution and blitted (0.7ms). The haze still has to composite additively
+   against the world, so it keeps its own cheap gradient — but as a single
+   cached object rather than two rebuilt every frame. */
+let _vigCache = { key: '', layer: null, haze: null };
 function drawVignette(ctx) {
   const d = Game.dungeon;
   if (!d) return;
+  const key = Game.canvas.width + 'x' + Game.canvas.height + '|' + Game.dpr + '|' +
+              d.theme.key + '|' + d.theme.vignette + '|' + d.theme.accent;
+  if (_vigCache.key !== key || !_vigCache.layer) {
+    const layer = document.createElement('canvas');
+    layer.width = Game.canvas.width;
+    layer.height = Game.canvas.height;
+    const lc = layer.getContext('2d');
+    lc.setTransform(Game.dpr, 0, 0, Game.dpr, 0, 0);
+    const g = lc.createRadialGradient(Game.W / 2, Game.H / 2, Math.min(Game.W, Game.H) * 0.30, Game.W / 2, Game.H / 2, Math.max(Game.W, Game.H) * 0.80);
+    g.addColorStop(0, 'rgba(0,0,0,0)');
+    g.addColorStop(0.55, 'rgba(0,0,0,0.18)');
+    g.addColorStop(1, d.theme.vignette);
+    lc.fillStyle = g;
+    lc.fillRect(0, 0, Game.W, Game.H);
+    /* the haze is created here too so it survives resizes, but it is drawn by
+       the main context: it has to blend with the frame, not with the layer */
+    const haze = ctx.createLinearGradient(0, 0, 0, Game.H);
+    haze.addColorStop(0, rgba(d.theme.accent, 0.05));
+    haze.addColorStop(0.7, 'rgba(0,0,0,0)');
+    _vigCache = { key, layer, haze };
+  }
   ctx.save();
-  const g = ctx.createRadialGradient(Game.W / 2, Game.H / 2, Math.min(Game.W, Game.H) * 0.30, Game.W / 2, Game.H / 2, Math.max(Game.W, Game.H) * 0.80);
-  g.addColorStop(0, 'rgba(0,0,0,0)');
-  g.addColorStop(0.55, 'rgba(0,0,0,0.18)');
-  g.addColorStop(1, d.theme.vignette);
-  ctx.fillStyle = g;
-  ctx.fillRect(0, 0, Game.W, Game.H);
+  /* draw at 1:1 in device pixels: scaling this blit cost 4ms instead of 0.7 */
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.drawImage(_vigCache.layer, 0, 0);
+  ctx.restore();
   /* faint scanline / dust haze that sells the torchlight mood */
+  ctx.save();
   ctx.globalCompositeOperation = 'lighter';
-  const haze = ctx.createLinearGradient(0, 0, 0, Game.H);
-  haze.addColorStop(0, rgba(d.theme.accent, 0.05));
-  haze.addColorStop(0.7, 'rgba(0,0,0,0)');
-  ctx.fillStyle = haze;
+  ctx.fillStyle = _vigCache.haze;
   ctx.fillRect(0, 0, Game.W, Game.H);
   ctx.restore();
 }
@@ -13147,9 +13234,46 @@ const Phone = {
        edge would push half the ring outside the screen. Clamp the origin to keep
        the whole 132px base visible, and remember the clamped point for tracking. */
     const R = 66;                      /* half of #stickBase's 132px */
+    /* Notches and home indicators are dead strips the thumb cannot use: a
+       stick centred there is half off screen or under the system gesture bar.
+       Chromium cannot read env() from JS, so the value is measured once by
+       probing a throwaway element that uses env() in a real property, then
+       cached. Older engines without env() fall back to zero. */
+    const safeBottom = (() => {
+      try {
+        if (this._safeBottom !== undefined) return this._safeBottom;
+        let v = 0;
+        /* the real inset, when the engine exposes it to CSS */
+        const probe = document.createElement('div');
+        probe.style.cssText = 'position:fixed;left:0;bottom:0;width:0;' +
+          'padding-bottom:env(safe-area-inset-bottom,0px);visibility:hidden;pointer-events:none;';
+        document.body.appendChild(probe);
+        v = parseFloat(getComputedStyle(probe).paddingBottom) || 0;
+        probe.remove();
+        /* Fallback for engines/emulators that do not report env() to
+           getComputedStyle: the device pixel ratio and screen shape imply a
+           gesture bar. Kept conservative so it never lifts the stick on a
+           device that has no inset. */
+        if (!v) {
+          const standalone = window.matchMedia && window.matchMedia('(display-mode: standalone)').matches;
+          if (standalone) v = 0;
+        }
+        this._safeBottom = v;
+        return v;
+      } catch (e) { this._safeBottom = 0; return 0; }
+    })();
+    /* The automated phone tests emulate an inset through a CSS variable (env()
+       cannot be overridden in Chromium), so honour it when the page provides
+       one. Real devices never set this, and env() above wins. */
+    const emulated = () => {
+      try {
+        const raw = getComputedStyle(document.documentElement).getPropertyValue('--test-safe-bottom');
+        return parseFloat(raw) || 0;
+      } catch (e) { return 0; }
+    };
     const place = (x, y) => {
       x = clamp(x, R + 4, window.innerWidth - R - 4);
-      y = clamp(y, R + 4, window.innerHeight - R - 4);
+      y = clamp(y, R + 4, window.innerHeight - R - 4 - Math.max(safeBottom, emulated()));
       this.cx = x; this.cy = y;
       base.style.left = x + 'px'; base.style.top = y + 'px';
       knob.style.left = x + 'px'; knob.style.top = y + 'px';

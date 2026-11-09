@@ -1,5 +1,18 @@
 {
-  "dependencies": {
-    "node-web-audio-api": "^2.2.0"
+  "name": "dungeon-rogue",
+  "private": true,
+  "description": "Dungeon Rogue — a procedural ARPG in one HTML file",
+  "scripts": {
+    "check": "python3 scripts/check_site.py",
+    "test": "node tests/run-all.mjs",
+    "test:browser": "node tests/browser.mjs",
+    "test:gameplay": "node tests/gameplay.mjs",
+    "test:save": "node tests/save.mjs",
+    "test:perf": "node tests/perf.mjs"
+  },
+  "devDependencies": {
+    "@achingbrain/nss": "^0.0.1",
+    "@sparticuz/chromium": "^153.0.0",
+    "puppeteer-core": "^25.16.0"
   }
 }

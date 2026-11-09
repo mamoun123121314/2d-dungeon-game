@@ -14,7 +14,7 @@ Play link: **https://mamoun123121314.github.io/2d-dungeon-game/**
 >
 > Every floor is generated fresh. Bosses have three phases and change tactics mid-fight. Gear rolls its own names. There's a talent tree, elemental builds, and an endless mode that starts stacking curses on you past floor 10.
 >
-> It's one HTML file. Zero asset files. All the sound is synthesised live.
+> It's one HTML file. Zero asset files. 38 recorded sound effects, encoded straight into the page.
 >
 > Play free 👉 link in bio
 >
@@ -34,7 +34,7 @@ Play link: **https://mamoun123121314.github.io/2d-dungeon-game/**
 >
 > Eleven room themes. Six elite traits. Bosses with three-phase movesets. Twenty-one talent ranks. Elemental status effects that actually matter. And an autosave that lets you close the tab and come back mid-run.
 >
-> No engine, no assets, no audio files — every swing and scream is synthesised in the browser.
+> No engine, no asset files, no audio folder — 38 real recordings are base64'd straight into the HTML, so a swing or a scream plays without a single network request.
 >
 > Free to play, link in bio.
 
@@ -48,7 +48,7 @@ Play link: **https://mamoun123121314.github.io/2d-dungeon-game/**
 
 > I made a full action RPG that ships as one HTML file.
 >
-> No engine, no assets, no audio files. Procedural floors, three-phase bosses, elemental builds, talent trees, endless mode, autosave. Every sound is synthesised live with oscillators.
+> No engine, no asset files, no audio folder. Procedural floors, three-phase bosses, elemental builds, talent trees, endless mode, autosave. 38 sound effects — real CC0 recordings, not oscillators — are inlined as base64 and decoded on demand, so the whole game is still one file that runs offline.
 >
 > Play it in your browser — free, nothing to install:
 > https://mamoun123121314.github.io/2d-dungeon-game/
@@ -66,6 +66,12 @@ Play link: **https://mamoun123121314.github.io/2d-dungeon-game/**
 
 ## Notes
 
+- **Audio, accurately:** the 38 sound effects are real recordings from the
+  Oculus Audio Pack (Meta Open Sound, CC0-1.0), trimmed and loudness-matched,
+  encoded to 64 kbps mono MP3 and inlined as base64. They are **not**
+  synthesised with oscillators. Only the reactive score and the ambient wind
+  bed are generated in the Web Audio graph at runtime. The page is still a
+  single file with no external requests — the recordings live inside the HTML.
 - All gameplay footage is **captured from the real game** — the renderer was reimplemented in a headless harness to record actual draw calls, then composited with the engine's own torchlight fog.
 - Vertical and feed versions put the gameplay in a framed panel with captions, because a 16:9 game cropped to 9:16 loses the whole scene.
 - The still `art_vertical.png` is a separate AI-illustrated key art piece. It is **not** in-game footage — if you post it, don't claim it's a screenshot. Useful as a thumbnail or a pinned post.

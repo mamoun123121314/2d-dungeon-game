@@ -1,0 +1,66 @@
+name: Tests
+
+# Browser tests run on pull requests and on main, before (and independently of)
+# the Pages deployment. They use the runner's own Chrome via BROWSER_PATH rather
+# than the npm-packaged Chromium the development sandbox needs.
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  structure:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Structural and syntax checks
+        run: python3 scripts/check_site.py
+
+  browser:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install test dependencies
+        run: npm install --no-audit --no-fund
+      - name: Locate Chrome
+        id: chrome
+        run: |
+          CHROME=$(command -v google-chrome || command -v google-chrome-stable \
+                   || command -v chromium || command -v chromium-browser || true)
+          if [ -z "$CHROME" ]; then
+            echo "No system Chrome found; the suite will use its bundled Chromium."
+          else
+            echo "BROWSER_PATH=$CHROME" >> "$GITHUB_ENV"
+          fi
+      - name: Browser suites
+        run: npm test
+      - name: Upload failure screenshots
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-screens
+          path: tests/screens/
+          if-no-files-found: ignore
+          retention-days: 7
+
+  # Performance is a report, not a gate: runner hardware varies far too much for
+  # an absolute frame-time assertion to mean anything. It only fails on a crash
+  # or on the relative check that the cached vignette beats rebuilding it.
+  perf:
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --no-audit --no-fund
+      - run: npm run test:perf
