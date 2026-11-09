@@ -611,6 +611,34 @@ body.is-phone .invFooter{font-size:10px;}
 #pauseOverlay .pausePanel,#deathOverlay .deathPanel,#victoryOverlay .victoryPanel{
   width:min(520px,94vw);padding:0 0 24px;text-align:center;overflow:hidden;
 }
+/* ---------- unified menu shell ----------
+   Every panel is the same object: a gold rule at the top, a title with an
+   uppercase subtitle, the same inner padding and the same button shapes.
+   Before this each panel had grown its own spacing and header style. */
+.panelHead h2{padding-left:12px;position:relative;}
+.panelHead h2::before{content:"";position:absolute;left:0;top:50%;transform:translateY(-50%);
+  width:2px;height:62%;background:linear-gradient(180deg,transparent,var(--gold),transparent);box-shadow:0 0 8px rgba(217,181,107,.5);}
+.panelHead{position:relative;overflow:hidden;}
+.panelHead::after{content:"";position:absolute;left:0;right:0;bottom:0;height:1px;
+  background:linear-gradient(90deg,transparent,rgba(217,181,107,.5) 18%,rgba(217,181,107,.5) 82%,transparent);}
+/* the pause menu is grouped instead of eight identical buttons in a row */
+.pauseSection{width:100%;max-width:330px;display:flex;flex-direction:column;gap:7px;}
+.pauseSection h4{margin:0;font:9px var(--font-mono);letter-spacing:.2em;text-transform:uppercase;color:#8f8299;
+  display:flex;align-items:center;gap:8px;}
+.pauseSection h4::after{content:"";flex:1;height:1px;background:linear-gradient(90deg,rgba(217,181,107,.28),transparent);}
+.pauseGrid{display:grid;grid-template-columns:1fr 1fr;gap:7px;}
+.pauseGrid .bigBtn{max-width:none;width:100%;min-height:42px;padding:10px 8px;font-size:10px;}
+.pauseSection:nth-of-type(3) .pauseGrid{grid-template-columns:1fr 1fr 1fr;}
+.pauseSection:nth-of-type(3) .pauseGrid .bigBtn{font-size:9px;letter-spacing:.06em;}
+.bigBtn.danger{max-width:330px;margin-top:2px;color:#f0b3ad;border-color:rgba(224,85,77,.42);
+  background:linear-gradient(180deg,rgba(94,32,32,.42),rgba(34,14,14,.72));}
+.bigBtn.danger:hover{border-color:#e0554d;background:linear-gradient(180deg,rgba(130,44,44,.62),rgba(48,18,18,.82));}
+@media(max-width:520px){
+  .pauseSection{max-width:none;}
+  .pauseGrid{grid-template-columns:1fr 1fr;}
+  .pauseSection:nth-of-type(3) .pauseGrid{grid-template-columns:1fr 1fr;}
+  .bigBtn.danger{max-width:none;}
+}
 /* Settings, profile, rewards and the permanent cosmetic shop share one clear,
    scrollable shell. Buttons stay large enough for touch and keyboard users. */
 #settingsOverlay,#profileOverlay,#rewardsOverlay,#sanctuaryOverlay{z-index:80;}
@@ -1761,17 +1789,32 @@ body.is-phone .affixChip{font-size:7.5px;padding:2px 6px;}
 <!-- ============================ PAUSE ============================ -->
 <div class="overlay" id="pauseOverlay">
   <div class="panel pausePanel">
-    <div class="panelHead"><h2>Paused</h2></div>
+    <div class="panelHead"><h2>Paused</h2><span class="sub" id="pauseSub">The dungeon waits</span></div>
     <div class="panelInner">
       <button class="bigBtn" id="resumeBtn">Resume Descent</button>
-      <button class="bigBtn secondary" id="pauseInvBtn">Open Satchel</button>
-      <button class="bigBtn secondary" id="pauseSaveBtn">Save Game</button>
-      <button class="bigBtn secondary" id="pauseSoundBtn">Toggle Sound</button>
-      <button class="bigBtn secondary" id="pauseSettingsBtn">Settings</button>
-      <button class="bigBtn secondary" id="pauseProfileBtn">Profile &amp; Backup</button>
-      <button class="bigBtn secondary" id="pauseRewardsBtn">Progress &amp; Rewards</button>
-      <button class="bigBtn secondary" id="pauseShopBtn">Sanctuary Shop</button>
-      <button class="bigBtn secondary" id="abandonBtn">Abandon Run</button>
+      <div class="pauseSection">
+        <h4>Play</h4>
+        <div class="pauseGrid">
+          <button class="bigBtn secondary" id="pauseInvBtn">Satchel</button>
+          <button class="bigBtn secondary" id="pauseSaveBtn">Save</button>
+        </div>
+      </div>
+      <div class="pauseSection">
+        <h4>Options</h4>
+        <div class="pauseGrid">
+          <button class="bigBtn secondary" id="pauseSettingsBtn">Settings</button>
+          <button class="bigBtn secondary" id="pauseSoundBtn">Sound</button>
+        </div>
+      </div>
+      <div class="pauseSection">
+        <h4>Progress</h4>
+        <div class="pauseGrid">
+          <button class="bigBtn secondary" id="pauseProfileBtn">Profile &amp; Saves</button>
+          <button class="bigBtn secondary" id="pauseRewardsBtn">Rewards</button>
+          <button class="bigBtn secondary" id="pauseShopBtn">Sanctuary</button>
+        </div>
+      </div>
+      <button class="bigBtn danger" id="abandonBtn">Abandon Run</button>
       <div class="controlsList">
         <kbd>W A S D / Arrows</kbd><span>Move</span>
         <kbd>Mouse</kbd><span>Aim &amp; swing with left click</span>
@@ -1792,7 +1835,7 @@ body.is-phone .affixChip{font-size:7.5px;padding:2px 6px;}
 <!-- ============================ SETTINGS / PROFILE / META ============================ -->
 <div class="overlay" id="shrineOverlay" aria-hidden="true">
   <section class="panel menuPage" role="dialog" aria-modal="true" aria-labelledby="shrineTitle">
-    <div class="panelHead"><h2 id="shrineTitle">The Hollow Shrine · Run Oath</h2></div>
+    <div class="panelHead"><h2 id="shrineTitle">The Hollow Shrine</h2><span class="sub">Choose one run oath</span></div>
     <div class="menuPageBody">
       <p class="menuLead">Choose one vow. It lasts for this run only; each altar may be claimed once per floor. Your earlier oaths shape the build you carry into the depths.</p>
       <div id="shrineChoices" class="shrineChoices"></div>
@@ -1803,7 +1846,7 @@ body.is-phone .affixChip{font-size:7.5px;padding:2px 6px;}
 </div>
 <div class="overlay" id="settingsOverlay" aria-hidden="true">
   <section class="panel menuPage" role="dialog" aria-modal="true" aria-labelledby="settingsTitle">
-    <div class="panelHead"><h2 id="settingsTitle">Settings</h2></div>
+    <div class="panelHead"><h2 id="settingsTitle">Settings</h2><span class="sub">Sound, look and rules</span></div>
     <div class="menuPageBody">
       <p class="menuLead">Tune the descent to your screen and your ears. Choices are sealed on this device.</p>
       <h3 class="menuSection">Sound &amp; feedback</h3>
@@ -1827,7 +1870,7 @@ body.is-phone .affixChip{font-size:7.5px;padding:2px 6px;}
 </div>
 <div class="overlay" id="profileOverlay" aria-hidden="true">
   <section class="panel menuPage" role="dialog" aria-modal="true" aria-labelledby="profileTitle">
-    <div class="panelHead"><h2 id="profileTitle">Adventurer Profile</h2></div>
+    <div class="panelHead"><h2 id="profileTitle">Adventurer Profile</h2><span class="sub">Saves and backups</span></div>
     <div class="menuPageBody">
       <p class="menuLead">Your optional local profile labels this device's progress. No email, password or personal details are needed.</p>
       <div class="profileCard">
@@ -1849,7 +1892,7 @@ body.is-phone .affixChip{font-size:7.5px;padding:2px 6px;}
 </div>
 <div class="overlay" id="rewardsOverlay" aria-hidden="true">
   <section class="panel menuPage" role="dialog" aria-modal="true" aria-labelledby="rewardsTitle">
-    <div class="panelHead"><h2 id="rewardsTitle">Progress &amp; Rewards</h2></div>
+    <div class="panelHead"><h2 id="rewardsTitle">Progress &amp; Rewards</h2><span class="sub">Milestones and shards</span></div>
     <div class="menuPageBody"><p class="menuLead">Reach milestones across runs to earn permanent Ember Shards. Claim each reward once.</p>
       <div id="rewardSummary" class="menuCurrency"></div><div id="rewardList"></div>
       <div class="menuActions"><button class="bigBtn secondary" data-open-page="settingsOverlay">Visuals &amp; settings</button><button class="bigBtn secondary" data-close-page="rewardsOverlay">Done</button></div>
@@ -1858,7 +1901,7 @@ body.is-phone .affixChip{font-size:7.5px;padding:2px 6px;}
 </div>
 <div class="overlay" id="sanctuaryOverlay" aria-hidden="true">
   <section class="panel menuPage" role="dialog" aria-modal="true" aria-labelledby="sanctuaryTitle">
-    <div class="panelHead"><h2 id="sanctuaryTitle">Sanctuary · Permanent Keepsakes</h2></div>
+    <div class="panelHead"><h2 id="sanctuaryTitle">Sanctuary</h2><span class="sub">Spend shards on keepsakes</span></div>
     <div class="menuPageBody"><p class="menuLead">Spend earned Ember Shards on permanent companion upgrades and keepsakes. No real-money purchase is required.</p>
       <div id="sanctuaryBalance" class="menuCurrency"></div>
       <h3 class="sanctuarySection">Companion Training</h3><div id="companionUpgradeItems"></div>
@@ -1872,7 +1915,7 @@ body.is-phone .affixChip{font-size:7.5px;padding:2px 6px;}
 <!-- ============================ DEATH ============================ -->
 <div class="overlay" id="deathOverlay">
   <div class="panel deathPanel">
-    <div class="panelHead"><h2>You Died</h2></div>
+    <div class="panelHead"><h2>You Died</h2><span class="sub" id="deathSub">The dungeon keeps what you learned</span></div>
     <div class="panelInner">
       <div class="deathTitle">Slain</div>
       <div class="epitaph" id="deathEpitaph">The dungeon claims another wanderer. Its halls remember your name.</div>
@@ -1885,7 +1928,7 @@ body.is-phone .affixChip{font-size:7.5px;padding:2px 6px;}
 <!-- ============================ VICTORY ============================ -->
 <div class="overlay" id="victoryOverlay">
   <div class="panel victoryPanel">
-    <div class="panelHead"><h2>Victory</h2></div>
+    <div class="panelHead"><h2>Victory</h2><span class="sub">You climbed back into the light</span></div>
     <div class="panelInner">
       <div class="victoryTitle">The Depths Cleared</div>
       <div class="epitaph">Ten floors of horror lie behind you. The Heartstone is shattered, and the dungeon's pulse falls silent at last.</div>
@@ -2178,7 +2221,7 @@ const Profile = {
 };
 
 const Sound = (() => {
-  let ctx = null, master = null, musicGain = null, sfxGain = null, sfxOut = null, noiseBuf = null;
+  let ctx = null, master = null, musicGain = null, sfxGain = null, sfxOut = null, noiseBuf = null, panner = null;
   let muted = Settings.get().muted, volume = Settings.get().volume, started = false;
   let musicTimer = null, musicStep = 0, musicLayer = 0;
   let ambientGain = null, ambientSrc = null;
@@ -2194,7 +2237,10 @@ const Sound = (() => {
       comp.threshold.value = -18; comp.knee.value = 22; comp.ratio.value = 8;
       comp.attack.value = 0.004; comp.release.value = 0.18;
       sfxGain = ctx.createGain(); sfxGain.gain.value = 0.9; sfxGain.connect(comp);
-      sfxOut = ctx.createGain(); sfxOut.gain.value = 1; sfxOut.connect(sfxGain);
+      sfxOut = ctx.createGain(); sfxOut.gain.value = 1;
+      panner = ctx.createStereoPanner ? ctx.createStereoPanner() : null;
+      if (panner) { sfxOut.connect(panner); panner.connect(sfxGain); }
+      else sfxOut.connect(sfxGain);
       musicGain = ctx.createGain(); musicGain.gain.value = 0.18; musicGain.connect(comp);
       comp.connect(master);
       /* noise buffer reused by every percussive / noisy sound */
@@ -2202,6 +2248,7 @@ const Sound = (() => {
       noiseBuf = ctx.createBuffer(1, len, ctx.sampleRate);
       const d = noiseBuf.getChannelData(0);
       for (let i = 0; i < len; i++) d[i] = Math.random() * 2 - 1;
+      setupVerb();
       started = true;
       return true;
     } catch (err) {
@@ -2248,364 +2295,473 @@ const Sound = (() => {
   function chord(freqs, t0, dur, gain = 0.14, type = 'triangle') {
     freqs.forEach((f, i) => osc(type, f, t0 + i * 0.012, dur, gain));
   }
+  /* ===================== synthesis toolkit =====================
+     Real-world sounds share three parts: a sharp transient, a resonant body
+     that rings at a few fixed frequencies, and a decay tail. The old effects
+     were bare oscillators with a volume ramp, which is why they read as
+     beeps. Every sound below is now built from the parts below instead.
+
+       metal()      struck/ringing body — sword steel, keys, iron hinges
+       thump()      soft low body — flesh, earth, wood
+       swish()      filtered noise sweep — blades, cloth, wind
+       thud()/crunch()/knock()/shatter()  material-specific impacts
+       voice()      growls and yelps with vowel formants
+     Everything is routed through a generated stone-hall reverb, so the
+     effects share one space instead of playing dry. */
+
+  /* ---- stone hall reverb ----
+     A convolution impulse response is the textbook approach, but it cannot be
+     verified offline (several Web Audio engines implement ConvolverNode as a
+     pass-through) and it allocates a multi-second buffer on every device. This
+     is a Schroeder/FDN-style network instead: four parallel comb filters whose
+     delays are mutually prime (so the echoes never line up into a metallic
+     ring) feeding two series allpass diffusers. That is the standard way to
+     fake a room, and every stage is an ordinary node that can be measured. */
+  let verbIn = null;
+  function stoneVerb(send) {
+    const out = ctx.createGain(); out.gain.value = 0.3;    /* wet level */
+    const sum = ctx.createGain(); sum.gain.value = 0.42;
+    /* Four comb delays with mutually prime lengths. Each feeds back through
+       its own lowpass so the tail darkens as it decays, like real stone.
+       Feedback is kept well under 1: at 0.8+ these combs ring forever. */
+    [0.0297, 0.0371, 0.0411, 0.0437].forEach((secs, i) => {
+      const d = ctx.createDelay(1.0);
+      d.delayTime.value = secs * (1 + i * 0.013);
+      const tap = ctx.createGain(); tap.gain.value = 0.9 - i * 0.12;
+      send.connect(d); d.connect(tap); tap.connect(sum);
+      const damp2 = ctx.createBiquadFilter();
+      damp2.type = 'lowpass'; damp2.frequency.value = 2800 - i * 380; damp2.Q.value = 0.3;
+      const fb = ctx.createGain(); fb.gain.value = 0.52;
+      d.connect(damp2); damp2.connect(fb); fb.connect(d);
+    });
+    /* Diffusers: delay with 45% of its own output mixed back into its input.
+       Kept well below unity so the loop is not self-oscillating. */
+    let node = sum;
+    [0.0051, 0.0073, 0.0113].forEach((secs) => {
+      const ap = ctx.createDelay(0.2);
+      ap.delayTime.value = secs;
+      const ag = ctx.createGain(); ag.gain.value = 0.45;
+      node.connect(ap); ap.connect(ag); ag.connect(ap);
+      node = ap;
+    });
+    const damp = ctx.createBiquadFilter();
+    damp.type = 'lowpass'; damp.frequency.value = 3600; damp.Q.value = 0.4;
+    node.connect(damp); damp.connect(out); out.connect(sfxGain);
+    return out;
+  }
+  function setupVerb() {
+    if (!ctx.createDelay) return;
+    const send = ctx.createGain(); send.gain.value = 1;
+    verbIn = send;
+    stoneVerb(send);
+  }
+  /* one bus for everything: dry straight to the mix, wet through the hall */
+  function bus(gain, pan) {
+    const g = ctx.createGain();
+    g.gain.value = gain === undefined ? 1 : gain;
+    const p = pan ? ctx.createStereoPanner() : null;
+    let out = g;
+    if (p) { p.pan.value = clamp(pan, -1, 1); g.connect(p); out = p; }
+    out.connect(sfxOut);
+    let sendGain = verbIn;
+    if (sendGain) { const snd = ctx.createGain(); snd.gain.value = 0.9; out.connect(snd); snd.connect(sendGain); }
+    return g;                              /* sources connect here */
+  }
+  /* a decaying partial. `al` = amplitude, `dc` = seconds to fall to silence */
+  function partial(type, freq, t0, al, dc, dest, detune) {
+    const o = ctx.createOscillator(), g = ctx.createGain();
+    o.type = type;
+    o.frequency.setValueAtTime(freq, t0);
+    if (detune) o.detune.setValueAtTime(detune, t0);
+    g.gain.setValueAtTime(0.0001, t0);
+    g.gain.exponentialRampToValueAtTime(Math.max(0.0002, al), t0 + 0.004);
+    g.gain.exponentialRampToValueAtTime(0.0001, t0 + dc);
+    o.connect(g); g.connect(dest);
+    o.start(t0); o.stop(t0 + dc + 0.03);
+    return { o, g };
+  }
+  /* struck metal: a bright transient plus a set of detuned partials that decay
+     at different rates. This is the sound of a sword, a key, or a hinge. */
+  function metal(t0, dest, base, al, dur, partials) {
+    const ratios = partials || [1, 2.41, 3.83, 5.19, 6.79];
+    ratios.forEach((r, i) => {
+      partial('sine', base * r, t0 + i * 0.0012, al / (1 + i * 0.55), dur * (1 - i * 0.11), dest, (i % 2 ? 7 : -5));
+    });
+    noiseSweep(t0, 0.055, al * 0.9, dest, 'bandpass', base * 3.2, base * 1.4, 1.6);
+  }
+  /* soft low body */
+  function thump(t0, dest, f0, f1, al, dc) {
+    const o = ctx.createOscillator(), g = ctx.createGain();
+    o.type = 'sine';
+    o.frequency.setValueAtTime(f0, t0);
+    o.frequency.exponentialRampToValueAtTime(Math.max(24, f1), t0 + dc * 0.7);
+    g.gain.setValueAtTime(0.0001, t0);
+    g.gain.exponentialRampToValueAtTime(al, t0 + 0.006);
+    g.gain.exponentialRampToValueAtTime(0.0001, t0 + dc);
+    o.connect(g); g.connect(dest); o.start(t0); o.stop(t0 + dc + 0.02);
+  }
+  function noiseSweep(t0, dur, al, dest, type, f0, f1, q) {
+    const src = ctx.createBufferSource();
+    src.buffer = noiseBuf;
+    src.playbackRate.value = 0.85 + Math.random() * 0.3;
+    const f = ctx.createBiquadFilter();
+    f.type = type || 'bandpass';
+    f.frequency.setValueAtTime(f0, t0);
+    if (f1) f.frequency.exponentialRampToValueAtTime(Math.max(40, f1), t0 + dur);
+    f.Q.value = q === undefined ? 1 : q;
+    const g = ctx.createGain();
+    g.gain.setValueAtTime(0.0001, t0);
+    g.gain.exponentialRampToValueAtTime(Math.max(0.0002, al), t0 + Math.min(0.012, dur * 0.25));
+    g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+    src.connect(f); f.connect(g); g.connect(dest);
+    /* the buffer is 1.2 s: leave enough room for the sweep so a long tail is
+       not cut short, while still starting at a random point so repeats differ */
+    const room = Math.max(0, 1.1 - dur);
+    src.start(t0, Math.random() * Math.min(0.4, room)); src.stop(t0 + dur + 0.03);
+  }
+  function crunch(t0, dest, al, dur) {
+    noiseSweep(t0, dur * 0.5, al, dest, 'bandpass', 1800, 500, 0.9);
+    noiseSweep(t0 + 0.008, dur, al * 0.7, dest, 'lowpass', 950, 260, 0.7);
+  }
+  function shatter(t0, dest, al, dur) {
+    for (let i = 0; i < 7; i++) {
+      const t = t0 + i * (dur / 9) + Math.random() * 0.012;
+      metal(t, dest, 1400 + Math.random() * 2600, al * (0.34 - i * 0.02), 0.09 + Math.random() * 0.14, [1, 1.87, 2.6]);
+    }
+  }
+  /* A growl or yelp: a sawtooth through two vowel formants plus sub-octave.
+     This is roughly how the ear recognises a creature rather than a machine. */
+  function voice(t0, dest, f0, f1, dc, al, vowels) {
+    const o = ctx.createOscillator(), g = ctx.createGain();
+    o.type = 'sawtooth';
+    o.frequency.setValueAtTime(f0, t0);
+    o.frequency.exponentialRampToValueAtTime(Math.max(30, f1), t0 + dc * 0.85);
+    /* slight vibrato makes it read as a throat, not a synth */
+    const lfo = ctx.createOscillator(), lg = ctx.createGain();
+    lfo.frequency.value = 5.5 + Math.random() * 3; lg.gain.value = f0 * 0.035;
+    lfo.connect(lg); lg.connect(o.frequency);
+    const pairs = vowels || [[520, 1180], [330, 920]];
+    pairs.forEach(([fA, fB], i) => {
+      const bp = ctx.createBiquadFilter();
+      bp.type = 'bandpass'; bp.frequency.value = fA; bp.Q.value = 4.5 - i;
+      const gg = ctx.createGain(); gg.gain.value = 1.4 / (i + 1);
+      o.connect(bp); bp.connect(gg); gg.connect(g);
+    });
+    const sub = ctx.createOscillator(), sg = ctx.createGain();
+    sub.type = 'sine'; sub.frequency.setValueAtTime(f0 / 2, t0);
+    sub.frequency.exponentialRampToValueAtTime(Math.max(20, f1 / 2), t0 + dc);
+    sg.gain.value = 0.55; sub.connect(sg); sg.connect(g);
+    g.gain.setValueAtTime(0.0001, t0);
+    g.gain.exponentialRampToValueAtTime(al, t0 + 0.02);
+    g.gain.exponentialRampToValueAtTime(0.0001, t0 + dc);
+    o.connect(g); g.connect(dest);
+    o.start(t0); lfo.start(t0); sub.start(t0);
+    o.stop(t0 + dc + 0.03); lfo.stop(t0 + dc + 0.03); sub.stop(t0 + dc + 0.03);
+  }
+
   /* ---- individual SFX ---- */
   const sfx = {
+    /* steel leaves its sheath: air first, then a ringing edge */
     swing() {
-      if (!ctx) return; const t0 = t();
-      const o = ctx.createOscillator(); const g = ctx.createGain();
-      const f = ctx.createBiquadFilter(); f.type = 'bandpass'; f.Q.value = 1.6;
-      o.type = 'sawtooth';
-      o.frequency.setValueAtTime(420, t0);
-      o.frequency.exponentialRampToValueAtTime(120, t0 + 0.19);
-      f.frequency.setValueAtTime(2600, t0);
-      f.frequency.exponentialRampToValueAtTime(420, t0 + 0.2);
-      g.gain.setValueAtTime(0.0001, t0);
-      g.gain.exponentialRampToValueAtTime(0.2, t0 + 0.02);
-      g.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.22);
-      o.connect(f); f.connect(g); g.connect(sfxOut);
-      o.start(t0); o.stop(t0 + 0.24);
-      noise(t0, 0.16, 0.1, { type: 'highpass', f: 1800, sweep: 400 });
+      const t0 = t(); const out = bus(1);
+      noiseSweep(t0, 0.2, 0.22, out, 'bandpass', 3200, 700, 1.1);
+      noiseSweep(t0 + 0.02, 0.13, 0.12, out, 'highpass', 5200, 2400, 0.7);
+      metal(t0 + 0.06, out, 880, 0.05, 0.16, [1, 2.7, 4.3]);
     },
+    /* blade into armour: a hard transient, then the plate rings */
     hit() {
-      if (!ctx) return; const t0 = t();
-      osc('square', 150, t0, 0.09, 0.16);
-      osc('triangle', 92, t0 + 0.01, 0.13, 0.14);
-      noise(t0, 0.1, 0.2, { type: 'lowpass', f: 2200, sweep: 240 });
+      const t0 = t(); const out = bus(0.95);
+      noiseSweep(t0, 0.06, 0.34, out, 'bandpass', 3400, 1200, 0.8);
+      metal(t0 + 0.004, out, 620, 0.13, 0.3, [1, 2.2, 3.6, 5.1]);
+      thump(t0, out, 150, 52, 0.32, 0.2);
     },
     crit() {
-      if (!ctx) return; const t0 = t();
-      osc('square', 300, t0, 0.06, 0.16);
-      osc('square', 450, t0 + 0.04, 0.08, 0.14);
-      noise(t0, 0.20, 0.28, { type: 'bandpass', f: 3200, q: 2, sweep: 700 });
-      osc('sine', 70, t0, 0.24, 0.22);
+      const t0 = t(); const out = bus(1);
+      noiseSweep(t0, 0.09, 0.42, out, 'bandpass', 4600, 900, 0.9);
+      metal(t0, out, 780, 0.2, 0.55, [1, 2.2, 3.9, 5.4, 7.1]);
+      thump(t0, out, 190, 44, 0.45, 0.3);
+      metal(t0 + 0.1, out, 1180, 0.09, 0.7, [1, 1.6, 2.8]);
     },
     enemyHurt() {
-      if (!ctx) return; const t0 = t();
-      const base = rand(150, 108);
-      const o = ctx.createOscillator(); const g = ctx.createGain();
-      o.type = 'sawtooth'; o.frequency.setValueAtTime(base, t0);
-      o.frequency.exponentialRampToValueAtTime(base * 0.55, t0 + 0.22);
-      const f = ctx.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = 900;
-      g.gain.setValueAtTime(0.0001, t0);
-      g.gain.exponentialRampToValueAtTime(0.17, t0 + 0.02);
-      g.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.26);
-      o.connect(f); f.connect(g); g.connect(sfxOut);
-      o.start(t0); o.stop(t0 + 0.28);
-      noise(t0, 0.16, 0.09, { type: 'bandpass', f: 600, q: 1.2 });
+      const t0 = t(); const out = bus(0.85);
+      voice(t0, out, rand(190, 130), rand(90, 62), 0.24, 0.2, [[620, 1400], [380, 1000]]);
+      crunch(t0, out, 0.16, 0.14);
     },
     enemyDie() {
-      if (!ctx) return; const t0 = t();
-      const o = ctx.createOscillator(); const g = ctx.createGain();
-      o.type = 'sawtooth'; o.frequency.setValueAtTime(180, t0);
-      o.frequency.exponentialRampToValueAtTime(40, t0 + 0.55);
-      g.gain.setValueAtTime(0.0001, t0);
-      g.gain.exponentialRampToValueAtTime(0.15, t0 + 0.03);
-      g.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.6);
-      o.connect(g); g.connect(sfxOut); o.start(t0); o.stop(t0 + 0.62);
-      noise(t0, 0.45, 0.13, { type: 'lowpass', f: 1400, sweep: 160 });
+      const t0 = t(); const out = bus(0.95);
+      voice(t0, out, rand(170, 120), 34, 0.6, 0.24, [[560, 1250], [300, 850]]);
+      thump(t0 + 0.03, out, 110, 32, 0.34, 0.55);
+      crunch(t0 + 0.05, out, 0.2, 0.4);
+      noiseSweep(t0 + 0.1, 0.7, 0.12, out, 'lowpass', 1600, 180, 0.6);
+    },
+    /* Ember's bite */
+    bite() {
+      const t0 = t(); const out = bus(0.8);
+      noiseSweep(t0, 0.05, 0.3, out, 'bandpass', 2800, 1400, 1.4);
+      voice(t0 + 0.02, out, 320, 190, 0.14, 0.18, [[760, 1700], [430, 1150]]);
+      thump(t0 + 0.01, out, 120, 60, 0.2, 0.12);
+    },
+    /* Ember is down: a yelp that falls away */
+    hurt() {
+      const t0 = t(); const out = bus(0.9);
+      voice(t0, out, 620, 300, 0.32, 0.22, [[900, 2100], [540, 1500]]);
+      voice(t0 + 0.14, out, 540, 210, 0.3, 0.16, [[820, 1900], [500, 1300]]);
     },
     magic() {
-      if (!ctx) return; const t0 = t();
-      const o = ctx.createOscillator(); const g = ctx.createGain();
-      o.type = 'sine'; o.frequency.setValueAtTime(320, t0);
-      o.frequency.exponentialRampToValueAtTime(1250, t0 + 0.16);
-      const o2 = ctx.createOscillator(); const g2 = ctx.createGain();
-      o2.type = 'triangle'; o2.frequency.setValueAtTime(640, t0);
-      o2.frequency.exponentialRampToValueAtTime(2400, t0 + 0.16);
+      const t0 = t(); const out = bus(0.95);
+      /* air rushing inward, then a clean chime that opens up */
+      noiseSweep(t0, 0.16, 0.1, out, 'bandpass', 700, 3200, 2.2);
+      const o = ctx.createOscillator(), g = ctx.createGain();
+      o.type = 'triangle'; o.frequency.setValueAtTime(420, t0);
+      o.frequency.exponentialRampToValueAtTime(1320, t0 + 0.13);
       g.gain.setValueAtTime(0.0001, t0); g.gain.exponentialRampToValueAtTime(0.13, t0 + 0.02);
-      g.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.3);
-      g2.gain.setValueAtTime(0.0001, t0); g2.gain.exponentialRampToValueAtTime(0.06, t0 + 0.03);
-      g2.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.24);
-      o.connect(g); g.connect(sfxOut); o2.connect(g2); g2.connect(sfxOut);
-      o.start(t0); o.stop(t0 + 0.32); o2.start(t0); o2.stop(t0 + 0.26);
-      noise(t0 + 0.02, 0.22, 0.05, { type: 'highpass', f: 3000 });
+      g.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.34);
+      o.connect(g); g.connect(out); o.start(t0); o.stop(t0 + 0.36);
+      metal(t0 + 0.12, out, 1320, 0.05, 0.5, [1, 2.02, 3.01]);
     },
     magicHit() {
-      if (!ctx) return; const t0 = t();
-      osc('triangle', 900, t0, 0.1, 0.12);
-      osc('sine', 1350, t0 + 0.02, 0.14, 0.09);
-      noise(t0, 0.22, 0.16, { type: 'bandpass', f: 2600, q: 1.6, sweep: 600 });
+      const t0 = t(); const out = bus(0.95);
+      noiseSweep(t0, 0.22, 0.2, out, 'bandpass', 3400, 700, 1.2);
+      metal(t0, out, 980, 0.08, 0.3, [1, 1.9, 3.2]);
+      thump(t0, out, 160, 70, 0.16, 0.16);
     },
     chest() {
-      if (!ctx) return; const t0 = t();
-      const notes = [523.25, 659.25, 783.99, 1046.5, 1318.5];
-      notes.forEach((f, i) => {
-        const o = ctx.createOscillator(); const g = ctx.createGain();
-        o.type = 'triangle'; o.frequency.setValueAtTime(f, t0 + i * 0.075);
-        g.gain.setValueAtTime(0.0001, t0 + i * 0.075);
-        g.gain.exponentialRampToValueAtTime(0.12, t0 + i * 0.075 + 0.015);
-        g.gain.exponentialRampToValueAtTime(0.0001, t0 + i * 0.075 + 0.42);
-        o.connect(g); g.connect(sfxOut);
-        o.start(t0 + i * 0.075); o.stop(t0 + i * 0.075 + 0.45);
-      });
-      noise(t0, 0.35, 0.05, { type: 'highpass', f: 4200 });
+      const t0 = t(); const out = bus(1);
+      /* iron lid grating open, then the glitter of coins */
+      noiseSweep(t0, 0.12, 0.16, out, 'bandpass', 900, 400, 1.5);
+      metal(t0 + 0.02, out, 240, 0.07, 0.4, [1, 1.7, 2.9]);
+      for (let i = 0; i < 5; i++) metal(t0 + 0.08 + i * 0.055, out, 1900 + rand(1600, 900), 0.05, 0.4, [1, 2.3]);
+    },
+    /* picking up coin — bright, tiny, and slightly random so repeats do not
+       sound like a single sample being replayed */
+    gold() {
+      const t0 = t(); const out = bus(0.8);
+      const base = 2100 + rand(700, 300);
+      metal(t0, out, base, 0.07, 0.26, [1, 2.2, 3.4]);
+      metal(t0 + 0.045, out, base * 1.32, 0.05, 0.3, [1, 2.1]);
+    },
+    /* permanent-reward chime */
+    loot() {
+      const t0 = t(); const out = bus(0.85);
+      [784, 988, 1318].forEach((f, i) => metal(t0 + i * 0.07, out, f, 0.06, 0.7, [1, 2.01, 3.02]));
+      noiseSweep(t0 + 0.1, 0.5, 0.03, out, 'highpass', 6000, 4000, 0.5);
     },
     levelup() {
-      if (!ctx) return; const t0 = t();
-      /* bright major arpeggio + shimmering tail */
-      const seq = [392, 523.25, 659.25, 783.99, 1046.5, 1318.5];
-      seq.forEach((f, i) => {
-        const start = t0 + i * 0.09;
-        const o = ctx.createOscillator(); const g = ctx.createGain();
-        o.type = 'triangle'; o.frequency.setValueAtTime(f, start);
-        g.gain.setValueAtTime(0.0001, start);
-        g.gain.exponentialRampToValueAtTime(0.15, start + 0.015);
-        g.gain.exponentialRampToValueAtTime(0.0001, start + 0.7);
-        o.connect(g); g.connect(sfxOut);
-        o.start(start); o.stop(start + 0.75);
+      const t0 = t(); const out = bus(0.85);
+      [392, 523.25, 659.25, 783.99, 1046.5].forEach((f, i) => {
+        metal(t0 + i * 0.085, out, f, 0.07, 0.9 - i * 0.06, [1, 2, 3.01]);
       });
-      chord([523.25, 659.25, 783.99], t0 + 0.55, 1.5, 0.065, 'sine');
-      noise(t0 + 0.5, 0.9, 0.035, { type: 'highpass', f: 5200 });
-      osc('sine', 130.8, t0, 1.1, 0.11);
+      thump(t0, out, 130, 90, 0.14, 0.7);
+      noiseSweep(t0 + 0.45, 0.8, 0.035, out, 'highpass', 5200, 3000, 0.5);
     },
-    /* ---------------- boss cues ---------------- */
     telegraph() {
-      if (!ctx) return; const t0 = t();
-      /* rising, thin warning whine */
-      const o = ctx.createOscillator(); const g = ctx.createGain();
-      o.type = 'triangle'; o.frequency.setValueAtTime(220, t0);
-      o.frequency.exponentialRampToValueAtTime(520, t0 + 0.42);
-      g.gain.setValueAtTime(0.0001, t0);
-      g.gain.exponentialRampToValueAtTime(0.085, t0 + 0.06);
-      g.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.5);
-      o.connect(g); g.connect(sfxOut); o.start(t0); o.stop(t0 + 0.52);
-      noise(t0 + 0.05, 0.4, 0.028, { type: 'bandpass', f: 1800, q: 4 });
+      const t0 = t(); const out = bus(0.9);
+      /* a breath drawn in before the blow */
+      voice(t0, out, 120, 190, 0.42, 0.09, [[300, 780], [220, 620]]);
+      noiseSweep(t0 + 0.02, 0.4, 0.05, out, 'bandpass', 600, 2200, 2.4);
     },
     reveal() {
-      if (!ctx) return; const t0 = t();
-      /* shimmer up into a struck bell — the "you got something" sting */
-      [659.25, 880, 1108.7].forEach((f, i) => {
-        const o = ctx.createOscillator(); const g = ctx.createGain();
-        o.type = 'triangle'; o.frequency.setValueAtTime(f, t0 + i * 0.055);
-        g.gain.setValueAtTime(0.0001, t0 + i * 0.055);
-        g.gain.exponentialRampToValueAtTime(0.10, t0 + i * 0.055 + 0.015);
-        g.gain.exponentialRampToValueAtTime(0.0001, t0 + i * 0.055 + 0.30);
-        o.connect(g); g.connect(sfxOut); o.start(t0 + i * 0.055); o.stop(t0 + i * 0.055 + 0.32);
-      });
-      const o = ctx.createOscillator(); const g = ctx.createGain();
-      o.type = 'sine'; o.frequency.setValueAtTime(1318.5, t0 + 0.18);
-      g.gain.setValueAtTime(0.0001, t0 + 0.18);
-      g.gain.exponentialRampToValueAtTime(0.085, t0 + 0.2);
-      g.gain.exponentialRampToValueAtTime(0.0001, t0 + 1.5);
-      o.connect(g); g.connect(sfxOut); o.start(t0 + 0.18); o.stop(t0 + 1.55);
-      noise(t0 + 0.16, 0.5, 0.028, { type: 'highpass', f: 6000 });
+      const t0 = t(); const out = bus(0.85);
+      [659.25, 880, 1108.7, 1318.5].forEach((f, i) => metal(t0 + i * 0.06, out, f, 0.07, 1.1 - i * 0.08, [1, 2.01, 3.02, 4.2]));
+      noiseSweep(t0 + 0.15, 0.6, 0.03, out, 'highpass', 6000, 3500, 0.5);
     },
     comboUp() {
-      if (!ctx) return; const t0 = t();
+      const t0 = t(); const out = bus(0.8);
       const base = 330 + (Game.comboMult || 1) * 42;
-      osc('triangle', base, t0, 0.1, 0.075);
-      osc('triangle', base * 1.5, t0 + 0.045, 0.13, 0.06);
-      noise(t0, 0.08, 0.03, { type: 'highpass', f: 6200 });
+      metal(t0, out, base, 0.05, 0.24, [1, 2.02]);
+      metal(t0 + 0.05, out, base * 1.5, 0.04, 0.28, [1, 2.01]);
     },
     bounty() {
-      if (!ctx) return; const t0 = t();
-      /* bright six-note fanfare with a bell tail */
-      [523.25, 659.25, 783.99, 1046.5].forEach((f, i) => {
-        const o = ctx.createOscillator(); const g = ctx.createGain();
-        o.type = 'triangle'; o.frequency.setValueAtTime(f, t0 + i * 0.075);
-        g.gain.setValueAtTime(0.0001, t0 + i * 0.075);
-        g.gain.exponentialRampToValueAtTime(0.13, t0 + i * 0.075 + 0.02);
-        g.gain.exponentialRampToValueAtTime(0.0001, t0 + i * 0.075 + 0.55);
-        o.connect(g); g.connect(sfxOut); o.start(t0 + i * 0.075); o.stop(t0 + i * 0.075 + 0.58);
-      });
-      chord([1046.5, 1318.5, 1568], t0 + 0.32, 1.3, 0.055, 'sine');
-      noise(t0 + 0.3, 0.7, 0.03, { type: 'highpass', f: 5400 });
+      const t0 = t(); const out = bus(0.8);
+      [523.25, 659.25, 783.99, 1046.5].forEach((f, i) => metal(t0 + i * 0.08, out, f, 0.08, 1.2 - i * 0.1, [1, 2.01, 3.01]));
+      thump(t0, out, 110, 80, 0.12, 0.5);
     },
+    /* stone impact */
     boom() {
-      if (!ctx) return; const t0 = t();
-      const o = ctx.createOscillator(); const g = ctx.createGain();
-      o.type = 'sine'; o.frequency.setValueAtTime(150, t0);
-      o.frequency.exponentialRampToValueAtTime(42, t0 + 0.38);
-      g.gain.setValueAtTime(0.0001, t0);
-      g.gain.exponentialRampToValueAtTime(0.24, t0 + 0.01);
-      g.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.5);
-      o.connect(g); g.connect(sfxOut); o.start(t0); o.stop(t0 + 0.52);
-      noise(t0, 0.34, 0.20, { type: 'lowpass', f: 1900, sweep: 220 });
+      const t0 = t(); const out = bus(0.95);
+      thump(t0, out, 150, 38, 0.4, 0.55);
+      crunch(t0, out, 0.3, 0.4);
+      noiseSweep(t0 + 0.02, 0.6, 0.16, out, 'lowpass', 1800, 200, 0.6);
     },
     bossSlam() {
-      if (!ctx) return; const t0 = t();
-      /* sub drop + splintering rock */
-      const o = ctx.createOscillator(); const g = ctx.createGain();
-      o.type = 'sine'; o.frequency.setValueAtTime(120, t0);
-      o.frequency.exponentialRampToValueAtTime(34, t0 + 0.5);
-      g.gain.setValueAtTime(0.0001, t0);
-      g.gain.exponentialRampToValueAtTime(0.30, t0 + 0.012);
-      g.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.7);
-      o.connect(g); g.connect(sfxOut); o.start(t0); o.stop(t0 + 0.72);
-      noise(t0, 0.45, 0.24, { type: 'lowpass', f: 1400, sweep: 180 });
-      noise(t0 + 0.03, 0.5, 0.10, { type: 'highpass', f: 2600 });
-      osc('sawtooth', 72, t0 + 0.02, 0.3, 0.09);
+      const t0 = t(); const out = bus(1);
+      thump(t0, out, 120, 30, 0.5, 0.75);
+      crunch(t0 + 0.01, out, 0.36, 0.5);
+      noiseSweep(t0 + 0.03, 0.7, 0.16, out, 'lowpass', 1500, 150, 0.7);
+      /* debris skittering away after the hit */
+      for (let i = 0; i < 4; i++) metal(t0 + 0.12 + i * 0.06, out, 900 + rand(1400, 600), 0.03, 0.2, [1, 2.4]);
     },
     bossHit() {
-      if (!ctx) return; const t0 = t();
-      noise(t0, 0.3, 0.26, { type: 'bandpass', f: 700, q: 0.8, sweep: 140 });
-      osc('square', 96, t0, 0.2, 0.12);
-      osc('sine', 52, t0, 0.35, 0.14);
+      const t0 = t(); const out = bus(0.95);
+      metal(t0, out, 210, 0.16, 0.5, [1, 1.6, 2.4, 3.1]);
+      thump(t0, out, 100, 42, 0.3, 0.4);
+      crunch(t0, out, 0.2, 0.24);
     },
     summon() {
-      if (!ctx) return; const t0 = t();
-      /* reverse-swell pact whisper */
-      noise(t0, 0.85, 0.07, { type: 'bandpass', f: 420, q: 2.4, sweep: 1300 });
-      [146.83, 174.61, 220, 261.63].forEach((f, i) => {
-        osc('sine', f, t0 + 0.15 + i * 0.08, 0.7, 0.06);
-      });
-      osc('sawtooth', 58, t0 + 0.2, 0.6, 0.06);
+      const t0 = t(); const out = bus(0.8);
+      noiseSweep(t0, 0.9, 0.08, out, 'bandpass', 400, 1400, 2.2);
+      [146.83, 174.61, 220].forEach((f, i) => voice(t0 + 0.1 + i * 0.09, out, f, f * 0.98, 0.8, 0.07, [[420, 980], [260, 700]]));
     },
     charge() {
-      if (!ctx) return; const t0 = t();
-      /* whooshing rush with a rising pitch */
-      const o = ctx.createOscillator(); const g = ctx.createGain();
-      o.type = 'sawtooth'; o.frequency.setValueAtTime(80, t0);
-      o.frequency.exponentialRampToValueAtTime(300, t0 + 0.35);
-      const f = ctx.createBiquadFilter(); f.type = 'lowpass'; f.frequency.setValueAtTime(700, t0);
-      f.frequency.exponentialRampToValueAtTime(2400, t0 + 0.3);
-      g.gain.setValueAtTime(0.0001, t0);
-      g.gain.exponentialRampToValueAtTime(0.14, t0 + 0.05);
-      g.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.42);
-      o.connect(f); f.connect(g); g.connect(sfxOut); o.start(t0); o.stop(t0 + 0.45);
-      noise(t0, 0.4, 0.13, { type: 'highpass', f: 1500 });
+      const t0 = t(); const out = bus(0.9);
+      noiseSweep(t0, 0.45, 0.2, out, 'bandpass', 500, 2600, 1.2);
+      voice(t0 + 0.04, out, 110, 210, 0.42, 0.08, [[340, 820], [240, 640]]);
     },
     phase() {
-      if (!ctx) return; const t0 = t();
-      /* dissonant brass swell announcing the shift */
+      const t0 = t(); const out = bus(0.9);
       [110, 116.54, 155.56].forEach((f, i) => {
-        const o = ctx.createOscillator(); const g = ctx.createGain();
+        const o = ctx.createOscillator(), g = ctx.createGain(), fl = ctx.createBiquadFilter();
         o.type = 'sawtooth'; o.frequency.setValueAtTime(f, t0);
-        o.frequency.linearRampToValueAtTime(f * 1.02, t0 + 1.1);
-        const fl = ctx.createBiquadFilter(); fl.type = 'lowpass'; fl.frequency.value = 900;
+        o.frequency.linearRampToValueAtTime(f * 1.03, t0 + 1.2);
+        fl.type = 'lowpass'; fl.frequency.value = 850;
         g.gain.setValueAtTime(0.0001, t0);
-        g.gain.exponentialRampToValueAtTime(0.075, t0 + 0.10 + i * 0.05);
-        g.gain.exponentialRampToValueAtTime(0.0001, t0 + 1.3);
-        o.connect(fl); fl.connect(g); g.connect(sfxOut); o.start(t0); o.stop(t0 + 1.32);
+        g.gain.exponentialRampToValueAtTime(0.09, t0 + 0.12 + i * 0.05);
+        g.gain.exponentialRampToValueAtTime(0.0001, t0 + 1.4);
+        o.connect(fl); fl.connect(g); g.connect(out); o.start(t0); o.stop(t0 + 1.45);
       });
-      noise(t0, 1.0, 0.05, { type: 'bandpass', f: 900, q: 1.2, sweep: 200 });
+      noiseSweep(t0, 1.1, 0.05, out, 'bandpass', 1000, 220, 1.2);
     },
     playerHurt() {
-      if (!ctx) return; const t0 = t();
-      const o = ctx.createOscillator(); const g = ctx.createGain();
-      o.type = 'sawtooth'; o.frequency.setValueAtTime(240, t0);
-      o.frequency.exponentialRampToValueAtTime(105, t0 + 0.2);
-      const f = ctx.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = 1100;
-      g.gain.setValueAtTime(0.0001, t0);
-      g.gain.exponentialRampToValueAtTime(0.15, t0 + 0.015);
-      g.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.24);
-      o.connect(f); f.connect(g); g.connect(sfxOut); o.start(t0); o.stop(t0 + 0.26);
-      noise(t0, 0.18, 0.11, { type: 'lowpass', f: 2600, sweep: 400 });
-    },
-    gold() {
-      if (!ctx) return; const t0 = t();
-      osc('triangle', 1318.5, t0, 0.09, 0.09);
-      osc('triangle', 1760, t0 + 0.05, 0.12, 0.075);
-      osc('sine', 2637, t0 + 0.09, 0.16, 0.04);
+      const t0 = t(); const out = bus(0.9);
+      /* cloth and flesh, then the player's own breath knocked out */
+      noiseSweep(t0, 0.16, 0.2, out, 'bandpass', 1400, 500, 0.9);
+      voice(t0 + 0.01, out, 210, 120, 0.22, 0.2, [[520, 1180], [300, 860]]);
+      thump(t0, out, 130, 55, 0.22, 0.18);
     },
     potion() {
-      if (!ctx) return; const t0 = t();
-      const o = ctx.createOscillator(); const g = ctx.createGain();
-      o.type = 'sine'; o.frequency.setValueAtTime(300, t0);
-      o.frequency.exponentialRampToValueAtTime(760, t0 + 0.35);
-      g.gain.setValueAtTime(0.0001, t0);
-      g.gain.exponentialRampToValueAtTime(0.1, t0 + 0.05);
-      g.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.45);
-      o.connect(g); g.connect(sfxOut); o.start(t0); o.stop(t0 + 0.48);
-      noise(t0 + 0.05, 0.4, 0.03, { type: 'bandpass', f: 900, q: 3 });
+      const t0 = t(); const out = bus(0.9);
+      /* glug, then the warmth spreading */
+      for (let i = 0; i < 3; i++) {
+        const tt = t0 + i * 0.09;
+        const o = ctx.createOscillator(), g = ctx.createGain();
+        o.type = 'sine'; o.frequency.setValueAtTime(260 + i * 40, tt);
+        o.frequency.exponentialRampToValueAtTime(520 + i * 60, tt + 0.09);
+        g.gain.setValueAtTime(0.0001, tt); g.gain.exponentialRampToValueAtTime(0.1, tt + 0.012);
+        g.gain.exponentialRampToValueAtTime(0.0001, tt + 0.11);
+        o.connect(g); g.connect(out); o.start(tt); o.stop(tt + 0.13);
+      }
+      metal(t0 + 0.3, out, 660, 0.05, 0.7, [1, 2.01, 3.02]);
     },
     door() {
-      if (!ctx) return; const t0 = t();
-      noise(t0, 0.5, 0.14, { type: 'lowpass', f: 700, sweep: 180 });
-      osc('sawtooth', 65, t0, 0.4, 0.1);
-      osc('sawtooth', 98, t0 + 0.06, 0.3, 0.06);
+      const t0 = t(); const out = bus(0.9);
+      /* hinge: a slow rasping groan with a metal core */
+      const src = ctx.createBufferSource(); src.buffer = noiseBuf; src.loop = true;
+      const bp = ctx.createBiquadFilter(); bp.type = 'bandpass'; bp.Q.value = 7;
+      bp.frequency.setValueAtTime(320, t0); bp.frequency.linearRampToValueAtTime(620, t0 + 0.55);
+      const g = ctx.createGain();
+      g.gain.setValueAtTime(0.0001, t0); g.gain.linearRampToValueAtTime(0.1, t0 + 0.1);
+      g.gain.linearRampToValueAtTime(0.0001, t0 + 0.7);
+      src.connect(bp); bp.connect(g); g.connect(out); src.start(t0); src.stop(t0 + 0.75);
+      metal(t0 + 0.55, out, 180, 0.08, 0.35, [1, 1.8, 2.7]);
+      thump(t0 + 0.58, out, 90, 42, 0.22, 0.4);
     },
     locked() {
-      if (!ctx) return; const t0 = t();
-      osc('square', 190, t0, 0.07, 0.11);
-      osc('square', 140, t0 + 0.11, 0.1, 0.11);
-      noise(t0, 0.12, 0.1, { type: 'bandpass', f: 900, q: 2 });
+      const t0 = t(); const out = bus(0.95);
+      /* the latch refusing to give */
+      metal(t0, out, 300, 0.1, 0.16, [1, 1.7, 2.9]);
+      metal(t0 + 0.11, out, 260, 0.09, 0.2, [1, 1.6, 2.6]);
+      noiseSweep(t0, 0.1, 0.12, out, 'bandpass', 1100, 700, 2);
     },
     unlock() {
-      if (!ctx) return; const t0 = t();
-      osc('triangle', 880, t0, 0.1, 0.1);
-      osc('triangle', 1174, t0 + 0.08, 0.16, 0.09);
-      noise(t0, 0.14, 0.12, { type: 'highpass', f: 2400 });
+      const t0 = t(); const out = bus(0.95);
+      metal(t0, out, 420, 0.08, 0.3, [1, 2.1, 3.3]);
+      metal(t0 + 0.09, out, 1180, 0.07, 0.5, [1, 2.01, 3.02]);
+      noiseSweep(t0, 0.12, 0.1, out, 'highpass', 2600, 1600, 1);
     },
     crate() {
-      if (!ctx) return; const t0 = t();
-      noise(t0, 0.28, 0.22, { type: 'bandpass', f: 1300, q: 0.9, sweep: 260 });
-      osc('triangle', 190, t0, 0.1, 0.1);
-      osc('triangle', 120, t0 + 0.04, 0.12, 0.08);
+      const t0 = t(); const out = bus(1);
+      /* splintering wood: dry cracks, no ring */
+      for (let i = 0; i < 4; i++) {
+        noiseSweep(t0 + i * 0.026, 0.06, 0.2 - i * 0.03, out, 'bandpass', 1500 + rand(1400, 600), 600, 1.1);
+      }
+      thump(t0, out, 180, 70, 0.2, 0.16);
     },
     stairs() {
-      if (!ctx) return; const t0 = t();
-      [261.63, 329.63, 392, 523.25].forEach((f, i) => {
-        osc('triangle', f, t0 + i * 0.13, 0.5, 0.09);
+      const t0 = t(); const out = bus(0.85);
+      /* footfalls receding down stone, with the room getting darker */
+      [262, 330, 392].forEach((f, i) => {
+        const tt = t0 + i * 0.15;
+        thump(tt, out, 110, 60, 0.16, 0.18);
+        noiseSweep(tt, 0.1, 0.1, out, 'bandpass', 1200 - i * 200, 500, 1.2);
+        metal(tt, out, f, 0.04, 0.4, [1, 2.01]);
       });
-      noise(t0 + 0.1, 0.8, 0.05, { type: 'lowpass', f: 500, sweep: 1400 });
+      noiseSweep(t0 + 0.1, 0.8, 0.04, out, 'lowpass', 500, 1600, 0.6);
     },
     slam() {
-      if (!ctx) return; const t0 = t();
-      const o = ctx.createOscillator(); const g = ctx.createGain();
-      o.type = 'sine'; o.frequency.setValueAtTime(140, t0);
-      o.frequency.exponentialRampToValueAtTime(38, t0 + 0.42);
-      g.gain.setValueAtTime(0.0001, t0);
-      g.gain.exponentialRampToValueAtTime(0.3, t0 + 0.01);
-      g.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.5);
-      o.connect(g); g.connect(sfxOut); o.start(t0); o.stop(t0 + 0.52);
-      noise(t0, 0.42, 0.24, { type: 'lowpass', f: 1600, sweep: 120 });
+      const t0 = t(); const out = bus(1);
+      thump(t0, out, 140, 34, 0.5, 0.6);
+      crunch(t0, out, 0.34, 0.45);
+      noiseSweep(t0, 0.5, 0.18, out, 'lowpass', 1600, 130, 0.7);
     },
     dodge() {
-      if (!ctx) return; const t0 = t();
-      noise(t0, 0.24, 0.1, { type: 'highpass', f: 1200, sweep: 3200 });
-      osc('sine', 520, t0, 0.16, 0.045);
+      const t0 = t(); const out = bus(0.85);
+      noiseSweep(t0, 0.22, 0.14, out, 'bandpass', 900, 3200, 0.9);
+      noiseSweep(t0 + 0.04, 0.16, 0.06, out, 'highpass', 2200, 4800, 0.5);
     },
     miss() {
-      if (!ctx) return; const t0 = t();
-      noise(t0, 0.13, 0.07, { type: 'highpass', f: 2600 });
+      const t0 = t(); const out = bus(0.8);
+      noiseSweep(t0, 0.13, 0.1, out, 'highpass', 3200, 1800, 0.7);
     },
     buy() {
-      if (!ctx) return; const t0 = t();
-      osc('triangle', 784, t0, 0.1, 0.1);
-      osc('triangle', 988, t0 + 0.07, 0.12, 0.085);
-      osc('sine', 1318, t0 + 0.15, 0.2, 0.055);
-      noise(t0, 0.16, 0.05, { type: 'highpass', f: 3400 });
+      const t0 = t(); const out = bus(0.8);
+      /* coins on a counter, then the shopkeeper's bell */
+      metal(t0, out, 1650, 0.07, 0.3, [1, 2.2, 3.4]);
+      metal(t0 + 0.05, out, 2200, 0.05, 0.36, [1, 2.1]);
+      metal(t0 + 0.12, out, 880, 0.06, 0.8, [1, 2.01, 3.02]);
     },
     sell() {
-      if (!ctx) return; const t0 = t();
-      osc('triangle', 988, t0, 0.08, 0.09);
-      osc('triangle', 659, t0 + 0.06, 0.14, 0.075);
+      const t0 = t(); const out = bus(0.85);
+      metal(t0, out, 1980, 0.06, 0.3, [1, 2.1]);
+      metal(t0 + 0.06, out, 1320, 0.05, 0.4, [1, 2.01]);
     },
+    /* menu click: a soft wooden tick, not a beep */
     ui() {
-      if (!ctx) return; const t0 = t();
-      osc('sine', 660, t0, 0.05, 0.028);
+      const t0 = t(); const out = bus(0.85);
+      /* a quiet wooden tick: felt, not a beep */
+      noiseSweep(t0, 0.03, 0.32, out, 'bandpass', 2400, 1500, 1.8);
+      partial('triangle', 720, t0, 0.1, 0.07, out);
+      partial('sine', 1450, t0, 0.05, 0.12, out);
     },
     error() {
-      if (!ctx) return; const t0 = t();
-      osc('square', 150, t0, 0.09, 0.06);
+      const t0 = t(); const out = bus(0.7);
+      partial('triangle', 148, t0, 0.08, 0.1, out);
+      partial('triangle', 138, t0 + 0.1, 0.06, 0.12, out);
+      noiseSweep(t0, 0.08, 0.05, out, 'lowpass', 700, 300, 0.8);
     },
     heartbeat() {
-      if (!ctx) return; const t0 = t();
-      osc('sine', 58, t0, 0.13, 0.16);
-      osc('sine', 52, t0 + 0.2, 0.16, 0.1);
+      const t0 = t(); const out = bus(0.85);
+      thump(t0, out, 66, 40, 0.2, 0.16);
+      thump(t0 + 0.19, out, 60, 36, 0.13, 0.2);
     },
     necroCast() {
-      if (!ctx) return; const t0 = t();
-      const o = ctx.createOscillator(); const g = ctx.createGain();
-      o.type = 'square'; o.frequency.setValueAtTime(240, t0);
-      o.frequency.exponentialRampToValueAtTime(90, t0 + 0.4);
-      const f = ctx.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = 700; f.Q.value = 6;
-      g.gain.setValueAtTime(0.0001, t0);
-      g.gain.exponentialRampToValueAtTime(0.09, t0 + 0.03);
-      g.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.44);
-      o.connect(f); f.connect(g); g.connect(sfxOut); o.start(t0); o.stop(t0 + 0.46);
+      const t0 = t(); const out = bus(0.8);
+      voice(t0, out, 130, 74, 0.44, 0.14, [[300, 720], [210, 560]]);
+      noiseSweep(t0 + 0.02, 0.4, 0.09, out, 'bandpass', 700, 240, 1.6);
     }
   };
-  function play(name, volScale = 1) {
+  function play(name, volScale = 1, pan) {
     if (!ctx || muted || !sfx[name]) return;
     try {
       const target = clamp(volScale, 0.02, 1);
       sfxOut.gain.cancelScheduledValues(ctx.currentTime);
       sfxOut.gain.setValueAtTime(target, ctx.currentTime);
+      /* stereo placement, so a blow on the left of the screen comes from the
+         left speaker. 0 = centre; callers pass a screen-relative offset. */
+      if (panner && Number.isFinite(pan)) {
+        panner.pan.cancelScheduledValues(ctx.currentTime);
+        panner.pan.setValueAtTime(clamp(pan, -1, 1), ctx.currentTime);
+      }
       sfx[name]();
       sfxOut.gain.setValueAtTime(1, ctx.currentTime + 0.06);
     } catch (e) { /* audio must never break the game loop */ }
+  }
+  /* Convert a world point to a stereo position relative to the player. The
+     game never redirects its own calls, so this is opt-in for new sounds. */
+  function panFor(worldX) {
+    try {
+      if (!Game || !Game.player || !Game.W) return 0;
+      return clamp((worldX - Game.player.x) / (Game.W * 0.55), -1, 1);
+    } catch (e) { return 0; }
   }
   /* ---- procedural ambient music: drifting minor pad + heartbeat pulse ---- */
   const SCALE = [0, 2, 3, 5, 7, 8, 10]; /* natural minor */
@@ -2733,7 +2889,32 @@ const Sound = (() => {
     }
     if (ambientGain) ambientGain.gain.setTargetAtTime(clamp(level, 0, 1) * 0.5, ctx.currentTime, 0.7);
   }
-  return { init, resume, play, startMusic, stopMusic, toggleMute, setMuted, setVolume, isMuted, setAmbient, get ctx() { return ctx; } };
+  /* Automated audio tests inject an OfflineAudioContext here, render one
+     effect, and inspect the samples. In the browser this is never set. */
+  function attachContext(c) {
+    ctx = c;
+    master = ctx.createGain(); master.gain.value = 1; master.connect(ctx.destination);
+    const comp = ctx.createDynamicsCompressor();
+    comp.threshold.value = -18; comp.knee.value = 22; comp.ratio.value = 8;
+    comp.attack.value = 0.004; comp.release.value = 0.18;
+    sfxGain = ctx.createGain(); sfxGain.gain.value = 0.9;
+    comp.connect(master); sfxGain.connect(comp);
+    sfxOut = ctx.createGain(); sfxOut.gain.value = 1;
+    panner = ctx.createStereoPanner ? ctx.createStereoPanner() : null;
+    if (panner) { sfxOut.connect(panner); panner.connect(sfxGain); } else sfxOut.connect(sfxGain);
+    const len = Math.floor(ctx.sampleRate * 1.2);
+    noiseBuf = ctx.createBuffer(1, len, ctx.sampleRate);
+    const d = noiseBuf.getChannelData(0);
+    for (let i = 0; i < len; i++) d[i] = Math.random() * 2 - 1;
+    setupVerb();
+    return ctx;
+  }
+  function renderForTest(name) {
+    if (!ctx || !sfx[name]) return false;
+    const prev = muted; muted = false;
+    try { sfx[name](); return true; } catch (e) { return false; } finally { muted = prev; }
+  }
+  return { init, resume, play, panFor, attachContext, renderForTest, _names: () => Object.keys(sfx), startMusic, stopMusic, toggleMute, setMuted, setVolume, isMuted, setAmbient, get ctx() { return ctx; } };
 })();
 
 /* roundRect polyfill for older engines */
@@ -8092,10 +8273,11 @@ const Combat = {
     FX.text(e.x, e.y - e.radius - 12, String(dealt), {
       color: crit ? '#ffcf4d' : '#fff0d8', size: crit ? 22 : 16, crit
     });
+    const hitPan = Sound.panFor(e.x);      /* left/right of the hero */
     if (crit) {
-      Sound.play('crit', 0.85);
+      Sound.play('crit', 0.85, hitPan);
       FX.text(e.x + rand(16, -16), e.y - e.radius - 30, 'CRIT!', { color: '#ffa93c', size: 12, bold: true, life: 0.8 });
-    } else Sound.play('hit', 0.7);
+    } else Sound.play('hit', 0.7, hitPan);
     FX.blood(e.x, e.y, angle, crit ? 22 : 12, e.type === 'skeleton' || e.type === 'crawler' ? '#cfd6c4' : '#9c2632');
     FX.spark(e.x, e.y, { count: 6, angle: angle + Math.PI, speed: 180, color: '#ffe6b0' });
     /* lifesteal */
@@ -13325,6 +13507,12 @@ function togglePause(force) {
   Game.paused = p;
   Game.state = p ? 'paused' : 'playing';
   $('pauseOverlay').classList.toggle('show', p); syncMenuOpen();
+  if (p) {
+    const sub = $('pauseSub'), gm = Game.player;
+    if (sub) sub.textContent = gm ? 'Floor ' + Game.floor + ' · Level ' + gm.level + ' · ' + fmt(gm.gold) + ' gold' : 'The dungeon waits';
+    const sv = $('pauseSaveBtn');
+    if (sv) sv.textContent = 'Save';
+  }
   if (p) { hideTooltip(); Sound.play('ui'); }
   Game.input.up = Game.input.down = Game.input.left = Game.input.right = false;
 }
