@@ -280,6 +280,65 @@ try {
     check('skill points never go negative', prog.spNotNegative === true, prog);
   }
 
+  /* ============ story chapter card ============ */
+  /* The reported "I cannot move". #storyCard ships with class="hidden"
+     (display:none !important), and showCard() used to only ADD 'show', so the
+     card never painted — while STORY.open was still set and every movement and
+     combat path checks it. The hero was frozen on a normal-looking screen with
+     no card in sight, and the Continue button that would have cleared it had
+     no layout box to click. */
+  section('Story chapter card');
+  const story = await page.evaluate(async () => {
+    const el = document.getElementById('storyCard');
+    const p = Game.player;
+    /* the hero may be against a wall, so try every direction and take the best */
+    const move = async (ms = 450) => {
+      let best = 0;
+      for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+        const sx = p.x, sy = p.y;
+        Game.input.touchDir = { x: dx, y: dy };
+        await new Promise((r) => setTimeout(r, ms));
+        best = Math.max(best, Math.hypot(p.x - sx, p.y - sy));
+        Game.input.touchDir = null;
+        if (best > 20) break;
+      }
+      return best;
+    };
+
+    STORY.seen = {};
+    STORY.enter(1);                       // exactly what buildFloor() does on floor 1
+    await new Promise((r) => setTimeout(r, 1050));
+
+    const shown = {
+      open: STORY.open,
+      display: getComputedStyle(el).display,
+      height: el.getBoundingClientRect().height,
+      buttonBox: (() => { const b = el.querySelector('#storyNext'); return b ? b.getBoundingClientRect().height : 0; })(),
+    };
+    const movedWhileShown = await move();
+
+    const btn = el.querySelector('#storyNext');
+    if (btn) btn.click();
+    await new Promise((r) => setTimeout(r, 150));
+    const after = { open: STORY.open, display: getComputedStyle(el).display };
+    const movedAfterDismiss = await move(650);
+
+    /* the failure mode itself: flag true, nothing painted */
+    STORY.open = true;
+    el.classList.add('hidden');
+    await new Promise((r) => setTimeout(r, 150));
+    const selfHealed = STORY.open === false;
+    const movedWithStuckFlag = await move(420);
+    return { shown, after, movedWhileShown, movedAfterDismiss, selfHealed, movedWithStuckFlag };
+  });
+  check('the story card actually paints', story.shown.display !== 'none' && story.shown.height > 0, story.shown);
+  check('the Continue button has a real hit target', story.shown.buttonBox >= 30, story.shown.buttonBox);
+  check('the card holds the player while it is on screen', story.movedWhileShown < 2, story.movedWhileShown);
+  check('Continue dismisses the card', story.after.open === false && story.after.display === 'none', story.after);
+  check('the player moves again after dismissing', story.movedAfterDismiss > 20, story.movedAfterDismiss);
+  check('an open flag with no card corrects itself', story.selfHealed === true, story.selfHealed);
+  check('an open flag with no card cannot freeze the player', story.movedWithStuckFlag > 20, story.movedWithStuckFlag);
+
   /* ============ runtime health ============ */
   section('Runtime health');
   check('no console or page errors during gameplay tests', errors.length === 0, errors.slice(0, 4));
