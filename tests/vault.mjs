@@ -18,7 +18,7 @@
  */
 import { launch, serve, waitForBoot, startRun } from './harness.mjs';
 
-const SEEDS = 80;
+const SEEDS = Number(process.env.VAULT_SEEDS || 80);
 
 const server = await serve('/home/user/2d-dungeon-game');
 const { browser, page } = await launch({ width: 900, height: 600 });
@@ -205,6 +205,49 @@ try {
           wiring.reachedAfter ? '' : 'still cut off after unlock — the door would "do nothing"');
   }
   check(`dungeon exposes the key requirement`, wiring.hasKeyField === true, 'needsKey missing');
+
+  /* A vault is only fair if the key exists AND can be collected. The key crate
+     is the guaranteed source; measured before this check, 6 of 120 floors put
+     it in a pocket the entrance could not reach, which made the door
+     permanently locked and the floor's reward unobtainable. */
+  await startRun(page);
+  const keys = await page.evaluate(`(() => {
+    let floors = 0, missing = 0, unreachable = 0, samples = [];
+    for (let i = 0; i < 60; i++) {
+      Game.floor = 2 + (i % 8);
+      Game.dungeon = new Dungeon(Game.floor, 'key-' + i);
+      const d = Game.dungeon;
+      if (!d.vaultDoor) continue;
+      floors++;
+      Game.props.length = 0;
+      if (typeof spawnProps === 'function') spawnProps(d);
+      const crates = Game.props.filter((p) => p.keyCrate || (p.loot && p.loot.key));
+      if (!crates.length) { missing++; continue; }
+      const idx = (x, y) => y * d.W + x;
+      const vd = d.vaultDoor;
+      const seen = new Set([idx(d.entrance.x, d.entrance.y)]);
+      const q = [idx(d.entrance.x, d.entrance.y)];
+      while (q.length) {
+        const cur = q.pop();
+        const cx = cur % d.W, cy = (cur - cx) / d.W;
+        for (const [dx, dy] of [[1,0],[-1,0],[0,1],[0,-1]]) {
+          const nx = cx + dx, ny = cy + dy;
+          if (nx < 0 || ny < 0 || nx >= d.W || ny >= d.H) continue;
+          if (vd && vd.locked && nx === vd.x && ny === vd.y) continue;
+          const n = idx(nx, ny);
+          if (seen.has(n) || !d.isWalkable(nx, ny)) continue;
+          seen.add(n); q.push(n);
+        }
+      }
+      const okOne = crates.some((p) => seen.has(idx(Math.floor(p.x / 32), Math.floor(p.y / 32))));
+      if (!okOne) { unreachable++; if (samples.length < 3) samples.push(i); }
+    }
+    return { floors, missing, unreachable, samples };
+  })()`);
+  check(`a key exists on every floor with a vault`, keys.missing === 0,
+        `${keys.missing}/${keys.floors} floors had no key crate`);
+  check(`the key can always be reached`, keys.unreachable === 0,
+        `${keys.unreachable}/${keys.floors} floors put the key out of reach`);
 
   /* Rendering: the door must draw at the tile it occupies, and a locked door
      must be visually distinct from an unlocked one — "it does nothing there"

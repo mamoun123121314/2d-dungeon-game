@@ -7459,8 +7459,33 @@ function spawnProps(d) {
   }
   /* key drop guard: ensure at least one key can be found when vault exists */
   if (d.needsKey) {
-    const keyRoom = pick(chestRooms.length ? chestRooms : d.rooms);
-    const spot = d.randomRoomFloor(keyRoom, 70, { x: p.x, y: p.y });
+    /* A vault you cannot open is a floor you cannot enjoy, and the key crate is
+       the guaranteed source. randomRoomFloor() only checks that a tile is
+       walkable, not that the player can walk to it, so 3 of 60 measured floors
+       dropped that crate in a pocket cut off from the entrance — the door was
+       then permanently locked. Search for a room floor the entrance can
+       actually reach, and fall back to the entrance itself. */
+    const reach = d.spawnReach();
+    const reachableAt = (spot) => reach(spot.ty, spot.tx);
+    const candidates = [];
+    const roomsToUse = chestRooms.length ? chestRooms : d.rooms;
+    for (const room of roomsToUse) {
+      for (let attempt = 0; attempt < 12; attempt++) {
+        const spot = d.randomRoomFloor(room, 70, { x: p.x, y: p.y });
+        if (reachableAt(spot)) { candidates.push(spot); break; }
+      }
+    }
+    if (!candidates.length) {
+      for (const room of d.rooms) {
+        for (let attempt = 0; attempt < 12; attempt++) {
+          const spot = d.randomRoomFloor(room, 0, { x: p.x, y: p.y });
+          if (reachableAt(spot)) { candidates.push(spot); break; }
+        }
+      }
+    }
+    const spot = candidates.length ? pick(candidates)
+               : { x: (d.entrance.x + 0.5) * TILE, y: (d.entrance.y + 0.5) * TILE,
+                   tx: d.entrance.x, ty: d.entrance.y };
     const crate = new Prop('crate', spot.x, spot.y, { hp: 2, solid: true, r: 13 });
     crate.loot = { key: true, gold: randInt(4, 9) };
     crate.keyCrate = true;
