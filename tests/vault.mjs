@@ -16,7 +16,7 @@
  * that ignores the lock reports phantom leaks — that mistake hid bug 2 for a
  * whole round, so it is pinned below as its own check.
  */
-import { launch, serve, waitForBoot, startRun } from './harness.mjs';
+import { launch, serve, waitForBoot } from './harness.mjs';
 
 const SEEDS = Number(process.env.VAULT_SEEDS || 80);
 
@@ -31,12 +31,18 @@ const check = (name, ok, detail = '') => {
 try {
   await page.goto(server.url, { waitUntil: 'load' });
   await waitForBoot(page);
-  /* Start the run once. startRun() clicks the start button and waits for
-     Game.state === 'playing'; calling it a second time later in the suite waits
-     forever, because the run is already in progress. That timed out on CI's
-     slower Chrome while passing locally — the flake was the suite, not the
-     game. */
-  await startRun(page);
+  /* Begin a run by calling the game's own startRun() rather than clicking the
+     button. the harness helper clicks #startBtn and then waits for
+     Game.state === 'playing', and on CI's slower Chrome that wait timed out for
+     20s — the suite failed while the game was fine. Calling the game's own
+     entry point synchronously sets up the same state without a race. */
+  await page.evaluate(() => {
+    if (typeof Game !== 'undefined' && Game.state === 'playing') return;
+    /* the game's startRun() is shadowed by the harness import name only in
+       module scope, not in the page */
+    window.startRun();
+  });
+  await page.waitForFunction(() => Game.state === 'playing', { timeout: 20000 });
 
   /* Walk the grid with the shut door treated as solid, the way repairConnectivity
      and the reachability probes must. Returns the reachable set. */
@@ -224,8 +230,9 @@ try {
       const d = Game.dungeon;
       if (!d.vaultDoor) continue;
       floors++;
+      /* spawnProps() is a plain function; give it the props array to fill */
       Game.props.length = 0;
-      if (typeof spawnProps === 'function') spawnProps(d);
+      spawnProps(d);
       const crates = Game.props.filter((p) => p.keyCrate || (p.loot && p.loot.key));
       if (!crates.length) { missing++; continue; }
       const idx = (x, y) => y * d.W + x;
