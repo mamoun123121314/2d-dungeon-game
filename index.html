@@ -345,6 +345,56 @@ canvas{display:block;}
 #tooltip .ttCompare{margin-top:8px;padding-top:7px;border-top:1px dashed rgba(217,181,107,.2);font-size:10px;color:#a99bb2;}
 #tooltip .ttCompare b{color:#e9dcc0;font-weight:600;}
 #tooltip .ttHint{margin-top:7px;font-size:9px;letter-spacing:.05em;color:#7a7185;text-transform:uppercase;}
+
+/* touch tooltip: bigger type, pinned centred, with real buttons */
+/* ---------------- story chapter card ---------------- */
+#storyCard{position:fixed;inset:0;z-index:130;display:none;flex-direction:column;
+  align-items:center;justify-content:center;padding:5vh 5vw;text-align:center;
+  background:radial-gradient(ellipse at 50% 45%,rgba(14,10,22,.96),rgba(3,2,6,.985) 72%);
+  opacity:0;transition:opacity .5s ease;}
+#storyCard.show{display:flex;opacity:1;}
+.scKicker{font-family:var(--font-mono);font-size:10px;letter-spacing:.52em;
+  color:#9e8555;text-transform:uppercase;margin-bottom:14px;}
+.scTitle{font-family:var(--font-display);font-size:clamp(30px,5.2vw,56px);
+  letter-spacing:.10em;text-transform:uppercase;line-height:1.08;
+  background:linear-gradient(180deg,#fff5d2 0%,#f0d187 40%,#b98a3e 75%,#f4dd9f 100%);
+  -webkit-background-clip:text;background-clip:text;color:transparent;
+  filter:drop-shadow(0 2px 0 rgba(45,29,8,.9)) drop-shadow(0 0 34px rgba(240,190,90,.22));}
+.scRule{width:min(300px,60vw);height:1px;margin:20px 0 22px;
+  background:linear-gradient(90deg,transparent,rgba(217,181,107,.6),transparent);}
+.scLines{max-width:min(620px,86vw);}
+.scLines p{font-family:var(--font-body,Georgia,serif);font-size:clamp(14px,2.1vw,18.5px);
+  line-height:1.72;color:#cfc4b4;margin:0 0 13px;font-style:italic;}
+.scLines p:last-child{color:#e8dcc4;}
+.scBtn{margin-top:18px;font-family:var(--font-mono);font-size:11px;letter-spacing:.22em;
+  text-transform:uppercase;padding:14px 40px;border-radius:5px;cursor:pointer;
+  color:#f3e6c8;background:linear-gradient(180deg,rgba(92,70,36,.55),rgba(30,22,12,.7));
+  border:1px solid rgba(217,181,107,.5);min-height:44px;}
+.scBtn:hover{background:linear-gradient(180deg,rgba(120,92,46,.7),rgba(40,30,16,.8));}
+.scBtn:active{transform:scale(.98);}
+body.is-phone .scLines p{font-size:14.5px;line-height:1.62;}
+body.is-phone #storyCard{padding:4vh 6vw;}
+body.is-phone .scTitle{font-size:clamp(26px,8vw,40px);}
+
+#tooltip.touch{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);
+  max-width:min(340px,calc(100vw - 28px));pointer-events:auto;z-index:120;
+  padding:16px 18px;}
+#tooltip.touch .ttName{font-size:18px;}
+#tooltip.touch .ttSub{font-size:10px;}
+#tooltip.touch .ttStat{font-size:13px;margin:4px 0;}
+#tooltip.touch .ttStat .v{font-size:12.5px;}
+.ttActions{display:flex;gap:8px;margin-top:12px;}
+.ttBtn{flex:1;font-family:var(--font-mono);font-size:11px;letter-spacing:.12em;
+  text-transform:uppercase;padding:12px 10px;border-radius:8px;cursor:pointer;
+  border:1px solid rgba(217,181,107,.4);color:#e8dcc4;
+  background:linear-gradient(160deg,rgba(45,37,58,.95),rgba(16,12,24,.95));
+  min-height:44px;touch-action:manipulation;}
+.ttBtn:active{transform:scale(.97);}
+.ttBtn.primary{border-color:rgba(143,224,168,.55);color:#d6f5de;
+  background:linear-gradient(160deg,rgba(60,140,90,.4),rgba(20,52,32,.6));}
+.ttBtn.sell{border-color:rgba(255,200,110,.5);color:#ffd88a;
+  background:linear-gradient(160deg,rgba(140,96,30,.36),rgba(52,34,12,.6));}
+.ttBtn.ghost{flex:0 0 auto;min-width:64px;color:#9aa0ae;border-color:rgba(255,255,255,.16);}
 .up{color:#74d79a !important;}.down{color:#e37a74 !important;}
 
 /* ---------- overlays ---------- */
@@ -737,6 +787,7 @@ body.is-phone #phoneRail{display:block;}
   transition:width .18s ease;}
 #phoneRail .pBar.hp i{background:linear-gradient(90deg,#8f1f1f,#e0554d 60%,#ff8a72);}
 #phoneRail .pBar.mp i{background:linear-gradient(90deg,#1d3f7a,#3f7dd6 60%,#79b6ff);}
+#phoneRail .pBar.emb i{background:linear-gradient(90deg,#8a4a1c,#e0954a 60%,#ffd0a0);}
 #phoneRail .pBar em{position:absolute;inset:0;font-style:normal;font-family:var(--font-mono);
   font-size:8px;line-height:11px;text-align:center;color:#f6ead2;text-shadow:0 1px 2px #000;letter-spacing:.04em;}
 #phoneRail .pLvl{font-family:var(--font-mono);font-size:9px;color:var(--gold-bright);
@@ -783,6 +834,24 @@ body.is-phone .shopList{max-height:26vh;}
 body.is-phone .tooltip{max-width:min(300px,calc(100vw - 24px));}
 body.is-phone .startTitle{font-size:clamp(30px,11vw,54px);}
 body.is-phone .startControls{display:none;}
+
+/* ---- phone GPU hardening ---------------------------------------------------
+   backdrop-filter forces a separate compositing layer and re-blurs it every
+   frame over a live canvas. On mobile GPUs this is the single most common cause
+   of the renderer process dying mid-game (the page "just breaks"). The panels
+   are already translucent, so dropping the blur costs almost nothing visually
+   and removes the crash. */
+body.is-phone *,
+body.is-phone *::before,
+body.is-phone *::after{
+  backdrop-filter:none !important;
+  -webkit-backdrop-filter:none !important;
+}
+/* solid fallbacks now that the blur is gone */
+body.is-phone #playerHud,
+body.is-phone .panel,
+body.is-phone #currencyBar,
+body.is-phone .bountyRow{background-color:rgba(10,8,16,.88);}
 body.is-phone .startBody{font-size:12px;}
 
 
@@ -998,6 +1067,22 @@ body.is-phone #startScreen .phoneStart{display:flex;}
 .bountyRow.done .bReward { color: #8fe0a8; }
 
 /* ---------------- combo meter ---------------- */
+#compHud { position: absolute; left: 16px; bottom: 96px; display: flex;
+  align-items: center; gap: 8px; padding: 5px 10px; border-radius: 999px;
+  background: rgba(8,6,12,.62); border: 1px solid rgba(200,140,80,.30);
+  font-family: var(--mono, monospace); font-size: 9px; letter-spacing: .12em;
+  color: #e0c09a; pointer-events: none; z-index: 3; transition: opacity .25s; }
+#compHud.hidden { display: none; }
+#compHud.down { opacity: .45; border-color: rgba(224,85,77,.4); }
+.chName { color: #ffb867; }
+.chBar { width: 54px; height: 4px; border-radius: 2px; overflow: hidden;
+  background: rgba(255,255,255,.14); }
+.chBar i { display: block; height: 100%; border-radius: 2px;
+  background: linear-gradient(90deg,#c98a4a,#ffd0a0); transition: width .2s; }
+.chBond { color: #9aa4b6; }
+@media (max-width: 760px) { #compHud { display: none; } }
+body.is-phone #compHud { display: none; }
+
 #comboHud { position: absolute; right: 14px; bottom: 120px; width: 150px;
   text-align: right; pointer-events: none; z-index: 3; opacity: 0; transition: opacity .18s; }
 #comboHud.show { opacity: 1; }
@@ -1151,6 +1236,11 @@ body.is-phone .affixChip{font-size:7.5px;padding:2px 6px;}
   <div id="bountyHud" class="hidden"></div>
   <div id="comboHud" class="hidden"><span class="cX" id="comboX">x1</span><span class="cLabel">COMBO</span>
     <div class="cTrack"><div class="cFill" id="comboFill"></div></div></div>
+<div id="compHud" class="hidden">
+  <span class="chName">EMBER</span>
+  <div class="chBar"><i id="compHpFill" style="width:100%"></i></div>
+  <span class="chBond" id="compBond">BOND 0</span>
+</div>
 <div id="saveToast" aria-hidden="true"><span class="svDot"></span>SAVED</div>
 <div id="lootReveal"></div>
   <div id="toastLog"></div>
@@ -1217,6 +1307,10 @@ body.is-phone .affixChip{font-size:7.5px;padding:2px 6px;}
     <span class="pLvl" style="visibility:hidden">LV</span>
     <div class="pBar mp"><i id="pMpFill" style="width:100%"></i><em id="pMpText">40/40</em></div>
   </div>
+  <div class="pRow pEmber" style="margin-top:2px;">
+    <span class="pLvl" style="visibility:hidden">LV</span>
+    <div class="pBar emb"><i id="pEmbFill" style="width:100%"></i><em id="pEmbText">EMBER</em></div>
+  </div>
   <div class="pCur">
     <span>G <b id="pGold">0</b></span>
     <span>K <b id="pKeys">0</b></span>
@@ -1260,6 +1354,9 @@ body.is-phone .affixChip{font-size:7.5px;padding:2px 6px;}
 
 <!-- ============================ TOOLTIP ============================ -->
 <div id="tooltip" class="hidden"></div>
+
+<!-- ============================ STORY CARD ============================ -->
+<div id="storyCard" class="hidden"></div>
 
 <!-- ============================ INVENTORY ============================ -->
 <div class="overlay" id="inventoryOverlay">
@@ -3905,6 +4002,47 @@ const ENEMY_TYPES = {
     behavior: 'brute', aggro: 460, attackRange: 48, windup: 0.95, cooldown: 2.2, damage: 14,
     color: '#8d95a8', accent: '#ffb347', scale: 1.7, tier: 3, flying: false, elite: true
   },
+  /* ---- additional bestiary, so floors vary in more than just numbers ---- */
+  bat: {
+    name: 'Cave Shrieker', hp: 22, atk: 6, def: 0, speed: 148, radius: 9, xp: 11, gold: [2, 7],
+    behavior: 'skirmisher', aggro: 340, attackRange: 120, windup: 0.3, cooldown: 0.9, damage: 6,
+    color: '#6b5a78', accent: '#c79bff', scale: 0.8, tier: 1, flying: true
+  },
+  slime: {
+    name: 'Gutter Slime', hp: 34, atk: 5, def: 4, speed: 46, radius: 13, xp: 14, gold: [2, 9],
+    behavior: 'rusher', aggro: 240, attackRange: 26, windup: 0.5, cooldown: 1.2, damage: 6,
+    color: '#5f8f5a', accent: '#9fe07a', scale: 0.95, tier: 1, flying: false
+  },
+  archer: {
+    name: 'Bone Archer', hp: 40, atk: 10, def: 2, speed: 60, radius: 13, xp: 26, gold: [6, 16],
+    behavior: 'skirmisher', aggro: 460, attackRange: 300, windup: 0.62, cooldown: 1.8, damage: 11,
+    color: '#cfd4c4', accent: '#8fa06f', scale: 1.02, tier: 2, flying: false
+  },
+  hound: {
+    name: 'Crypt Hound', hp: 48, atk: 11, def: 3, speed: 168, radius: 12, xp: 28, gold: [6, 15],
+    behavior: 'rusher', aggro: 420, attackRange: 30, windup: 0.24, cooldown: 0.78, damage: 10,
+    color: '#4a3a30', accent: '#c98a4a', scale: 1.0, tier: 2, flying: false
+  },
+  wisp: {
+    name: 'Marsh Wisp', hp: 30, atk: 12, def: 1, speed: 92, radius: 10, xp: 24, gold: [7, 18],
+    behavior: 'caster', aggro: 400, attackRange: 250, windup: 0.6, cooldown: 1.9, damage: 10,
+    color: '#5fa8a0', accent: '#a8f0e0', scale: 0.9, tier: 2, flying: true
+  },
+  golem: {
+    name: 'Iron Golem', hp: 170, atk: 18, def: 12, speed: 44, radius: 20, xp: 78, gold: [22, 44],
+    behavior: 'brute', aggro: 380, attackRange: 46, windup: 1.0, cooldown: 2.4, damage: 18,
+    color: '#6e7684', accent: '#ffb347', scale: 1.6, tier: 3, flying: false
+  },
+  cultist: {
+    name: 'Veiled Cultist', hp: 62, atk: 14, def: 4, speed: 66, radius: 14, xp: 40, gold: [12, 26],
+    behavior: 'caster', aggro: 430, attackRange: 270, windup: 0.75, cooldown: 2.1, damage: 13,
+    color: '#3d2b4a', accent: '#b06bff', scale: 1.1, tier: 3, flying: false
+  },
+  revenant: {
+    name: 'Revenant', hp: 120, atk: 17, def: 7, speed: 74, radius: 16, xp: 62, gold: [18, 38],
+    behavior: 'melee', aggro: 460, attackRange: 38, windup: 0.55, cooldown: 1.3, damage: 16,
+    color: '#8a94a8', accent: '#5fd0d8', scale: 1.3, tier: 3, flying: false
+  },
   boss: {
     name: 'The Heartstone Warden', hp: 760, atk: 24, def: 9, speed: 60, radius: 30, xp: 1100, gold: [300, 480],
     behavior: 'boss', aggro: 800, attackRange: 58, windup: 1.0, cooldown: 2.1, damage: 22,
@@ -4075,6 +4213,7 @@ class Player {
     this.potionCd = 0;
     this.dodgeCd = 0;
     this.dodging = 0;
+    this.landT = 0;        /* landing squash after a roll */
     this.dodgeAngle = 0;
     this.invuln = 0;
     this.swing = 0;
@@ -4238,6 +4377,224 @@ class Player {
   }
   sellPrice(item) { return Math.max(1, Math.round(item.value * 0.4)); }
 }
+
+/* ============================ COMPANION: EMBER ===========================
+   A stray dog that follows you into the dungeon. She fights, sniffs out
+   treasure, and — crucially — is the story's emotional anchor: she is the
+   last thing that still recognises you as a person rather than a delver.
+   Designed as a self-contained module so nothing else has to know about her.
+   ========================================================================= */
+const COMPANION = {
+  name: 'Ember',
+  x: 0, y: 0, vx: 0, vy: 0,
+  radius: 11,
+  hp: 60, maxHp: 60,
+  active: false,
+  hungry: 0,          /* seconds since last feeding: she slows when starving */
+  mood: 'happy',      /* happy | wary | hurt | guarding */
+  attackCd: 0,
+  barkCd: 0,
+  face: 1,
+  walkT: 0,
+  hurtFlash: 0,
+  downT: 0,           /* seconds spent downed; she revives after a while */
+  bond: 0,            /* 0..100 — grows with kills shared and floors cleared */
+  treasureSniff: 0,   /* cooldown on the "she found something" hint */
+
+  /* her damage scales with the hero so she stays useful, never carries you */
+  get damage() {
+    const p = Game.player;
+    return Math.max(6, Math.round((p ? p.attackPower : 10) * 0.42 + this.bond * 0.15));
+  },
+
+  spawn(x, y) {
+    this.x = x; this.y = y; this.vx = 0; this.vy = 0;
+    this.hp = this.maxHp; this.active = true; this.downT = 0;
+    this.mood = 'happy';
+  },
+
+  /* Called every frame while a run is live. Keeps her near the player,
+     picks off stragglers, and never blocks the player's own movement. */
+  update(dt) {
+    if (!this.active) return;
+    const p = Game.player;
+    /* Player exposes `dead`, not an `alive` getter — reading p.alive here
+       silently returned undefined and disabled the whole companion. */
+    if (!p || p.dead) return;
+
+    /* downed after taking too much: she crawls back after a short rest */
+    if (this.downT > 0) {
+      this.downT -= dt;
+      if (this.downT <= 0) {
+        this.hp = Math.round(this.maxHp * 0.5);
+        this.mood = 'hurt';
+        FX.text(this.x, this.y - 20, 'EMBER IS BACK UP', { color: '#8fe0a8', size: 12, bold: true });
+      }
+      return;
+    }
+
+    this.hungry = (this.hungry || 0) + dt;
+    this.hurtFlash = Math.max(0, this.hurtFlash - dt * 3);
+    this.attackCd = Math.max(0, this.attackCd - dt);
+    this.barkCd = Math.max(0, this.barkCd - dt);
+    this.treasureSniff = Math.max(0, this.treasureSniff - dt);
+
+    /* pick the closest live enemy inside a sane leash of the player */
+    let target = null, bestD = 230 * 230;
+    for (const e of Game.enemies) {
+      if (!e.alive) continue;
+      const d2 = dist2(e.x, e.y, p.x, p.y);
+      if (d2 > 260 * 260) continue;
+      const own = dist2(e.x, e.y, this.x, this.y);
+      if (own < bestD) { bestD = own; target = e; }
+    }
+
+    /* movement: chase the target, otherwise heel behind the hero */
+    let tx, ty;
+    if (target) {
+      tx = target.x - Math.cos(Math.atan2(target.y - this.y, target.x - this.x)) * 26;
+      ty = target.y - Math.sin(Math.atan2(target.y - this.y, target.x - this.x)) * 26;
+    } else {
+      const heel = 46;
+      tx = p.x - Math.cos(p.aimAngle) * heel;
+      ty = p.y - Math.sin(p.aimAngle) * heel;
+    }
+    const dx = tx - this.x, dy = ty - this.y;
+    const d = Math.hypot(dx, dy) || 1;
+    /* starving slows her down — the player is nudged to feed her */
+    const speedMul = this.hungry > 120 ? 0.55 : 1;
+    const speed = (target ? 210 : 185) * speedMul;
+    const want = d > 8 ? speed : 0;
+    const accel = 1 - Math.pow(0.00004, dt);
+    this.vx = lerp(this.vx, (dx / d) * want, accel);
+    this.vy = lerp(this.vy, (dy / d) * want, accel);
+    if (Math.abs(this.vx) > 6) this.face = this.vx > 0 ? 1 : -1;
+    this.walkT += dt * (Math.hypot(this.vx, this.vy) / 120);
+
+    /* move with the same wall collision the player uses */
+    moveWithCollision(this, this.vx * dt, this.vy * dt);
+
+    /* bite */
+    if (target && this.attackCd <= 0 && dist2(target.x, target.y, this.x, this.y) < 44 * 44) {
+      this.attackCd = 0.72;
+      this.lunge = 0.18;
+      Combat.damageEnemy(target, this.damage, Math.atan2(target.y - this.y, target.x - this.x),
+        { knockback: 90, source: 'companion', noMiss: true });
+      FX.spark(target.x, target.y, { count: 4, color: '#ffd9a0', speed: 110 });
+      if (this.barkCd <= 0) { this.barkCd = 4; Sound.play('bite'); }
+    }
+
+    /* she sniffs out nearby unopened chests and growls a hint */
+    if (this.treasureSniff <= 0) {
+      for (const pr of Game.props) {
+        if (pr.dead || pr.kind !== 'chest' || pr.opened) continue;
+        if (dist2(pr.x, pr.y, p.x, p.y) < 260 * 260 && dist2(pr.x, pr.y, p.x, p.y) > 90 * 90) {
+          this.treasureSniff = 22;
+          FX.text(p.x, p.y - 44, 'EMBER SNIFFS SOMETHING OUT', { color: '#ffd88a', size: 11 });
+          break;
+        }
+      }
+    }
+
+    /* mood, purely for the portrait and the barks */
+    if (this.hp < this.maxHp * 0.35) this.mood = 'hurt';
+    else if (target) this.mood = 'guarding';
+    else if (this.hungry > 120) this.mood = 'wary';
+    else this.mood = 'happy';
+  },
+
+  /* Damage from an enemy. She cannot die permanently — she goes down and gets
+     back up, because losing her mid-run would be a rage-quit, not a story. */
+  hurt(amount) {
+    if (this.downT > 0 || !this.active) return;
+    this.hp -= amount;
+    this.hurtFlash = 1;
+    if (this.hp <= 0) {
+      this.hp = 0;
+      this.downT = 9;
+      Sound.play('hurt');
+      FX.text(this.x, this.y - 24, 'EMBER IS DOWN', { color: '#e0554d', size: 13, bold: true });
+      toast('Ember yelps and goes down. She will get back up — give her a moment.', 'danger');
+    }
+  },
+
+  feed() {
+    this.hungry = 0;
+    this.hp = Math.min(this.maxHp, this.hp + Math.round(this.maxHp * 0.4));
+    this.bond = Math.min(100, this.bond + 4);
+    FX.text(this.x, this.y - 22, 'EMBER IS FED', { color: '#8fe0a8', size: 12 });
+    Sound.play('potion');
+  },
+
+  draw(ctx, cam, t) {
+    if (!this.active) return;
+    const sx = this.x - cam.x, sy = this.y - cam.y;
+    ctx.save();
+    ctx.translate(sx, sy);
+
+    /* shadow */
+    ctx.fillStyle = 'rgba(0,0,0,0.38)';
+    ctx.beginPath(); ctx.ellipse(0, 8, 11, 5, 0, 0, TAU); ctx.fill();
+
+    if (this.downT > 0) {
+      /* lying on her side, softly pulsing so she reads as "hurt, not gone" */
+      ctx.globalAlpha = 0.55 + Math.sin(t * 4) * 0.15;
+      ctx.fillStyle = '#8a5a34';
+      ctx.beginPath(); ctx.ellipse(0, 4, 12, 6, 0.4, 0, TAU); ctx.fill();
+      ctx.globalAlpha = 1;
+      ctx.restore();
+      return;
+    }
+
+    const bob = Math.sin(this.walkT * 9) * 1.6;
+    const lunge = this.lunge > 0 ? 1 : 0;
+
+    /* tail — wags faster when the hero is close, which is most of the charm */
+    const wag = Math.sin(t * 12 + this.walkT * 6) * 0.5;
+    ctx.save();
+    ctx.translate(-7 * this.face, -2 + bob);
+    ctx.rotate(wag - 0.6 * this.face);
+    ctx.fillStyle = '#a9713f';
+    ctx.beginPath(); ctx.roundRect(-2, -9, 4, 11, 2); ctx.fill();
+    ctx.restore();
+
+    /* body */
+    const bodyG = ctx.createLinearGradient(0, -8, 0, 8);
+    bodyG.addColorStop(0, this.hurtFlash > 0 ? '#ff9b8a' : '#b87b46');
+    bodyG.addColorStop(1, '#7a4e2a');
+    ctx.fillStyle = bodyG;
+    ctx.beginPath(); ctx.ellipse(0, bob, 11, 7, 0, 0, TAU); ctx.fill();
+
+    /* legs */
+    const step = Math.sin(this.walkT * 11) * 3;
+    ctx.fillStyle = '#5f3a1f';
+    for (const s of [-1, 1]) {
+      ctx.beginPath(); ctx.roundRect(s * 5 - 1.5, 4 + bob + (s > 0 ? step : -step) * 0.5, 3, 6, 1.2); ctx.fill();
+      ctx.beginPath(); ctx.roundRect(s * 5 - 1.5, 4 + bob - (s > 0 ? step : -step) * 0.5, 3, 6, 1.2); ctx.fill();
+    }
+
+    /* head, pushed forward on a lunge */
+    const hx = (9 + lunge * 3) * this.face;
+    ctx.fillStyle = '#c88a52';
+    ctx.beginPath(); ctx.ellipse(hx, -3 + bob, 6.4, 5.4, 0, 0, TAU); ctx.fill();
+    /* ears */
+    ctx.fillStyle = '#8a5730';
+    ctx.beginPath(); ctx.moveTo(hx - 2 * this.face, -8 + bob);
+    ctx.lineTo(hx - 5 * this.face, -2 + bob); ctx.lineTo(hx + 1 * this.face, -3 + bob); ctx.closePath(); ctx.fill();
+    /* snout + eye */
+    ctx.fillStyle = '#5f3a1f';
+    ctx.beginPath(); ctx.ellipse(hx + 4 * this.face, -1 + bob, 2.6, 2, 0, 0, TAU); ctx.fill();
+    ctx.fillStyle = '#1a1208';
+    ctx.beginPath(); ctx.arc(hx + 1.4 * this.face, -4.6 + bob, 1.15, 0, TAU); ctx.fill();
+    /* a tiny ember glow on the collar: her namesake */
+    ctx.globalCompositeOperation = 'lighter';
+    ctx.fillStyle = 'rgba(255,150,60,0.55)';
+    ctx.beginPath(); ctx.arc(-1 * this.face, 1 + bob, 2.6, 0, TAU); ctx.fill();
+    ctx.globalCompositeOperation = 'source-over';
+
+    ctx.restore();
+  }
+};
 
 /* ============================== 09. FX SYSTEM ============================ */
 const FX = {
@@ -4644,6 +5001,169 @@ const FX = {
     }
     ctx.restore();
   }
+};
+
+/* ============================== STORY MODE ===============================
+   Ten chapters, one per floor. The arc is deliberately small and personal:
+   you are not here to save the world, you are here to find out what the
+   Heartstone took from you — and Ember is the only witness.
+
+   Each chapter fires once when the floor loads: a title card, a short beat,
+   and (from chapter 3) a piece of the truth. Chapters 7 and 9 turn the story:
+   Ember recognises the crypt, and the Warden speaks with your own voice.
+   ======================================================================== */
+const STORY = {
+  enabled: true,
+  seen: {},          /* chapter index -> true */
+  chapter: 0,
+
+  chapters: [
+    {
+      title: 'The Threshold',
+      kicker: 'Chapter I',
+      lines: [
+        'You have descended nine times and climbed back eight.',
+        'You remember the stairs. You do not remember why you keep taking them.',
+        'A dog is waiting at the door. She looks at you like she has been waiting a long time.'
+      ],
+      whisper: 'Ember presses her nose to your hand. She does not bark. She never does, down here.'
+    },
+    {
+      title: 'The Sleeping Ward',
+      kicker: 'Chapter II',
+      lines: [
+        'This corridor used to have beds in it. You are certain of that, and certain of nothing else.',
+        'Something in the walls hums the way a lullaby is hummed — half of it, then the same half again.',
+        'Ember will not walk ahead of you here.'
+      ],
+      whisper: 'Scratched into a bedpost, in a child\'s hand: DO NOT WAKE THE WARDEN.'
+    },
+    {
+      title: 'The Cartographer',
+      kicker: 'Chapter III',
+      lines: [
+        'A dead man sits upright against the wall with a map on his knees.',
+        'The map is of this floor. It is accurate. It is also four hundred years old.',
+        'Someone has drawn a small dog in the corner, in the same ink.'
+      ],
+      whisper: 'The map bears your handwriting. You have never been here before.'
+    },
+    {
+      title: 'The Cold Kitchen',
+      kicker: 'Chapter IV',
+      lines: [
+        'Two bowls are set out on the table. One is larger. Both are clean.',
+        'Ember goes straight to the smaller one and sits, the way a dog sits when the habit is older than the hunger.',
+        'The bread in the cupboard is fresh. Nothing down here is ever fresh.'
+      ],
+      whisper: 'You have done this before. You do not know how many times.'
+    },
+    {
+      title: 'The Oath Room',
+      kicker: 'Chapter V',
+      lines: [
+        'A ring of kneeling statues, all facing inward, all hooded.',
+        'The figure in the middle is unhooded. Its face has been carefully chiselled away — not smashed. Chiselled.',
+        'Ember growls at it. It is the first sound she has made since the threshold.'
+      ],
+      whisper: 'The statue is holding a leash. The leash is empty.'
+    },
+    {
+      title: 'The Long Hall',
+      kicker: 'Chapter VI',
+      lines: [
+        'Portraits line the walls, each one the same person at a different age.',
+        'The earliest wears your face. The latest has been painted over so many times the canvas has gone soft.',
+        'Under the last one, a brass plate: THE WARDEN, WHO WOULD NOT LET GO.'
+      ],
+      whisper: 'Ember sits beneath your portrait and looks up at it, waiting for it to do something.'
+    },
+    {
+      title: 'The Names',
+      kicker: 'Chapter VII',
+      lines: [
+        'This is the crypt. Ember\'s ears flatten the moment the door opens and she walks in low, tail down, as though she has been beaten here.',
+        'Every tomb bears a name you know. Yours is among them, and it is not the oldest.',
+        'One small stone at the end of the row reads simply: EMBER — WHO WAITED.'
+      ],
+      whisper: '"You were not supposed to come back," the tomb says. Then, quietly: "You always come back."'
+    },
+    {
+      title: 'The Guttering',
+      kicker: 'Chapter VIII',
+      lines: [
+        'The torches are going out one by one, in order, like someone walking the hall and pinching them.',
+        'Where each flame dies, the stone remembers being warm.',
+        'Ember stops walking. She turns around and looks at the way you came, and does not move.'
+      ],
+      whisper: 'She is not afraid of what is ahead of you. She is afraid of what is behind.' 
+    },
+    {
+      title: 'The Warden',
+      kicker: 'Chapter IX',
+      lines: [
+        'It is not a monster. It is a machine made of every ending you have ever had, welded together.',
+        'When it speaks, it speaks in your voice, and it is tired in exactly the way you are tired.',
+        '"You keep bringing the dog," it says. "I keep having to put her down. Neither of us enjoys this."'
+      ],
+      whisper: 'Ember steps in front of you. She is small. She does not move.'
+    },
+    {
+      title: 'The Heartstone',
+      kicker: 'Chapter X',
+      lines: [
+        'The stone is warm. It has been keeping something for you.',
+        'You came down here to take it back. You cannot remember what it is.',
+        'Ember puts her paw on your knee. Whatever it was, she seems to think you can leave without it.'
+      ],
+      whisper: 'When you climb the stairs this time, you are allowed to be someone who left.'
+    }
+  ],
+
+  /* Fire the chapter for this floor once. */
+  enter(floorN) {
+    if (!this.enabled) return;
+    const idx = Math.min(this.chapters.length - 1, Math.max(0, floorN - 1));
+    if (this.seen[idx]) return;
+    this.seen[idx] = true;
+    this.chapter = idx;
+    const ch = this.chapters[idx];
+    if (!ch) return;
+    /* Stagger the card slightly after the floor transition so it does not
+       collide with the "Floor N" banner. */
+    setTimeout(() => {
+      if (Game.state !== 'playing') return;
+      this.showCard(ch);
+    }, 900);
+  },
+
+  showCard(ch) {
+    const el = $('storyCard');
+    if (!el) return;
+    el.innerHTML = `
+      <div class="scKicker">${escapeHtml(ch.kicker)}</div>
+      <div class="scTitle">${escapeHtml(ch.title)}</div>
+      <div class="scRule"></div>
+      <div class="scLines">${ch.lines.map(l => `<p>${escapeHtml(l)}</p>`).join('')}</div>
+      <button class="scBtn" id="storyNext">Continue</button>`;
+    el.classList.add('show');
+    Game.paused = true;
+    Sound.play('ui');
+    const close = () => {
+      el.classList.remove('show');
+      Game.paused = Game.invOpen || Game.shopOpen || Game.skillOpen;
+      if (ch.whisper) setTimeout(() => toast(ch.whisper, 'lore'), 400);
+      Sound.play('ui');
+    };
+    const btn = $('storyNext');
+    if (btn) btn.addEventListener('click', close, { once: true });
+    /* a tap anywhere on the card advances it too */
+    el.addEventListener('click', (ev) => {
+      if (ev.target === el) close();
+    }, { once: true });
+  },
+
+  reset() { this.seen = {}; this.chapter = 0; }
 };
 
 /* ============================== SAVE SYSTEM ============================= */
@@ -5084,7 +5604,12 @@ function onViewportChange() {
   if (Phone.enabled) { Phone.syncIcons(); Phone.updateRail(); }
 }
 function resizeCanvas() {
-  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  /* Phones get a lower backing-store cap. At dpr 2 this game allocates four
+     full-screen buffers (fog, bloom, light, main); on a 1080x2400 screen that
+     is ~250 MB of canvas memory, which is enough for mobile Safari/Chrome to
+     kill the tab outright. 1.5 keeps it crisp and roughly halves the budget. */
+  const dprCap = (window.matchMedia && window.matchMedia('(pointer: coarse)').matches) ? 1.5 : 2;
+  const dpr = Math.min(window.devicePixelRatio || 1, dprCap);
   Game.dpr = dpr;
   Game.W = window.innerWidth;
   Game.H = window.innerHeight;
@@ -5131,6 +5656,9 @@ function startRun() {
   Game.comboMult = 1;
   Game.comboCount = 0;
   Game.comboExpires = 0;
+  /* Ember joins you from the very first step. */
+  Game.companionActive = true;
+  COMPANION.spawn(0, 0);
   buildFloor(1, true);
   showBanner('Floor 1', THEMES[0].name, THEMES[0].sub);
   toast('You awaken at the mouth of the dungeon. Descend.', 'good');
@@ -5173,6 +5701,16 @@ function buildFloor(n, first = false, seed) {
   rollBounties(n);
   spawnProps(d);
   spawnEnemies(d);
+  /* every floor opens a chapter the first time you reach it */
+  STORY.enter(n);
+  /* Ember comes with you. She is re-placed beside the hero on every floor so
+     she is never left behind in a wall. */
+  if (Game.companionActive) {
+    const spot3 = findFreeSpot(Game.player.x - 40, Game.player.y + 20, COMPANION.radius);
+    COMPANION.spawn(spot3.x, spot3.y);
+    COMPANION.active = true;
+    Game.companionActive = true;
+  }
   spawnMerchantStock(n);
   renderAffixHud();
   Sound.setAmbient(d.theme.key === 'lava' ? 0.7 : d.theme.key === 'ice' ? 0.45 : 0.3);
@@ -5490,12 +6028,48 @@ function eliteSummonTick(e, dt, dd) {
 }
 
 /* ---------- enemy spawning ---------- */
+/* Depth-gated bestiary. Each entry lists the enemy types eligible from that
+   floor down, layered on top of the theme's own pool, so the dungeon escalates
+   in *variety* and not just in stat multipliers. */
+const DEPTH_ROSTER = [
+  { from: 1, types: ['bat', 'slime'] },
+  { from: 2, types: ['hound', 'archer'] },
+  { from: 3, types: ['wisp'] },
+  { from: 4, types: ['golem', 'cultist'] },
+  { from: 6, types: ['revenant'] },
+];
+function floorEnemyPool(floorN, themePool) {
+  /* Take the theme's own identity, plus the newest band of intruders only.
+     Adding every unlocked band at once made late floors a soup of sixteen
+     types with no character — this keeps each depth recognisable while still
+     escalating. */
+  const pool = themePool.slice();
+  let newest = null;
+  for (const band of DEPTH_ROSTER) {
+    if (floorN >= band.from) newest = band;
+  }
+  if (newest) for (const t of newest.types) if (pool.indexOf(t) < 0) pool.push(t);
+
+  /* past the halfway point, weight the heavy hitters up so the floor is
+     genuinely more dangerous without simply spawning more bodies */
+  if (floorN >= 7) {
+    const heavy = ['golem', 'revenant', 'cultist'];
+    for (const t of heavy) {
+      if (pool.indexOf(t) < 0) continue;
+      pool.push(t);
+    }
+  }
+  return pool;
+}
+
 function spawnEnemies(d) {
-  const pool = d.theme.enemies;
+  const pool = floorEnemyPool(d.floor, d.theme.enemies);
   const rooms = d.rooms.filter(r => r !== d.startRoom);
   /* density scales with depth but never floods the level */
   const aff = Game.endlessBundle || {};
-  const maxEnemies = clamp(Math.round((6 + d.floor * 1.9) * (aff.enemyMult || 1)), 6, 60);
+  /* Harder than before: the old curve topped out well below the cap, so late
+     floors never actually got crowded. This one keeps climbing. */
+  const maxEnemies = clamp(Math.round((7 + d.floor * 2.35) * (aff.enemyMult || 1)), 7, 60);
   const roster = [];
   for (const room of rooms) {
     const isGuardian = room === d.guardianRoom;
@@ -5654,6 +6228,19 @@ function grantBounty(b) {
   updateHud();
 }
 /* One compact panel: each bounty gets a live progress bar. */
+function updateCompanionHud() {
+  const el = $('compHud');
+  if (!el) return;
+  if (!COMPANION.active || !Game.player) { el.classList.add('hidden'); return; }
+  el.classList.remove('hidden');
+  el.classList.toggle('down', COMPANION.downT > 0);
+  const fill = $('compHpFill');
+  if (fill) fill.style.width = clamp(COMPANION.hp / COMPANION.maxHp * 100, 0, 100) + '%';
+  const bond = $('compBond');
+  const label = COMPANION.downT > 0 ? 'DOWN' : 'BOND ' + Math.round(COMPANION.bond);
+  if (bond && bond.textContent !== label) bond.textContent = label;
+}
+
 function renderBountyHud() {
   const el = $('bountyHud');
   if (!el) return;
@@ -5916,6 +6503,13 @@ function hasLineOfSight(x1, y1, x2, y2) {
 }
 
 /* ============================== 12. COMBAT =============================== */
+/* The swing is ONE wedge. Hit detection and the drawn arc both read these, so
+   the blade can never sweep through a target the hit test refuses. Before this
+   the blade was drawn across ±111° while only ±65° counted as a hit, which is
+   exactly why the sword felt inaccurate. */
+const SWING_VIS_HALF = Math.PI * 0.62;        /* drawn sweep, either side of aim */
+const SWING_HIT_ARC  = SWING_VIS_HALF * 2.06; /* the drawn wedge, plus slack */
+
 const Combat = {
   /* melee arc swing */
   playerAttack() {
@@ -5925,9 +6519,13 @@ const Combat = {
     p.swing = 0.26;
     p.swingDir = p.aimAngle;
     Sound.play('swing');
-    /* arc hit detection — generous feel-good reach */
-    const reach = clamp(66 + p.attackPower * 0.24, 66, 100) + p.swingReach;
-    const arc = Math.PI * 0.72;
+    /* Arc hit detection. The swing is drawn as a sweep of SWING_VIS_HALF either
+       side of the aim line, so the hit test must cover that same wedge plus a
+       little slack — otherwise the blade visibly passes through things without
+       hitting them, which reads as "the sword is inaccurate". Reach likewise
+       tracks the drawn radius, widened by the enemy's own body radius. */
+    const reach = clamp(84 + p.attackPower * 0.26, 84, 124) + p.swingReach;
+    const arc = SWING_HIT_ARC;
     let hits = 0;
     for (const e of Game.enemies) {
       if (!e.alive) continue;
@@ -6148,6 +6746,14 @@ const Combat = {
       }
     }
   },
+  /* Enemies may target the companion. Kept deliberately low probability: she
+     is support, not a tank, and constant focus-fire reads as unfair. */
+  maybeTargetCompanion(e) {
+    if (!COMPANION.active || COMPANION.downT > 0) return false;
+    if (Math.random() > 0.16) return false;
+    return dist2(e.x, e.y, COMPANION.x, COMPANION.y) < 300 * 300;
+  },
+
   damagePlayer(rawDamage, source) {
     const p = Game.player;
     if (p.dead || p.invuln > 0 || p.dodging > 0) return 0;
@@ -6280,6 +6886,9 @@ function bossResolveMove(e) {
   const dmgBase = (e.def.damage + Game.floor * 2) * def.damageMul;
   if (e.bossMove === 'slam') {
     const radius = e.bossSlamRadius || def.radius;
+    if (COMPANION.active && COMPANION.downT <= 0 && dist(COMPANION.x, COMPANION.y, e.x, e.y) < radius + COMPANION.radius) {
+      COMPANION.hurt(Math.round(dmgBase * 0.8));
+    }
     if (dist(p.x, p.y, e.x, e.y) < radius + p.radius) {
       Combat.damagePlayer(Math.round(dmgBase), e);
       /* knock the player outward */
@@ -6550,7 +7159,14 @@ function updateEnemy(e, dt) {
       const reach = t.attackRange + 26;
       const dAngle = Math.abs(((angleTo(e.x, e.y, p.x, p.y) - strikeAngle + Math.PI * 3) % TAU) - Math.PI);
       if (dist(p.x, p.y, e.x, e.y) < reach && dAngle < 1.15) {
-        const dealt = Combat.damagePlayer(t.damage + Game.floor * 1.0, e);
+        /* if the dog has the aggro, she takes the hit instead of the hero */
+        let dealt;
+        if (Combat.maybeTargetCompanion(e) && dist2(t.x, t.y, COMPANION.x, COMPANION.y) < 60 * 60) {
+          COMPANION.hurt(Math.round((t.damage + Game.floor) * 0.9));
+          dealt = 0;
+        } else {
+          dealt = Combat.damagePlayer(t.damage + Game.floor * 1.0, e);
+        }
         if (e.lifesteal && dealt > 0 && e.alive) {
           e.hp = Math.min(e.maxHp, e.hp + dealt * e.lifesteal);
           FX.text(e.x, e.y - e.radius - 16, '+' + Math.round(dealt * e.lifesteal), { color: '#ff7a8c', size: 10, life: 0.6 });
@@ -6817,11 +7433,15 @@ function nearestInteractable() {
   for (const pr of Game.props) {
     if (pr.dead) continue;
     if (pr.kind !== 'chest' && pr.kind !== 'merchantStand') continue;
-    const dd = dist(pr.x, pr.y, p.x, p.y);
+    /* a chest should never outrank the stall you are standing at: if you are
+       within arm's reach of the merchant, trading is what you meant to do */
+    let dd = dist(pr.x, pr.y, p.x, p.y);
+    if (pr.kind === 'merchantStand') dd -= 26;
     if (dd < bestD) { bestD = dd; best = pr; }
   }
   if (d.merchant) {
-    const dd = dist(d.merchant.x, d.merchant.y, p.x, p.y);
+    let dd = dist(d.merchant.x, d.merchant.y, p.x, p.y);
+    dd -= 30;   /* same priority nudge, so the counter always wins nearby */
     if (dd < bestD) { bestD = dd; best = { kind: 'merchant', x: d.merchant.x, y: d.merchant.y }; }
   }
   const stairsD = dist((d.stairs.x + 0.5) * TILE, (d.stairs.y + 0.5) * TILE, p.x, p.y);
@@ -6855,7 +7475,11 @@ function doInteract() {
   const target = nearestInteractable();
   if (!target) return;
   if (target.kind === 'chest') openChest(target);
-  else if (target.kind === 'merchant') openShop();
+  /* The stall prop is the thing nearestInteractable() usually reports when you
+     stand at the counter, so it has to open the shop too. Before this the tap
+     silently did nothing unless you happened to be nearer the merchant sprite
+     than his own stand, which made the shop look broken on a phone. */
+  else if (target.kind === 'merchant' || target.kind === 'merchantStand') openShop();
   else if (target.kind === 'stairs') descend();
 }
 function openChest(chest) {
@@ -7109,6 +7733,11 @@ function renderWorld(ctx) {
     ents.push({ y: e.y, draw: () => drawEnemy(ctx, e, drawCam, t) });
   }
   ents.push({ y: p.y, draw: () => drawPlayer(ctx, p, drawCam, t) });
+  /* Ember sorts into the same depth pass as everything else so she cannot
+     render on top of a wall she is standing behind. */
+  if (COMPANION.active) {
+    ents.push({ y: COMPANION.y, draw: () => COMPANION.draw(ctx, drawCam, t) });
+  }
   if (d.merchant) {
     const tx = Math.floor(d.merchant.x / TILE), ty = Math.floor(d.merchant.y / TILE);
     if (d.exploredMap[ty * d.W + tx]) ents.push({ y: d.merchant.y, draw: () => drawMerchant(ctx, d.merchant, drawCam, t) });
@@ -7904,7 +8533,18 @@ function drawPlayer(ctx, p, cam, t) {
   ctx.beginPath(); ctx.ellipse(x, y + 12, 13, 6, 0, 0, TAU); ctx.fill();
 
   const swingT = p.swing > 0 ? p.swing / 0.26 : 0;
-  const bob = p.moving ? Math.sin(p.walkT * 11) * 1.5 : Math.sin(t * 2) * 0.8;
+  /* Breathing when still, a two-beat gait when moving, plus a landing squash
+     after a roll. Small amplitudes, but the character stops looking pinned. */
+  const breath = Math.sin(t * 2.1) * 0.9 + Math.sin(t * 3.7) * 0.25;
+  const gait = Math.sin(p.walkT * 11);
+  const gait2 = Math.sin(p.walkT * 22) * 0.35;   /* second harmonic = footfall */
+  const bob = p.moving ? gait * 1.7 + gait2 : breath;
+  const landSquash = p.dodging > 0 ? 1 : (p.landT > 0 ? p.landT * 0.18 : 0);
+
+  /* lean into the direction of travel so momentum reads */
+  if (p.moving && Math.hypot(p.vx, p.vy) > 20) {
+    ctx.rotate(clamp((p.vx / 400) * 0.06, -0.09, 0.09));
+  }
   const dodgeAlpha = p.dodging > 0 ? 0.55 : 1;
   /* motion blur ghost while dodging */
   if (p.dodging > 0) {
@@ -7917,32 +8557,35 @@ function drawPlayer(ctx, p, cam, t) {
     }
   }
   ctx.globalAlpha = dodgeAlpha;
-  ctx.translate(x, y + bob);
+  ctx.translate(x, y + bob + landSquash * 6);
+  /* the landing beat compresses vertically for a few frames */
+  if (landSquash > 0) ctx.scale(1 + landSquash * 0.16, 1 - landSquash * 0.16);
   drawHeroShape(ctx, p, t, bob, swingT, false);
   ctx.restore();
 
   /* swing arc */
   if (p.swing > 0) {
-    const a0 = p.swingDir - Math.PI * 0.62;
-    const a1 = p.swingDir + Math.PI * 0.62;
+    const a0 = p.swingDir - SWING_VIS_HALF;
+    const a1 = p.swingDir + SWING_VIS_HALF;
     const prog = 1 - swingT;
     const cur = lerp(a0, a1, smoothstep(prog));
     ctx.save();
     ctx.translate(x, y);
     ctx.globalCompositeOperation = 'lighter';
-    const grd = ctx.createRadialGradient(0, 0, 20, 0, 0, 68);
+    const swingR = clamp(84 + p.attackPower * 0.26, 84, 124) + p.swingReach;
+    const grd = ctx.createRadialGradient(0, 0, 20, 0, 0, swingR);
     grd.addColorStop(0, 'rgba(255,245,210,0)');
-    grd.addColorStop(0.62, `rgba(255,240,200,${0.28 * swingT})`);
+    grd.addColorStop(0.62, `rgba(255,240,200,${0.30 * swingT})`);
     grd.addColorStop(1, 'rgba(255,255,255,0)');
     ctx.fillStyle = grd;
     ctx.beginPath();
-    ctx.arc(0, 0, 68, cur - 0.5, cur + 0.5);
-    ctx.arc(0, 0, 22, cur + 0.5, cur - 0.5, true);
+    ctx.arc(0, 0, swingR, cur - 0.54, cur + 0.54);
+    ctx.arc(0, 0, 22, cur + 0.54, cur - 0.54, true);
     ctx.closePath(); ctx.fill();
     /* bright leading edge */
-    ctx.strokeStyle = `rgba(255,252,235,${0.55 * swingT})`;
-    ctx.lineWidth = 2.4;
-    ctx.beginPath(); ctx.arc(0, 0, 62, cur - 0.34, cur + 0.1); ctx.stroke();
+    ctx.strokeStyle = `rgba(255,252,235,${0.6 * swingT})`;
+    ctx.lineWidth = 2.6;
+    ctx.beginPath(); ctx.arc(0, 0, swingR - 5, cur - 0.34, cur + 0.1); ctx.stroke();
     ctx.restore();
   }
   /* cast glyph */
@@ -7986,7 +8629,7 @@ function drawPlayer(ctx, p, cam, t) {
   if (target && !Game.paused) {
     const px = target.x - cam.x, py = target.y - cam.y - 34;
     const label = target.kind === 'chest' ? (target.opened ? '' : 'F · OPEN CHEST') :
-      target.kind === 'merchant' ? 'F · TRADE' : 'F · DESCEND';
+      (target.kind === 'merchant' || target.kind === 'merchantStand') ? 'F · TRADE' : 'F · DESCEND';
     if (label) {
       ctx.save();
       ctx.font = '600 10px "Segoe UI", system-ui, sans-serif';
@@ -8006,7 +8649,8 @@ function drawHeroShape(ctx, p, t, bob, swingT, ghost) {
   const lookX = Math.cos(aim), lookY = Math.sin(aim);
   const eq = p.equipment;
   /* cape */
-  const capeWave = Math.sin(t * 6 + p.walkT * 4) * 2;
+  const speedFactor = clamp(Math.hypot(p.vx, p.vy) / 220, 0, 1.6);
+  const capeWave = Math.sin(t * 6 + p.walkT * 4) * 2 + speedFactor * 2.2;
   ctx.save();
   ctx.rotate(Math.atan2(lookY, lookX) * 0.06);
   const capeG = ctx.createLinearGradient(0, -6, 0, 16);
@@ -8020,16 +8664,25 @@ function drawHeroShape(ctx, p, t, bob, swingT, ghost) {
   ctx.quadraticCurveTo(13, 4, 6, -6);
   ctx.closePath(); ctx.fill();
   ctx.restore();
-  /* legs */
-  const legSwing = p.moving ? Math.sin(p.walkT * 11) * 4.6 : 0;
+  /* legs — alternating stride with a lift on the passing leg */
+  const stride = p.moving ? Math.sin(p.walkT * 11) : 0;
   const bootC = eq.boots ? (eq.boots.leather || '#5a3d24') : '#33291f';
   for (const s of [-1, 1]) {
+    const ph = s > 0 ? stride : -stride;          /* legs in opposition */
+    const lift = p.moving ? Math.max(0, ph) * 2.4 : 0;
+    const reach = p.moving ? ph * 3.4 : 0;
     ctx.save();
-    ctx.translate(s * 4.4, 6 + s * legSwing * 0.6);
+    ctx.translate(s * 4.4 + reach * 0.5, 6 - lift + s * ph * 0.7);
+    ctx.rotate(ph * 0.16 * s);
     ctx.fillStyle = shade(bootC, s * 0.08);
-    ctx.beginPath(); ctx.roundRect(-3, 0, 6, 9, 2.2); ctx.fill();
+    ctx.beginPath(); ctx.roundRect(-3, 0, 6, 9 - lift * 0.3, 2.2); ctx.fill();
     ctx.fillStyle = 'rgba(10,8,6,0.7)';
-    ctx.fillRect(-3, 7, 6, 2);
+    ctx.fillRect(-3, 7 - lift * 0.3, 6, 2);
+    /* sole highlight catches the torch light as the foot plants */
+    if (p.moving) {
+      ctx.fillStyle = 'rgba(255,220,160,' + (0.10 + Math.max(0, ph) * 0.18) + ')';
+      ctx.fillRect(-3, 8.4 - lift * 0.3, 6, 1);
+    }
     ctx.restore();
   }
   /* torso */
@@ -8158,6 +8811,164 @@ function drawHeroShape(ctx, p, t, bob, swingT, ghost) {
 }
 
 /* ---------- enemy rendering ---------- */
+/* ---- additional bestiary art ----
+   Each new enemy gets a silhouette that reads at a glance in near-darkness:
+   the bat is wide and frantic, the golem is a slab, the cultist is a hooded
+   column. Shapes are built from the enemy's own colour pair so they stay
+   consistent with the theme palettes. */
+function drawBat(ctx, e, tt, flash, t) {
+  const wing = Math.sin(t * 26 + e.bob) * 0.9;
+  const c = flash ? '#ffffff' : e.def.color, a = e.def.accent;
+  ctx.fillStyle = c;
+  for (const s of [-1, 1]) {
+    ctx.save();
+    ctx.scale(s, 1);
+    ctx.rotate(wing * 0.5);
+    ctx.beginPath();
+    ctx.moveTo(2, -2);
+    ctx.quadraticCurveTo(12, -8 + wing * 4, 17, 1);
+    ctx.quadraticCurveTo(12, 0, 9, 5);
+    ctx.quadraticCurveTo(6, 1, 2, 3);
+    ctx.closePath(); ctx.fill();
+    ctx.restore();
+  }
+  ctx.fillStyle = c;
+  ctx.beginPath(); ctx.ellipse(0, 8, 5.5, 7, 0, 0, TAU); ctx.fill();
+  ctx.fillStyle = a;
+  ctx.beginPath(); ctx.arc(-2, 8, 1.5, 0, TAU); ctx.arc(2, 8, 1.5, 0, TAU); ctx.fill();
+  ctx.fillStyle = c;
+  ctx.beginPath();
+  ctx.moveTo(-4, 2); ctx.lineTo(-2.5, -4); ctx.lineTo(-0.5, 2); ctx.closePath();
+  ctx.moveTo(4, 2); ctx.lineTo(2.5, -4); ctx.lineTo(0.5, 2); ctx.closePath();
+  ctx.fill();
+}
+function drawSlime(ctx, e, tt, flash) {
+  const squish = 1 + Math.sin(tt * 3.4) * 0.11;
+  const c = flash ? '#ffffff' : e.def.color, a = e.def.accent;
+  ctx.fillStyle = c;
+  ctx.beginPath();
+  ctx.ellipse(0, 9 - squish * 3, 13 * (2 - squish), 11 * squish, 0, 0, TAU);
+  ctx.fill();
+  ctx.globalAlpha = 0.55;
+  ctx.fillStyle = a;
+  ctx.beginPath(); ctx.ellipse(-3, 4, 4, 3, 0.4, 0, TAU); ctx.fill();
+  ctx.globalAlpha = 1;
+  ctx.fillStyle = '#0d1408';
+  ctx.beginPath(); ctx.arc(-3.5, 7, 1.5, 0, TAU); ctx.arc(3.5, 7, 1.5, 0, TAU); ctx.fill();
+}
+function drawArcher(ctx, e, tt, flash) {
+  const c = flash ? '#ffffff' : e.def.color, a = e.def.accent;
+  /* ribcage */
+  ctx.strokeStyle = c; ctx.lineWidth = 2.4; ctx.lineCap = 'round';
+  for (let i = 0; i < 4; i++) {
+    ctx.beginPath(); ctx.arc(0, -2 + i * 3.4, 5.4 - i * 0.35, 0.15 * Math.PI, 0.85 * Math.PI); ctx.stroke();
+  }
+  ctx.fillStyle = c;
+  ctx.beginPath(); ctx.arc(0, -10, 4.6, 0, TAU); ctx.fill();
+  ctx.fillStyle = '#100c08';
+  ctx.beginPath(); ctx.arc(-1.6, -10, 1.2, 0, TAU); ctx.arc(1.6, -10, 1.2, 0, TAU); ctx.fill();
+  /* bow */
+  ctx.strokeStyle = a; ctx.lineWidth = 1.9;
+  ctx.beginPath(); ctx.arc(8, 2, 8.5, -1.15, 1.15); ctx.stroke();
+  ctx.strokeStyle = 'rgba(255,255,255,0.55)'; ctx.lineWidth = 0.9;
+  ctx.beginPath(); ctx.moveTo(10.5, -5.8); ctx.lineTo(10.5, 9.8); ctx.stroke();
+}
+function drawHound(ctx, e, tt, flash) {
+  const c = flash ? '#ffffff' : e.def.color, a = e.def.accent;
+  const gait = Math.sin(tt * 15) * 3;
+  ctx.fillStyle = c;
+  ctx.beginPath(); ctx.ellipse(0, 4, 11, 6, 0, 0, TAU); ctx.fill();
+  for (const s of [-1, 1]) {
+    ctx.beginPath(); ctx.roundRect(s * 5 - 1.4, 7 + (s > 0 ? gait : -gait) * 0.4, 2.8, 6, 1); ctx.fill();
+  }
+  ctx.beginPath(); ctx.ellipse(9, 0, 5.4, 4.6, 0, 0, TAU); ctx.fill();
+  ctx.fillStyle = a;
+  ctx.beginPath(); ctx.moveTo(7, -4); ctx.lineTo(5.5, -8.5); ctx.lineTo(9.5, -4.5); ctx.closePath(); ctx.fill();
+  ctx.fillStyle = '#ff6b4a';
+  ctx.beginPath(); ctx.arc(11, 0, 1.3, 0, TAU); ctx.fill();
+}
+function drawWisp(ctx, e, tt, flash, t) {
+  const c = flash ? '#ffffff' : e.def.color, a = e.def.accent;
+  const pulse = 0.85 + Math.sin(t * 3.6 + e.bob) * 0.15;
+  /* body first, so it reads as a creature and not just a light */
+  ctx.fillStyle = c;
+  ctx.beginPath();
+  ctx.moveTo(0, -9);
+  ctx.quadraticCurveTo(8, -4, 6, 7);
+  ctx.quadraticCurveTo(3, 13, 0, 9);
+  ctx.quadraticCurveTo(-3, 13, -6, 7);
+  ctx.quadraticCurveTo(-8, -4, 0, -9);
+  ctx.closePath(); ctx.fill();
+  ctx.fillStyle = 'rgba(8,20,20,0.75)';
+  ctx.beginPath(); ctx.ellipse(0, -1, 2.6, 3.4, 0, 0, TAU); ctx.fill();
+  ctx.fillStyle = a;
+  ctx.beginPath(); ctx.arc(-1, -1.5, 1.05, 0, TAU); ctx.arc(1, -1.5, 1.05, 0, TAU); ctx.fill();
+  /* aura */
+  ctx.globalCompositeOperation = 'lighter';
+  const g = ctx.createRadialGradient(0, 0, 2, 0, 0, 22 * pulse);
+  g.addColorStop(0, 'rgba(255,255,255,0.30)'); g.addColorStop(0.45, a.replace(')', ',0.22)').replace('rgb', 'rgba')); g.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.fillStyle = g;
+  ctx.beginPath(); ctx.arc(0, 0, 22 * pulse, 0, TAU); ctx.fill();
+  ctx.globalCompositeOperation = 'source-over';
+}
+function drawGolem(ctx, e, tt, flash) {
+  const c = flash ? '#ffffff' : e.def.color, a = e.def.accent;
+  const stride = Math.sin(tt * 6) * 2.2;
+  ctx.fillStyle = c;
+  ctx.beginPath(); ctx.roundRect(-9, -8, 18, 18, 4); ctx.fill();
+  ctx.fillStyle = shade(c, -0.14);
+  ctx.beginPath(); ctx.roundRect(-11, -4 + stride, 5, 12, 2.4); ctx.fill();
+  ctx.beginPath(); ctx.roundRect(6, -4 - stride, 5, 12, 2.4); ctx.fill();
+  ctx.beginPath(); ctx.roundRect(-6, -14, 12, 7, 2.4); ctx.fill();
+  ctx.fillStyle = a;
+  ctx.beginPath(); ctx.roundRect(-4, -12, 8, 2.6, 1.2); ctx.fill();
+  ctx.fillStyle = shade(c, 0.2);
+  ctx.beginPath(); ctx.roundRect(-3, 0, 6, 6, 1.8); ctx.fill();
+}
+function drawCultist(ctx, e, tt, flash, t) {
+  const c = flash ? '#ffffff' : e.def.color, a = e.def.accent;
+  const sway = Math.sin(t * 1.8 + e.bob) * 1.6;
+  /* robe */
+  ctx.fillStyle = c;
+  ctx.beginPath();
+  ctx.moveTo(-10 + sway * 0.3, 14);
+  ctx.quadraticCurveTo(-7 + sway, -4, 0, -10);
+  ctx.quadraticCurveTo(7 + sway, -4, 10 + sway * 0.3, 14);
+  ctx.closePath(); ctx.fill();
+  /* hood void */
+  ctx.fillStyle = '#07040c';
+  ctx.beginPath(); ctx.ellipse(sway * 0.5, -6, 4.6, 5.4, 0, 0, TAU); ctx.fill();
+  ctx.fillStyle = a;
+  ctx.beginPath(); ctx.arc(sway * 0.5 - 1.6, -6, 1.2, 0, TAU); ctx.arc(sway * 0.5 + 1.6, -6, 1.2, 0, TAU); ctx.fill();
+  /* floating sigil */
+  ctx.globalAlpha = 0.5 + Math.sin(t * 4) * 0.2;
+  ctx.strokeStyle = a; ctx.lineWidth = 1.3;
+  ctx.beginPath(); ctx.arc(12, -4, 4, 0, TAU); ctx.stroke();
+  ctx.globalAlpha = 1;
+}
+function drawRevenant(ctx, e, tt, flash, t) {
+  const c = flash ? '#ffffff' : e.def.color, a = e.def.accent;
+  const drift = Math.sin(t * 2.4 + e.bob) * 2.2;
+  ctx.fillStyle = c;
+  ctx.beginPath();
+  ctx.moveTo(-8, 15);
+  ctx.quadraticCurveTo(-10, -2, -5 + drift, -10);
+  ctx.quadraticCurveTo(0, -15, 5 + drift, -10);
+  ctx.quadraticCurveTo(10, -2, 8, 15);
+  ctx.quadraticCurveTo(0, 19, -8, 15);
+  ctx.closePath(); ctx.fill();
+  ctx.fillStyle = '#0a1014';
+  ctx.beginPath(); ctx.ellipse(drift, -8, 4, 4.6, 0, 0, TAU); ctx.fill();
+  ctx.fillStyle = a;
+  ctx.beginPath(); ctx.arc(drift - 1.5, -8, 1.35, 0, TAU); ctx.arc(drift + 1.5, -8, 1.35, 0, TAU); ctx.fill();
+  ctx.globalAlpha = 0.35 + Math.sin(t * 5) * 0.12;
+  ctx.strokeStyle = a; ctx.lineWidth = 1.2;
+  for (const s of [-1, 1]) {
+    ctx.beginPath(); ctx.moveTo(s * 9, 0); ctx.quadraticCurveTo(s * 14, 4, s * 11, 10); ctx.stroke();
+  }
+  ctx.globalAlpha = 1;
+}
+
 function drawEnemy(ctx, e, cam, t) {
   const x = e.x - cam.x, y = e.y - cam.y;
   if (x < -100 || y < -100 || x > Game.W + 100 || y > Game.H + 100) return;
@@ -8186,6 +8997,14 @@ function drawEnemy(ctx, e, cam, t) {
     case 'ice': drawWraith(ctx, e, tt, flash, t); break;
     case 'guardian': drawGuardian(ctx, e, tt, flash, t); break;
     case 'boss': drawBoss(ctx, e, tt, flash, t); break;
+    case 'bat': drawBat(ctx, e, tt, flash, t); break;
+    case 'slime': drawSlime(ctx, e, tt, flash); break;
+    case 'archer': drawArcher(ctx, e, tt, flash); break;
+    case 'hound': drawHound(ctx, e, tt, flash); break;
+    case 'wisp': drawWisp(ctx, e, tt, flash, t); break;
+    case 'golem': drawGolem(ctx, e, tt, flash); break;
+    case 'cultist': drawCultist(ctx, e, tt, flash, t); break;
+    case 'revenant': drawRevenant(ctx, e, tt, flash, t); break;
     default: drawSkeleton(ctx, e, tt, flash);
   }
   ctx.restore();
@@ -9276,6 +10095,7 @@ function updateHud(force = false) {
   $('goldText').textContent = fmt(p.gold);
   $('keyText').textContent = p.keys;
   $('potionText').textContent = p.potions;
+  updateCompanionHud();
   /* low-health pulse */
   const hpBar = $('hpBar');
   if (hpPct < 0.3 && p.hp > 0) hpBar.style.filter = `brightness(${1 + Math.sin(Game.time * 5) * 0.16})`;
@@ -9606,7 +10426,23 @@ function refreshInventoryUI() {
         hideTooltip();
       });
       cell.addEventListener('dragend', () => { Game.dragItem = null; Game.dragFrom = null; });
-      cell.addEventListener('click', () => { equipFromInventory(item); });
+      /* Touch: the first tap reveals the item (tooltip + actions), the second
+         equips it. Desktop keeps the old one-click equip. This is what makes
+         the inventory usable with a thumb — previously the card appeared on
+         mouseenter and nothing ever dismissed it. */
+      cell.addEventListener('click', (ev) => {
+        ev.stopPropagation();
+        if (Game.isPhone) {
+          if (Game.touchItemSel !== item) {
+            Game.touchItemSel = item;
+            showTooltip(item, window.innerWidth / 2, window.innerHeight / 2, item.slot, true, true);
+            return;
+          }
+          Game.touchItemSel = null;
+          hideTooltip();
+        }
+        equipFromInventory(item);
+      });
       cell.addEventListener('contextmenu', (ev) => { ev.preventDefault(); sellItem(item); });
       cell.addEventListener('mouseenter', (ev) => showTooltip(item, ev.clientX, ev.clientY, item.slot, true));
       cell.addEventListener('mousemove', (ev) => positionTooltip(ev.clientX, ev.clientY));
@@ -9797,7 +10633,7 @@ function drawPaperdollBackdrop() {
 }
 
 /* ---------- tooltip ---------- */
-function showTooltip(item, x, y, slot, fromInventory) {
+function showTooltip(item, x, y, slot, fromInventory, touchMode) {
   if (!item) return;
   const p = Game.player;
   const el = $('tooltip');
@@ -9844,10 +10680,38 @@ function showTooltip(item, x, y, slot, fromInventory) {
       html += `<div class="ttCompare">Slot is <b>empty</b> — a clear upgrade.</div>`;
     }
   }
-  html += `<div class="ttHint">${fromInventory ? 'Click to equip · Right-click to sell' : 'Click to unequip'}</div>`;
+  if (touchMode) {
+    /* phone: explicit targets, because there is no right-click and hover does
+       not exist. Without these you could not sell anything on a phone. */
+    html += `<div class="ttActions">`;
+    if (fromInventory) {
+      html += `<button class="ttBtn primary" data-tt="equip">Equip</button>`;
+      html += `<button class="ttBtn sell" data-tt="sell">Sell ${fmt(p.sellPrice(item))}g</button>`;
+    } else {
+      html += `<button class="ttBtn primary" data-tt="unequip">Unequip</button>`;
+    }
+    html += `<button class="ttBtn ghost" data-tt="close">Close</button></div>`;
+  } else {
+    html += `<div class="ttHint">${fromInventory ? 'Click to equip · Right-click to sell' : 'Click to unequip'}</div>`;
+  }
   el.innerHTML = html;
   el.classList.remove('hidden');
+  if (touchMode) el.classList.add('touch'); else el.classList.remove('touch');
   positionTooltip(x, y);
+  if (touchMode) {
+    el.querySelectorAll('[data-tt]').forEach(b => {
+      b.addEventListener('click', (ev) => {
+        ev.preventDefault(); ev.stopPropagation();
+        const act = b.dataset.tt;
+        Game.touchItemSel = null;
+        hideTooltip();
+        if (act === 'equip') equipFromInventory(item);
+        else if (act === 'sell') sellItem(item);
+        else if (act === 'unequip') unequipSlot(slot);
+        refreshInventoryUI();
+      });
+    });
+  }
 }
 function positionTooltip(x, y) {
   const el = $('tooltip');
@@ -9860,7 +10724,22 @@ function positionTooltip(x, y) {
   el.style.left = Math.max(8, left) + 'px';
   el.style.top = top + 'px';
 }
-function hideTooltip() { $('tooltip').classList.add('hidden'); }
+function hideTooltip() {
+  const el = $('tooltip');
+  el.classList.add('hidden');
+  el.classList.remove('touch');
+  Game.touchItemSel = null;
+}
+/* Any tap outside the card dismisses it. This is what was missing on a phone:
+   the tooltip was opened on mouseenter and only closed on mouseleave, so the
+   stat card stayed on screen forever. */
+document.addEventListener('pointerdown', (ev) => {
+  const el = $('tooltip');
+  if (!el || el.classList.contains('hidden')) return;
+  if (el.contains(ev.target)) return;
+  if (ev.target.closest && ev.target.closest('.invCell, .equipSlot')) return;
+  hideTooltip();
+}, true);
 function escapeHtml(s) {
   return String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 }
@@ -10444,9 +11323,17 @@ const Phone = {
   bindStick() {
     const zone = $('stickZone'), base = $('stickBase'), knob = $('stickKnob');
     if (!zone || !base || !knob) return;
+    /* The stick is drawn centred on the touch point, so a thumb landing near an
+       edge would push half the ring outside the screen. Clamp the origin to keep
+       the whole 132px base visible, and remember the clamped point for tracking. */
+    const R = 66;                      /* half of #stickBase's 132px */
     const place = (x, y) => {
+      x = clamp(x, R + 4, window.innerWidth - R - 4);
+      y = clamp(y, R + 4, window.innerHeight - R - 4);
+      this.cx = x; this.cy = y;
       base.style.left = x + 'px'; base.style.top = y + 'px';
       knob.style.left = x + 'px'; knob.style.top = y + 'px';
+      return { x, y };
     };
     const release = () => {
       this.stickId = null;
@@ -10476,8 +11363,7 @@ const Phone = {
       const t = ev.changedTouches[0];
       if (!t) return;
       this.stickId = t.identifier;
-      this.cx = t.clientX; this.cy = t.clientY;
-      place(this.cx, this.cy);
+      place(t.clientX, t.clientY);      /* place() sets the clamped centre */
       document.body.classList.add('stick-active');
       track(t.clientX, t.clientY);
       ev.preventDefault();
@@ -10589,6 +11475,11 @@ const Phone = {
     set('pGold', fmt(p.gold));
     set('pKeys', String(p.keys));
     set('pPotions', String(p.potions));
+    /* Ember's bar, so she is legible on a phone too */
+    if (COMPANION.active) {
+      wid('pEmbFill', COMPANION.hp / COMPANION.maxHp * 100);
+      set('pEmbText', COMPANION.downT > 0 ? 'EMBER DOWN' : 'EMBER ' + Math.ceil(COMPANION.hp));
+    }
     /* radial cooldown sweeps */
     const cd = (id, ratio) => {
       const el = $(id);
@@ -10764,6 +11655,16 @@ function updatePlayer(dt) {
   p.castAnim = Math.max(0, p.castAnim - dt);
   p.slamAnim = Math.max(0, p.slamAnim - dt);
   p.healT = Math.max(0, p.healT - dt);
+  /* rolling ends with a small landing beat: dust plus a squash frame */
+  if (p.dodging > 0) {
+    const was = p.dodging;
+    p.dodging = Math.max(0, p.dodging - dt);
+    if (was > 0 && p.dodging === 0) {
+      p.landT = 1;
+      FX.dustPuff(p.x, p.y + 9, 5, 'rgba(190,180,160,0.30)');
+    }
+  }
+  p.landT = Math.max(0, p.landT - dt * 4.5);
   /* boss knockback impulse, decaying so it never fights normal input */
   if (p.knockT > 0) {
     p.knockT -= dt;
@@ -10908,6 +11809,7 @@ function update(dt) {
     Game.minimapT = (Game.minimapT || 0) + dt;
     if (Game.minimapT > 0.14) { Game.minimapT = 0; drawMinimap(); }
     comboTick(dt);
+    COMPANION.update(dt);
     /* boss bar tracks the biggest thing in the room */
     Game.bossHudT = (Game.bossHudT || 0) + dt;
     if (Game.bossHudT > 0.08) { Game.bossHudT = 0; updateBossBar(); }
@@ -10915,7 +11817,8 @@ function update(dt) {
     const target = nearestInteractable();
     if (target) {
       const verb = target.kind === 'chest' ? 'open the chest'
-        : target.kind === 'merchant' ? 'trade with the Quartermaster'
+        : (target.kind === 'merchant' || target.kind === 'merchantStand')
+          ? 'trade with the Quartermaster'
         : 'descend to the next floor';
       const hint = Game.isPhone ? '<b>TAP</b> to ' + verb : 'Press <b>F</b> to ' + verb + '.';
       if (Game.lastInteractHint !== hint) {
@@ -11038,8 +11941,23 @@ function loop(ts) {
     Game.fps = Game.fpsFrames / Game.fpsAccum;
     Game.fpsFrames = 0; Game.fpsAccum = 0;
   }
-  update(dt);
-  render();
+  /* A throw anywhere in update/render used to stop the whole game dead with no
+     way back — the page simply "broke". Swallow the frame, log it once, and
+     keep looping so a single bad state can never brick the run. */
+  try {
+    update(dt);
+    render();
+  } catch (err) {
+    Game.frameErrors = (Game.frameErrors || 0) + 1;
+    Game.lastFrameError = String(err && err.message || err);
+    if (Game.frameErrors <= 3 && window.console) console.error('frame error:', err);
+    /* after repeated failures, recover by clearing transient state */
+    if (Game.frameErrors === 12 && Game.player) {
+      FX.particles.length = 0; FX.projectiles.length = 0;
+      FX.texts.length = 0; FX.decals.length = 0;
+      Game.player.vx = 0; Game.player.vy = 0;
+    }
+  }
   if (Phone.enabled) {
     Phone.updateRail();
     Phone.railTick = (Phone.railTick || 0) + dt;
