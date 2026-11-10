@@ -203,7 +203,22 @@ try {
         const ab = slash ? slash.getBoundingClientRect() : null;
         const overlap = !!(sb && ab && sb.width > 0
           && !(sb.right < ab.left || sb.left > ab.right || sb.bottom < ab.top || sb.top > ab.bottom));
+        /* The stamp is one text run by default, so a long room name used to
+           wrap it onto two lines and push it up into Ember's bond chip. Only a
+           real measurement catches that coming back. */
+        const stampLines = sb
+          ? Math.round(sb.height / (parseFloat(getComputedStyle(saveEl).lineHeight) || 14))
+          : 0;
+        const toasts = Array.from(document.querySelectorAll('#toastLog .toast'))
+          .filter(shown).map((el) => el.getBoundingClientRect());
+        const stampOnToast = !!(sb && sb.width > 0 && toasts.some((b) =>
+          !(sb.right < b.left || sb.left > b.right || sb.bottom < b.top || sb.top > b.bottom)));
+        const chip = leaves.find((el) => /BOND/i.test(el.textContent || ''));
+        const chipRect = chip ? chip.getBoundingClientRect() : null;
         return {
+          stampLines,
+          stampOnToast,
+          stampChipGap: chipRect && sb ? Math.round(sb.top - chipRect.bottom) : null,
           emberLabels,
           emberBars,
           railXpText: xpEl ? xpEl.textContent : null,
@@ -218,6 +233,10 @@ try {
       check('the phone can see the XP bar', hud.railXpVisible === true && /XP$/.test(hud.railXpText || ''), hud.railXpText);
       check('XP is not displayed twice', hud.xpBarCount === 1, hud.xpBarCount);
       check('the autosave stamp does not sit on the attack button', hud.saveToastOverSlash === false, hud);
+      check('the autosave stamp stays on one line', hud.stampLines === 1, hud);
+      check('the autosave stamp does not sit on a toast', hud.stampOnToast === false, hud);
+      check('the autosave stamp clears the bond chip',
+            hud.stampChipGap === null || hud.stampChipGap >= 0, hud);
 
       /* #stickZone is the whole thumb region (46% x 62% of the screen); the
          thing that must clear the home indicator is the drawn ring, whose

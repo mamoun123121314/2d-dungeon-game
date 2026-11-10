@@ -72,31 +72,64 @@ try {
     /* The hero's shadow is the widest flat ellipse in his draw call. Record it
        RELATIVE to his own screen position: the absolute coordinate also carries
        camera scroll and world position, which has nothing to do with the gait. */
-    ctx.ellipse = function (cx, cy, rx, ry, ...rest) {
-      if (!seen && rx > 8 && rx < 14 && ry > 3 && ry < 7) {
+    /* Match the shadow EXACTLY: it is the only ellipse drawn at 11 x 5 with no
+       rotation. A loose size band used to be enough, but the floor detail layer
+       now draws puddles at 6-12 x 3.5-7, which fell inside it and got sampled
+       as if it were the shadow — the test then reported a nailed-down shadow
+       while the real one was fine. */
+    ctx.ellipse = function (cx, cy, rx, ry, rot, ...rest) {
+      if (!seen && rx === 11 && ry === 5 && rot === 0) {
         relY = cy - (p.y - Game.cam.y);
         seen = true;
       }
-      return realEllipse(cx, cy, rx, ry, ...rest);
+      return realEllipse(cx, cy, rx, ry, rot, ...rest);
     };
     const rel = [];
+    const phase = [];
     for (let i = 0; i < 30; i++) {
       seen = false; relY = null;
       /* hold him still in the world so camera/world motion cannot pollute it,
          and drive only the gait phase */
-      p.moving = true; p.walkT = i * 0.07; p.vx = 160; p.vy = 0;
+      const walkT = i * 0.07;
+      /* `moving` is recomputed from live input by updatePlayer on every frame,
+         so assigning p.moving here is erased before the draw. Hold a real
+         movement key instead; the gait phase is still pinned below. */
+      Game.input.right = true;
+      p.moving = true; p.walkT = walkT; p.vx = 160; p.vy = 0;
       await new Promise((r) => requestAnimationFrame(() => r()));
-      if (relY !== null) rel.push(+relY.toFixed(3));
+      if (relY !== null) { rel.push(+relY.toFixed(3)); phase.push(Math.sin(walkT * 11)); }
     }
+    Game.input.right = false;
     ctx.ellipse = realEllipse;
     const spread = rel.length ? Math.max(...rel) - Math.min(...rel) : 0;
-    return { samples: rel.length, spread: +spread.toFixed(2), rel: rel.slice(0, 8) };
+
+    /* Correlation with the gait wave. Spread alone is NOT enough: a shadow
+       nailed at +10 can still show spread from the landing squash, which made
+       a deliberately broken build pass this check. A shadow that genuinely
+       tracks the body must rise and fall WITH sin(walkT * 11). */
+    let r = 0;
+    if (rel.length > 2) {
+      const n = rel.length;
+      const mr = rel.reduce((a, b) => a + b, 0) / n;
+      const mp = phase.reduce((a, b) => a + b, 0) / n;
+      let num = 0, dr = 0, dp = 0;
+      for (let i = 0; i < n; i++) {
+        num += (rel[i] - mr) * (phase[i] - mp);
+        dr += (rel[i] - mr) ** 2;
+        dp += (phase[i] - mp) ** 2;
+      }
+      r = dr > 0 && dp > 0 ? num / Math.sqrt(dr * dp) : 0;
+    }
+    return { samples: rel.length, spread: +spread.toFixed(2), r: +r.toFixed(2),
+             rel: rel.slice(0, 8) };
   });
   check('the shadow is actually drawn', shadow.samples >= 10, shadow);
   /* A cast shadow must track the body. A nailed-down shadow shows ~0 spread
      while the body bobs; an over-eager one would follow the body exactly. */
   check('the shadow moves with the body instead of being nailed down',
         shadow.spread > 0.15, shadow);
+  check('the shadow tracks the gait wave, not just the landing squash',
+        Math.abs(shadow.r) > 0.5, shadow);
   check('the shadow does not swing wildly with the gait',
         shadow.spread < 6, shadow);
 

@@ -4,6 +4,7 @@ from collections import Counter
 from html.parser import HTMLParser
 from pathlib import Path
 import re
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -65,10 +66,24 @@ def main():
     duplicates = [ident for ident, count in Counter(page.ids).items() if count > 1]
     if duplicates:
         fail("duplicate HTML id(s): " + ", ".join(sorted(duplicates)))
-    if len(page.inline_scripts) != 1 or len(page.script_attrs) != 1:
-        fail(f"expected one self-contained inline game script; found {len(page.inline_scripts)}")
-    if page.script_attrs[0].get("src"):
-        fail("the game script must remain self-contained (unexpected script src)")
+    # The game used to be a single inline <script>. It is now split into local
+    # classic scripts (src/) so the art and audio systems can be worked on
+    # without editing one enormous file. What still matters is that every
+    # script is LOCAL: no CDNs, no third-party code, nothing that needs a
+    # network at runtime.
+    if not page.script_attrs:
+        fail("index.html loads no script at all")
+    for attrs in page.script_attrs:
+        src = attrs.get("src")
+        if not src:
+            continue
+        if re.match(r"^(?:[a-z]+:)?//", src, re.IGNORECASE) or src.startswith("data:"):
+            fail(f"game script is not local: {src}")
+        target = (ROOT / src.lstrip("./")).resolve()
+        if ROOT not in target.parents and target != ROOT:
+            fail(f"game script escapes the repo: {src}")
+        if not target.is_file():
+            fail(f"index.html loads a script that does not exist: {src}")
     if page.style_count != 1:
         fail(f"expected one embedded stylesheet; found {page.style_count}")
 
@@ -119,7 +134,22 @@ def main():
         fail("stylesheet has unclosed brace(s)")
 
     print(f"PASS: index.html structure ({len(ids)} unique IDs, no external dependencies)")
-    print("PASS: embedded JavaScript syntax")
+
+    # Syntax-check every local script index.html loads, plus anything else in
+    # src/, so a broken file cannot reach the deployed site.
+    scripts = sorted(set((ROOT / a["src"].lstrip("./")).resolve()
+                         for a in page.script_attrs if a.get("src")))
+    scripts += sorted(set((ROOT / "src").rglob("*.js")) - set(scripts))
+    node = shutil.which("node")
+    if node:
+        for js in scripts:
+            proc = subprocess.run([node, "--check", str(js)],
+                                  capture_output=True, text=True)
+            if proc.returncode != 0:
+                fail(f"{js.relative_to(ROOT)} has a syntax error:\n{proc.stderr.strip()[:600]}")
+        print(f"PASS: JavaScript syntax ({len(scripts)} file(s))")
+    else:
+        print("SKIP: JavaScript syntax (node not available)")
     print("PASS: embedded stylesheet brace balance")
 
 
