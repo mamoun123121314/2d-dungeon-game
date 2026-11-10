@@ -12,7 +12,8 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
-const ALL = ['browser', 'save', 'mobile', 'gameplay', 'hero', 'vault', 'audio', 'perf'];
+const ALL = ['browser', 'save', 'mobile', 'gameplay', 'hero', 'vault', 'audio',
+             'creatureVoices', 'perf'];
 
 const wanted = process.argv.slice(2).filter((a) => !a.startsWith('-'));
 const suites = wanted.length ? wanted : ALL;
