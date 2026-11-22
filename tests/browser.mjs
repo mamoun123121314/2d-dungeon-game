@@ -132,6 +132,17 @@ try {
     togglePause(false); await frame();
     out.pauseCloses = Game.paused === false && Game.state === 'playing';
 
+    /* Opening the satchel from the pause menu must retire the pause panel,
+       otherwise closing the satchel resumes the world behind a pause screen. */
+    togglePause(true); await frame();
+    toggleInventory(true); await frame();
+    out.pauseYieldsToInventory = Game.invOpen === true && Game.state === 'playing'
+      && !document.getElementById('pauseOverlay').classList.contains('show')
+      && document.getElementById('inventoryOverlay').classList.contains('show');
+    toggleInventory(false); await frame();
+    out.noGhostPause = !document.getElementById('pauseOverlay').classList.contains('show')
+      && Game.paused === false && Game.state === 'playing';
+
     /* the pause menu's own buttons must work by click, not just by keyboard */
     togglePause(true); await frame();
     const opt = document.querySelector('#pauseOverlay [data-page], #pauseOverlay button');
@@ -146,6 +157,8 @@ try {
   check('pause opens', menu.pauseOpens, menu);
   check('pause subtitle is filled in', /Floor \d+/.test(menu.pauseSubtitle), menu.pauseSubtitle);
   check('pause closes', menu.pauseCloses, menu);
+  check('opening the satchel dismisses the pause panel', menu.pauseYieldsToInventory, menu);
+  check('closing the satchel leaves no ghost pause screen', menu.noGhostPause, menu);
   check('pause menu has buttons', menu.pauseHasButtons);
 
   /* ---------------- save + reload ---------------- */

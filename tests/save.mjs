@@ -277,6 +277,191 @@ try {
   check('the game still starts with storage blocked', blockedStart.state === 'playing', blockedStart);
   check('starting without storage throws nothing', blockedStart.error === null, blockedStart.error);
 
+  /* ============ 6b. resuming the right run, in a movable body ============ */
+  section('Resuming a run');
+  await fresh();
+  await startRun();
+
+  /* Continue is a click handler: it used to receive the MouseEvent as a slot
+     id, which made Save.slot() fall back to slot I. Seed a newer run in slot
+     II and click the real button — it must resume II, not I. */
+  const resumed = await page.evaluate(async () => {
+    const saved = Save.snapshotRun();
+    Game.player.gold = 111;
+    Save.save('a');
+    const second = JSON.parse(localStorage.getItem('dungeonRogue.save.v2.a'));
+    second.player.gold = 222;
+    second.savedAt = Date.now() + 60000;
+    localStorage.setItem('dungeonRogue.save.v2.b', JSON.stringify(second));
+    Save.setActiveSlot('a');
+    /* load from the pause/profile stack, the way a player actually does */
+    togglePause(true);
+    document.getElementById('continueBtn').click();
+    await new Promise((r) => setTimeout(r, 1200));
+    return {
+      gold: Game.player ? Game.player.gold : null,
+      slot: Save.activeSlot().id,
+      newest: (Save.newest() || {}).id,
+      state: Game.state,
+      paused: Game.paused,
+      pauseOverlay: document.getElementById('pauseOverlay').classList.contains('show'),
+      storyOpen: STORY.open,
+      storySeen: (JSON.parse(localStorage.getItem(Save.activeSlot().key) || '{}').storySeen || []).join(','),
+      hadSnapshot: !!saved,
+    };
+  });
+  check('Continue resumes the newest slot, not slot I', resumed.gold === 222 && resumed.slot === 'b', resumed);
+  check('the newest slot is the one named by Continue', resumed.newest === 'b', resumed);
+  check('loading while paused clears the pause panel', resumed.pauseOverlay === false, resumed);
+  equal('loading leaves the game running', resumed.paused, false);
+  equal('loading leaves the game in the playing state', resumed.state, 'playing');
+  check('a reloaded run does not replay a chapter it has already told', resumed.storyOpen === false, resumed);
+  check('the chapters the run has read are saved', resumed.storySeen.includes('0'), resumed);
+
+  /* A save made flush against masonry can be walkable to a tile test while the
+     hero's body already overlaps the wall. Such a run resumed unable to move in
+     any direction; the loader must nudge him to a spot with room. */
+  const unstuck = await page.evaluate(() => {
+    const d = Game.dungeon;
+    let wall = null;
+    for (let y = 1; y < d.H - 1 && !wall; y++) {
+      for (let x = 1; x < d.W - 2; x++) {
+        if (d.get(x, y) === WALL && d.isWalkable(x + 1, y)) { wall = { x, y }; break; }
+      }
+    }
+    if (!wall) return { skipped: true };
+    const p = Game.player;
+    p.x = (wall.x + 1) * TILE;          /* exactly on the wall's edge */
+    p.y = (wall.y + 0.5) * TILE;
+    const beforeEmbedded = !!circleHitsWalls(p.x, p.y, PLAYER_COLLISION_RADIUS);
+    const walkableTile = Game.dungeon.isWalkablePx(p.x, p.y);
+    Save.save();
+    const ok = Save.load(Save.activeSlot().id);
+    /* Save.load replaces Game.player, so read the live body, not the stale ref */
+    const live = Game.player;
+    return {
+      ok, walkableTile, beforeEmbedded,
+      afterEmbedded: !!circleHitsWalls(live.x, live.y, PLAYER_COLLISION_RADIUS),
+      x: live.x, y: live.y,
+    };
+  });
+  if (unstuck.skipped) {
+    check('a saved position flush with a wall is repaired', true, unstuck);
+  } else {
+    check('the dangerous saved spot is genuinely walkable by tile', unstuck.walkableTile, unstuck);
+    check('the saved body was initially overlapping the wall', unstuck.beforeEmbedded, unstuck);
+    check('a saved position flush with a wall is repaired', unstuck.ok && unstuck.afterEmbedded === false, unstuck);
+  }
+
+  /* ============ 6c. the floor's live state survives, not just its seed ============ */
+  section('Floor state');
+  await fresh();
+  await startRun();
+  const floorState = await page.evaluate(() => {
+    /* open a chest, kill a monster, leave loot on the ground and spend the
+       merchant's rerolls — then seal and resume */
+    const chest = Game.props.find(pr => pr.kind === 'chest' && !pr.opened);
+    if (chest) openChest(chest);
+    const alive = Game.enemies.filter(e => e.alive);
+    const victim = alive[0];
+    if (victim) {
+      victim.hp = 0; victim.die();
+      Combat.onEnemyDeath(victim);
+    }
+    const spare = rollItem(2, { rarity: RARITIES[2] });
+    Game.drops.push({ kind: 'item', item: spare, x: Game.player.x + 18, y: Game.player.y,
+      vx: 0, vy: 0, life: 55, bob: 0 });
+    Game.shopRerolls = 1;
+    Game.shopRerollCost = 77;
+    /* a flawless streak in progress, with a bounty watching it */
+    if (Game.bountyState) { Game.bountyState.flawless = 6; Game.flawlessStreak = 6; }
+    if (Game.dungeon.vaultDoor) { Game.dungeon.vaultDoor.locked = false; Game.dungeon.vaultDoor.opened = true; }
+    const chestIdx = chest ? Game.props.indexOf(chest) : -1;
+    const firstAlive = Game.enemies.filter(e => e.alive)[0];
+    const before = {
+      chestIdx,
+      enemies: Game.enemies.filter(e => e.alive).length,
+      firstEnemy: firstAlive ? [firstAlive.type, Math.round(firstAlive.hp)] : null,
+      drops: Game.drops.length,
+      stock: (Game.shopStock || []).map(it => it.name).join('|'),
+      rerolls: Game.shopRerolls,
+      cost: Game.shopRerollCost,
+      vault: Game.dungeon.vaultDoor ? !Game.dungeon.vaultDoor.locked : null,
+      streak: Game.flawlessStreak,
+    };
+    const ok = Save.save();
+    const loaded = Save.load(Save.activeSlot().id);
+    const liveChest = chestIdx >= 0 ? Game.props[chestIdx] : null;
+    const afterAlive = Game.enemies.filter(e => e.alive)[0];
+    return {
+      ok, loaded, before,
+      chestOpened: !!(liveChest && liveChest.opened),
+      enemies: Game.enemies.filter(e => e.alive).length,
+      firstEnemy: afterAlive ? [afterAlive.type, Math.round(afterAlive.hp)] : null,
+      drops: Game.drops.length,
+      stock: (Game.shopStock || []).map(it => it.name).join('|'),
+      rerolls: Game.shopRerolls,
+      cost: Game.shopRerollCost,
+      vault: Game.dungeon.vaultDoor ? !Game.dungeon.vaultDoor.locked : null,
+      streak: Game.flawlessStreak,
+      streakAfterKill: (() => { const n = Game.flawlessStreak; bountyTick('flawless'); return Game.flawlessStreak; })(),
+    };
+  });
+  check('the floor state save and load both succeeded', floorState.ok && floorState.loaded, floorState);
+  check('an opened chest stays opened after a reload', !floorState.before.chestIdx || floorState.chestOpened, floorState);
+  equal('slain monsters do not respawn on reload', floorState.enemies, floorState.before.enemies);
+  equal('a wounded monster keeps its health', JSON.stringify(floorState.firstEnemy), JSON.stringify(floorState.before.firstEnemy));
+  equal('loot on the ground is not swallowed by the reload', floorState.drops, floorState.before.drops);
+  equal("the merchant's stock is the one you left", floorState.stock, floorState.before.stock);
+  equal('spent rerolls stay spent', floorState.rerolls, floorState.before.rerolls);
+  equal('the reroll price keeps climbing', floorState.cost, floorState.before.cost);
+  equal('an unlocked vault stays unlocked', floorState.vault, floorState.before.vault);
+  equal('a flawless streak survives the reload', floorState.streak, floorState.before.streak);
+  equal('the next kill continues it instead of restarting at 1', floorState.streakAfterKill, floorState.before.streak + 1);
+
+  /* ============ 6d. importing a bad backup cannot wipe good runs ============ */
+  section('Backup import');
+  await fresh();
+  await startRun();
+  const imported = await page.evaluate(async () => {
+    const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+    const fileOf = (obj) => new File([JSON.stringify(obj)], 'backup.json', { type: 'application/json' });
+    Game.player.gold = 777;
+    Save.save('a');
+    const goodBefore = localStorage.getItem('dungeonRogue.save.v2.a');
+    const realConfirm = window.confirm;
+    window.confirm = () => true;
+    /* a backup that claims a run but whose run has no player must not clear
+       the shelf — that was the data-loss bug */
+    importBackupFile(fileOf({
+      app: 'dungeon-rogue-backup', version: 2, meta: {},
+      slots: { a: { run: { v: 1 } } },
+    }));
+    await wait(120);
+    const afterBad = localStorage.getItem('dungeonRogue.save.v2.a');
+    const badStatus = document.getElementById('backupStatus').textContent;
+    /* a valid backup still imports */
+    const snap = Save.snapshotRun();
+    snap.player.gold = 888;
+    importBackupFile(fileOf({
+      app: 'dungeon-rogue-backup', version: 2, meta: {},
+      slots: { b: { run: snap } },
+    }));
+    await wait(150);
+    window.confirm = realConfirm;
+    return {
+      keptByteForByte: afterBad === goodBefore,
+      badStatus,
+      bRestored: !!localStorage.getItem('dungeonRogue.save.v2.b'),
+      aClearedByGoodImport: !localStorage.getItem('dungeonRogue.save.v2.a'),
+      goodStatus: document.getElementById('backupStatus').textContent,
+    };
+  });
+  check('an unreadable backup leaves the shelf untouched', imported.keptByteForByte, imported);
+  check('the refusal is explained', /failed|read|cannot/i.test(imported.badStatus), imported.badStatus);
+  check('a readable backup still imports', imported.bRestored, imported);
+  check('a successful import replaces the old shelf', imported.aClearedByGoodImport, imported);
+
   /* ============ 7. the autosave does not lose the run ============ */
   section('Autosave');
   await fresh();

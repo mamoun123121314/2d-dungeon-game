@@ -129,9 +129,11 @@ try {
   await new Promise((r) => setTimeout(r, 300));
   const persistedMute = await page.evaluate(() => ({
     muted: Sound.isMuted(),
+    icon: (document.getElementById('soundBtn') || {}).textContent || '',
     stored: (() => { try { return localStorage.getItem('dungeonRogue.settings.v1') || ''; } catch (e) { return ''; } })(),
   }));
   check('mute survives a reload', persistedMute.muted === true, persistedMute.muted);
+  check('the mute icon still reads muted after a reload', persistedMute.icon.trim() === '✕', persistedMute.icon);
 
   /* volume is owned by Settings and pushed into the audio engine; that is the
      path the settings slider uses */

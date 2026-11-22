@@ -4,13 +4,16 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <meta name="theme-color" content="#09070d">
-<meta name="description" content="Dungeon Rogue — a complete procedural 2D action-RPG in a single HTML file. No images, no libraries: every tile, sprite and sound is generated in the browser.">
+<link rel="manifest" href="./manifest.webmanifest">
+<link rel="icon" type="image/svg+xml" href="./assets/icon.svg">
+<link rel="apple-touch-icon" href="./assets/icon.svg">
+<meta name="description" content="Dungeon Rogue — a complete procedural 2D action-RPG. No external images or libraries: every tile and sprite is generated in the browser, and the audio is synthesized or decoded from inlined recordings.">
 <meta property="og:type" content="website">
 <meta property="og:title" content="Dungeon Rogue — A Procedural ARPG">
-<meta property="og:description" content="Ten floors of stone, lava and ice. Procedural loot, five enemy types, and every sound synthesized in the browser. One HTML file, zero assets.">
+<meta property="og:description" content="Ten floors of stone, lava and ice. Procedural loot, sixteen monster types, and audio that needs no downloads. Zero external assets.">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="Dungeon Rogue — A Procedural ARPG">
-<meta name="twitter:description" content="A complete procedural 2D action-RPG in a single HTML file. No images, no libraries.">
+<meta name="twitter:description" content="A complete procedural 2D action-RPG. No external images, no libraries, no build step.">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <title>Dungeon Rogue — A Procedural ARPG</title>
@@ -1314,6 +1317,15 @@ body.is-phone #startScreen .phoneStart{display:flex;}
   display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; max-width: min(620px, 62vw);
   pointer-events: none; z-index: 3; }
 #affixBar.hidden { display: none; }
+#relicBar { position:absolute; bottom:122px; left:50%; transform:translateX(-50%); display:flex; gap:6px; flex-wrap:wrap; justify-content:center; max-width:min(620px,62vw); pointer-events:none; z-index:3; }
+#relicBar.hidden { display:none; }
+.relicChip { display:inline-flex; align-items:center; gap:4px; border:1px solid color-mix(in srgb, var(--c) 55%, transparent); border-radius:999px; padding:2px 7px; font:600 9px/1.4 var(--mono, monospace); letter-spacing:.1em; color:var(--c); background:rgba(8,6,12,.72); }
+.shopHunt { margin:8px 0 10px; padding:10px 12px; border:1px solid rgba(255,120,90,.4); border-radius:8px; background:linear-gradient(135deg,rgba(60,16,18,.55),rgba(20,12,16,.7)); display:flex; flex-direction:column; gap:3px; }
+.shopHunt.hidden { display:none; }
+.shopHunt b { font-size:10px; letter-spacing:.18em; color:#ff9a7a; text-transform:uppercase; }
+.shopHunt .huntName { color:#ffe0a8; font-size:14px; font-weight:700; letter-spacing:.04em; }
+.shopHunt .huntReward { color:#9fd8ff; font-size:11px; }
+.shopHunt .huntTip { color:#9b9187; font-size:10px; }
 .affixChip { display: inline-flex; align-items: center; gap: 5px;
   font-family: var(--mono, monospace); font-size: 10px; letter-spacing: .12em;
   text-transform: uppercase; padding: 3px 9px; border-radius: 999px;
@@ -1515,12 +1527,67 @@ body.is-phone .bNum{font-size:7.5px;}
 body.is-phone .bReward{font-size:7px;}
 
 body.is-phone #affixBar{bottom:6px;max-width:44vw;gap:4px;}
+body.is-phone #relicBar{bottom:28px;max-width:52vw;gap:4px;}
+body.is-phone .relicChip{font-size:7.5px;padding:1px 5px;}
 body.is-phone .affixChip{font-size:7.5px;padding:2px 6px;}
+
+/* ============================ 2026 SYSTEMS ============================ */
+.sr-only{position:absolute!important;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0;}
+.seedRow{display:flex;gap:10px;align-items:flex-end;justify-content:center;width:min(560px,92vw);margin:14px auto 6px;flex-wrap:wrap;}
+.seedField{display:flex;flex-direction:column;gap:4px;flex:1 1 240px;text-align:left;font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:#b9a77f;}
+.seedField input{font:inherit;font-size:14px;letter-spacing:.18em;text-transform:uppercase;color:#ffe7b0;background:rgba(10,8,16,.78);border:1px solid rgba(217,181,107,.42);border-radius:8px;padding:10px 12px;outline:none;}
+.seedField input:focus{border-color:#ffd98a;box-shadow:0 0 0 2px rgba(255,217,138,.18);}
+.seedRow .bigBtn{max-width:190px;margin:0;}
+.heatRow{display:flex;gap:7px;align-items:center;justify-content:center;flex-wrap:wrap;margin:6px auto 10px;font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:#b9a77f;}
+.heatChip{font:inherit;font-size:10px;color:#cbb98e;background:rgba(18,14,24,.8);border:1px solid rgba(217,181,107,.28);border-radius:999px;padding:5px 10px;cursor:pointer;}
+.heatChip.active{color:#1a1206;background:linear-gradient(180deg,#ffe1a1,#d9b56b);border-color:#ffe1a1;}
+.ghostNote{text-align:center;font-size:11px;color:#9fd8ff;margin:0 auto 8px;max-width:620px;}
+.chCmd{font-size:8px;letter-spacing:.1em;color:#ffd88a;border:1px solid rgba(255,216,138,.3);border-radius:999px;padding:1px 6px;margin-left:4px;}
+.huntPoster{margin:10px 0 12px;padding:12px 14px;border:1px solid rgba(255,120,90,.35);border-radius:8px;background:linear-gradient(135deg,rgba(60,16,18,.55),rgba(20,12,16,.7));}
+.huntPoster h4{margin:0 0 3px;font-size:12px;letter-spacing:.16em;text-transform:uppercase;color:#ff9a7a;}
+.huntPoster b{color:#ffe0a8;font-size:15px;letter-spacing:.06em;}
+.relicCard{flex:1 1 180px;max-width:230px;min-height:200px;display:flex;flex-direction:column;align-items:center;gap:10px;padding:20px 16px;cursor:pointer;border-radius:12px;border:1px solid color-mix(in srgb,var(--c) 60%,transparent);background:radial-gradient(circle at 50% 0%,color-mix(in srgb,var(--c) 20%,transparent),rgba(10,8,14,.94) 70%);color:#e8dfd0;font:inherit;text-align:center;transition:transform .18s,border-color .18s;}
+.relicCard:hover,.relicCard:focus-visible{transform:translateY(-4px);border-color:var(--c);outline:none;}
+.relicCard .relicGlyph{font-size:34px;color:var(--c);text-shadow:0 0 18px color-mix(in srgb,var(--c) 70%,transparent);}
+.relicCard b{font-size:15px;letter-spacing:.08em;color:#ffe7b0;}
+.relicCard small{font-size:11px;line-height:1.45;color:#bdb2a4;}
+#relicChoices{display:flex;gap:14px;justify-content:center;flex-wrap:wrap;}
+.huntPoster p{margin:5px 0 0;font-size:11px;color:#cbb9a2;line-height:1.5;}
+.relicChoices{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px;}
+.relicCard{padding:16px;border:1px solid rgba(217,181,107,.34);border-radius:10px;background:linear-gradient(160deg,rgba(28,22,34,.94),rgba(12,9,18,.96));cursor:pointer;text-align:left;color:inherit;font:inherit;}
+.relicCard:hover,.relicCard:focus{border-color:#ffd98a;box-shadow:0 0 0 2px rgba(255,217,138,.14) inset;}
+.relicCard .rTag{font-size:9px;letter-spacing:.18em;text-transform:uppercase;color:#9fd8ff;}
+.relicCard h3{margin:6px 0;color:#ffe7b0;font-size:17px;}
+.relicCard p{margin:0;color:#bdb0a0;font-size:12px;line-height:1.55;}
+.chronicleBox{margin:12px 0;padding:12px 14px;max-height:210px;overflow:auto;border:1px solid rgba(217,181,107,.3);border-radius:8px;background:rgba(8,6,12,.82);font-size:11.5px;line-height:1.62;color:#d9cdb8;white-space:pre-wrap;text-align:left;}
+.chronicleBox h3{margin:0 0 6px;font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:#ffd88a;}
+.keybindList{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:8px;margin:4px 0 12px;}
+.keybindRow{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:7px 10px;border:1px solid rgba(217,181,107,.22);border-radius:7px;background:rgba(12,9,18,.6);font-size:11px;color:#cbbdac;}
+.keybindRow button{font:inherit;font-size:10px;color:#ffe0a8;background:rgba(40,30,20,.8);border:1px solid rgba(217,181,107,.4);border-radius:5px;padding:3px 8px;cursor:pointer;min-width:56px;}
+.keybindRow button.listening{border-color:#9fd8ff;color:#9fd8ff;}
+body.photo-mode #hud,body.photo-mode #actionSheet,body.photo-mode #selectMenu{opacity:0!important;pointer-events:none!important;}
+body.photo-mode #game{transform:scale(1.45);transform-origin:50% 50%;transition:transform .35s cubic-bezier(.2,.8,.3,1);}
+body.photo-mode::before,body.photo-mode::after{content:'';position:fixed;left:0;right:0;height:5.5vh;background:#040307;z-index:70;pointer-events:none;}
+body.photo-mode::before{top:0;}body.photo-mode::after{bottom:0;}
+body.photo-mode::after{content:'PHOTO MODE · Y SAVE · P EXIT';color:#ffe0a8;font:600 9px/5.5vh "Segoe UI",system-ui,sans-serif;letter-spacing:.22em;text-align:center;}
+body.colorblind .rvName::before{content:'◆ ';}
+body.colorblind .affixChip::before{content:'◇ ';}
+@media (max-width:700px){
+  #relicChoices{gap:8px;}
+  .relicCard{flex:1 1 100%;max-width:none;min-height:0;padding:12px 14px;flex-direction:row;text-align:left;gap:12px;}
+  .relicCard .relicGlyph{font-size:26px;}
+  .relicCard b{font-size:13px;}
+  .relicCard small{font-size:10.5px;}
+  .seedRow{flex-direction:column;align-items:stretch;}
+  .seedRow .bigBtn{max-width:none;}
+  .heatRow{font-size:9px;}
+}
 </style>
 </head>
 <body>
 <!-- ============================ GAME CANVAS ============================ -->
 <canvas id="game" aria-label="Dungeon Rogue game canvas"></canvas>
+<div id="srLog" class="sr-only" role="log" aria-live="polite" aria-atomic="false"></div>
 
 <!-- ============================ AMBIENT FX ============================ -->
 <div id="ambientTint"></div>
@@ -1589,6 +1656,7 @@ body.is-phone .affixChip{font-size:7.5px;padding:2px 6px;}
   </div>
 
   <div id="affixBar" class="hidden"></div>
+  <div id="relicBar" class="hidden"></div>
   <div id="bountyHud" class="hidden"></div>
   <div id="comboHud" class="hidden"><span class="cX" id="comboX">x1</span><span class="cLabel">COMBO</span>
     <div class="cTrack"><div class="cFill" id="comboFill"></div></div></div>
@@ -1596,6 +1664,7 @@ body.is-phone .affixChip{font-size:7.5px;padding:2px 6px;}
   <span class="chName">EMBER</span>
   <div class="chBar"><i id="compHpFill" style="width:100%"></i></div>
   <span class="chBond" id="compBond">BOND 0</span>
+  <span class="chCmd" id="compCmd">C · HEEL</span>
 </div>
 <div id="saveToast" aria-hidden="true"><span class="svDot"></span>SAVED</div>
 <div id="lootReveal"></div>
@@ -1803,6 +1872,7 @@ body.is-phone .affixChip{font-size:7.5px;padding:2px 6px;}
           <button class="shopRerollBtn" id="shopRerollBtn">Reroll Stock · 20g</button>
           <span class="shopRerolls" id="shopRerolls">2 rerolls left</span>
         </div>
+        <div id="shopHunt" class="huntPoster" hidden></div>
         <div class="shopList" id="shopStock"></div>
         <div class="shopMesg" id="shopMsg"></div>
       </div>
@@ -1851,6 +1921,8 @@ body.is-phone .affixChip{font-size:7.5px;padding:2px 6px;}
         <div class="pauseGrid">
           <button class="bigBtn secondary" id="pauseSettingsBtn">Settings</button>
           <button class="bigBtn secondary" id="pauseSoundBtn">Sound</button>
+          <button class="bigBtn secondary" id="pausePhotoBtn">Photo Mode</button>
+          <button class="bigBtn secondary" id="pauseClipBtn">Record 5s Clip</button>
         </div>
       </div>
       <div class="pauseSection">
@@ -1870,7 +1942,8 @@ body.is-phone .affixChip{font-size:7.5px;padding:2px 6px;}
         <kbd>R</kbd><span>Drink healing potion</span>
         <kbd>Space</kbd><span>Dodge roll (brief i-frames)</span>
         <kbd>I / Tab</kbd><span>Inventory</span>
-        <kbd>F</kbd><span>Interact: chests, stairs, merchant</span>
+        <kbd>F</kbd><span>Interact: chests, stairs, merchant, stations</span>
+        <kbd>C</kbd><span>Ember command: heel → fetch → sniff → guard</span>
         <kbd>M</kbd><span>Mute audio</span>
         <kbd>T</kbd><span>Talents (every 3rd level)</span>
         <kbd>Ctrl+S</kbd><span>Save now (also autosaves)</span>
@@ -1905,12 +1978,17 @@ body.is-phone .affixChip{font-size:7.5px;padding:2px 6px;}
       <label class="menuField toggleField" for="numbersSetting"><span>Floating combat text</span><input id="numbersSetting" type="checkbox" checked></label>
       <label class="menuField toggleField" for="contrastSetting"><span>High-contrast dungeon</span><input id="contrastSetting" type="checkbox"></label>
       <label class="menuField toggleField" for="largeUISetting"><span>Larger interface</span><input id="largeUISetting" type="checkbox"></label>
+      <label class="menuField toggleField" for="colorBlindSetting"><span>Colour-blind rarity &amp; element marks</span><input id="colorBlindSetting" type="checkbox"></label>
       <h3 class="menuSection">Appearance &amp; expedition</h3>
       <div class="menuField selectField"><span class="fieldLabel" id="paletteSettingLabel">Dungeon colourway</span><select id="paletteSetting" class="nativeSelect" tabindex="-1" aria-hidden="true"><option value="cinder">Cinder &amp; gold</option><option value="moon">Moon-tide teal</option><option value="moss">Verdant relic</option></select></div>
       <div class="menuField selectField"><span class="fieldLabel" id="auraSettingLabel">Ember’s spirit trail</span><select id="auraSetting" class="nativeSelect" tabindex="-1" aria-hidden="true"><option value="none">Quiet paws</option><option value="ember">Foxfire orbit</option><option value="moon">Moon sigils</option></select></div>
       <div class="menuField selectField"><span class="fieldLabel" id="heroAspectSettingLabel">Hero mantle</span><select id="heroAspectSetting" class="nativeSelect" tabindex="-1" aria-hidden="true"><option value="wayfarer">Ashen Wayfarer</option><option value="moonblade">Moonblade · silver orbit</option><option value="thornbound">Thornbound · leaf armor</option></select></div>
       <div class="menuField selectField"><span class="fieldLabel" id="contractSettingLabel">Next expedition contract</span><select id="contractSetting" class="nativeSelect" tabindex="-1" aria-hidden="true"><option value="standard">Unbound — standard descent</option><option value="pilgrim">Pilgrim’s Mercy — fewer foes, softer hits, less gold</option><option value="reclaimer">The Reclaimer — crowded floors, richer gold</option><option value="glass">Glass Covenant — fewer foes, harder hits, stronger strikes</option></select></div>
-      <p class="menuNote">Contracts change the rules of a fresh run. Your current run keeps its original contract.</p>
+      <div class="menuField selectField"><span class="fieldLabel" id="heatSettingLabel">Heat (next run)</span><select id="heatSetting" class="nativeSelect" tabindex="-1" aria-hidden="true"><option value="0">0 · Embers — standard</option><option value="1">1 · Warm — extra elite, +loot</option><option value="2">2 · Burning — no potion drops, ++loot</option><option value="3">3 · Inferno — darkness, +++loot</option></select></div>
+      <p class="menuNote">Contracts and Heat change the rules of a fresh run. Your current run keeps its original terms.</p>
+      <h3 class="menuSection">Controls</h3>
+      <div id="keybindList" class="keybindList"></div>
+      <div class="menuActions"><button class="bigBtn secondary" id="resetKeysBtn" type="button">Reset bindings</button><button class="bigBtn secondary" id="gamepadNote" type="button" disabled>Gamepad: connect &amp; press a button</button></div>
       <div class="menuActions"><button class="bigBtn secondary" data-close-page="settingsOverlay">Done</button></div>
     </div>
   </section>
@@ -1959,6 +2037,17 @@ body.is-phone .affixChip{font-size:7.5px;padding:2px 6px;}
   </section>
 </div>
 
+<!-- ============================ RELIC DRAFT ============================ -->
+<div class="overlay" id="relicDraftOverlay" aria-hidden="true">
+  <div class="panel menuPage" role="dialog" aria-modal="true" aria-labelledby="relicTitle">
+    <div class="panelHead"><h2 id="relicTitle">Relic Draft</h2><span class="sub">Choose one for the rest of this run</span></div>
+    <div class="menuPageBody">
+      <p class="menuLead">The deep hands you a fragment of something older. Take one; the others are lost.</p>
+      <div id="relicChoices" class="relicChoices"></div>
+    </div>
+  </div>
+</div>
+
 <!-- ============================ DEATH ============================ -->
 <div class="overlay" id="deathOverlay">
   <div class="panel deathPanel">
@@ -1967,6 +2056,8 @@ body.is-phone .affixChip{font-size:7.5px;padding:2px 6px;}
       <div class="deathTitle">Slain</div>
       <div class="epitaph" id="deathEpitaph">The dungeon claims another wanderer. Its halls remember your name.</div>
       <div class="runStats" id="deathStats"></div>
+      <div id="deathChronicle" class="chronicleBox" hidden></div>
+      <div class="menuActions"><button class="bigBtn secondary" id="deathChronicleBtn">Read the Chronicle</button><button class="bigBtn secondary" id="deathChronicleCopyBtn">Copy</button><button class="bigBtn secondary" id="deathChronicleDlBtn">Download .md</button><button class="bigBtn secondary" id="deathExportBtn">Export Backup</button></div>
       <button class="bigBtn" id="retryBtn">Descend Again</button>
     </div>
   </div>
@@ -1980,6 +2071,8 @@ body.is-phone .affixChip{font-size:7.5px;padding:2px 6px;}
       <div class="victoryTitle">The Depths Cleared</div>
       <div class="epitaph">Ten floors of horror lie behind you. The Heartstone is shattered, and the dungeon's pulse falls silent at last.</div>
       <div class="runStats" id="victoryStats"></div>
+      <div id="victoryChronicle" class="chronicleBox" hidden></div>
+      <div class="menuActions"><button class="bigBtn secondary" id="victoryChronicleBtn">Read the Chronicle</button><button class="bigBtn secondary" id="victoryChronicleCopyBtn">Copy</button><button class="bigBtn secondary" id="victoryChronicleDlBtn">Download .md</button><button class="bigBtn secondary" id="victoryExportBtn">Export Backup</button></div>
       <button class="bigBtn" id="endlessBtn">Continue Endless Descent</button>
       <button class="bigBtn secondary" id="victoryRestartBtn">Begin Anew</button>
     </div>
@@ -2055,6 +2148,20 @@ body.is-phone .affixChip{font-size:7.5px;padding:2px 6px;}
       </div>
     </div>
 
+    <div class="seedRow">
+      <label class="seedField" for="runCodeInput"><span>Run code / daily seed</span>
+        <input id="runCodeInput" type="text" maxlength="12" autocomplete="off" spellcheck="false" placeholder="DR-7F3A-91C2">
+      </label>
+      <button class="bigBtn secondary" id="dailyBtn" type="button">Daily Descent</button>
+    </div>
+    <div class="heatRow" id="heatRow" aria-label="Heat level for the next run">
+      <span>Heat</span>
+      <button type="button" data-heat="0" class="heatChip active">0 · Embers</button>
+      <button type="button" data-heat="1" class="heatChip">1 · Warm</button>
+      <button type="button" data-heat="2" class="heatChip">2 · Burning</button>
+      <button type="button" data-heat="3" class="heatChip">3 · Inferno</button>
+    </div>
+    <div class="ghostNote hidden" id="ghostNote" aria-live="polite"></div>
     <div class="startBtnRow">
       <button class="bigBtn" id="startBtn">Enter The Dungeon</button>
       <button class="bigBtn secondary hidden" id="continueBtn">Continue</button>
@@ -2066,9 +2173,10 @@ body.is-phone .affixChip{font-size:7.5px;padding:2px 6px;}
       <button class="bigBtn secondary menuTile" id="menuProfileBtn"><span class="mtGlyph" aria-hidden="true">▤</span><span class="mtBody"><b>Profile &amp; Backup</b><small>Your three saved runs and backups</small></span></button>
       <button class="bigBtn secondary menuTile" id="menuRewardsBtn"><span class="mtGlyph" aria-hidden="true">◆</span><span class="mtBody"><b>Progress &amp; Rewards</b><small>Milestones and Ember Shards</small></span></button>
       <button class="bigBtn secondary menuTile" id="menuShopBtn"><span class="mtGlyph" aria-hidden="true">⬥</span><span class="mtBody"><b>Sanctuary Shop</b><small>Spend shards on Ember and keepsakes</small></span></button>
+      <button class="bigBtn secondary menuTile hidden" id="installBtn"><span class="mtGlyph" aria-hidden="true">⌂</span><span class="mtBody"><b>Install App</b><small>Play offline from your home screen</small></span></button>
     </div>
     <div class="startMeta">
-      <span>Single-file · <b>0 KB</b> assets</span>
+      <span>Four local scripts · <b>0 KB</b> downloaded assets</span>
       <span>Canvas 2D · <b>Web Audio</b></span>
       <span>Procedurally generated · <b>Endlessly replayable</b></span>
     </div>
@@ -2084,6 +2192,7 @@ body.is-phone .affixChip{font-size:7.5px;padding:2px 6px;}
 <script src="./src/audio/creature-voices.js"></script>
 <script src="./src/render/dungeon-detail.js"></script>
 <script src="./src/game-core.js"></script>
+<script src="./src/pwa.js"></script>
 
 </body>
 </html>
