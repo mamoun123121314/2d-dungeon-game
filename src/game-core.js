@@ -1515,7 +1515,7 @@ const THEMES = [
     sub: 'Cold flagstones and old iron',
     fog: 'rgba(6,8,16,0.94)', vignette: 'rgba(3,4,10,0.85)', tint: 'rgba(40,55,90,0.10)',
     wall: ['#3b4250', '#2b303c', '#4c5568'], wallDark: '#1b1f28', wallEdge: '#5d6779',
-    floor: ['#22262f', '#272c37', '#1d212a'], floorLine: 'rgba(0,0,0,0.34)', floorDark: '#15181e',
+    floor: ['#22262f', '#272c37', '#1d212a'], floorLine: 'rgba(0,0,0,0.21)', floorDark: '#15181e',
     accent: '#6f8fbf', lava: '#d9622b', glow: 'rgba(110,150,210,0.10)',
     torchColor: '#ffb867', ambient: '#0a0e18',
     enemies: ['crawler', 'skeleton', 'orc', 'necro'], decor: 'moss'
@@ -1525,7 +1525,7 @@ const THEMES = [
     sub: 'Ash chokes the air',
     fog: 'rgba(14,5,3,0.94)', vignette: 'rgba(22,4,2,0.85)', tint: 'rgba(150,45,10,0.13)',
     wall: ['#4a2e26', '#33201b', '#5f3b2c'], wallDark: '#22120e', wallEdge: '#7d4a31',
-    floor: ['#2c1c17', '#33211b', '#25160f'], floorLine: 'rgba(0,0,0,0.38)', floorDark: '#170d0a',
+    floor: ['#2c1c17', '#33211b', '#25160f'], floorLine: 'rgba(0,0,0,0.26)', floorDark: '#170d0a',
     accent: '#ff7a34', lava: '#ff5a1e', glow: 'rgba(255,110,40,0.16)',
     torchColor: '#ff8a3c', ambient: '#180805',
     enemies: ['crawler', 'orc', 'imp', 'skeleton', 'necro'], decor: 'ash'
@@ -1535,7 +1535,7 @@ const THEMES = [
     sub: 'The frost bites to the bone',
     fog: 'rgba(5,12,20,0.94)', vignette: 'rgba(3,10,18,0.86)', tint: 'rgba(80,170,220,0.12)',
     wall: ['#3e5568', '#2b3d4d', '#587694'], wallDark: '#1a2833', wallEdge: '#7ea3c2',
-    floor: ['#22323d', '#283a47', '#1c2a34'], floorLine: 'rgba(180,225,255,0.11)', floorDark: '#131d26',
+    floor: ['#22323d', '#283a47', '#1c2a34'], floorLine: 'rgba(180,225,255,0.07)', floorDark: '#131d26',
     accent: '#8fd8ff', lava: '#4aa6e0', glow: 'rgba(120,200,255,0.14)',
     torchColor: '#8fd0ff', ambient: '#050d16',
     enemies: ['ice', 'skeleton', 'crawler', 'necro', 'orc'], decor: 'ice'
@@ -1837,21 +1837,28 @@ class Dungeon {
   }
   chooseTypes() {
     const rooms = this.rooms;
-    /* sort rooms by distance from center to pick entrance & stairs far apart */
-    const byCx = rooms.slice().sort((a, b) => a.cx - b.cx);
-    const left = byCx[0], right = byCx[byCx.length - 1];
-    this.startRoom = left; this.stairsRoom = right;
-    if (left === right && rooms.length > 1) this.stairsRoom = rooms[rooms.length - 1];
-    this.entrance = { x: left.cx, y: left.cy };
+    /* Start in a room near the map's visual centre so the opening scene can
+       frame the hero and its surroundings without exposing an empty camera
+       gutter. Put the stairs in the most distant room to retain a real trek. */
+    const mapCx = (this.W - 1) / 2, mapCy = (this.H - 1) / 2;
+    const startRoom = rooms.slice().sort((a, b) =>
+      dist2(a.cx, a.cy, mapCx, mapCy) - dist2(b.cx, b.cy, mapCx, mapCy)
+      || a.cx - b.cx || a.cy - b.cy)[0];
+    const farRooms = rooms.filter(r => r !== startRoom).sort((a, b) =>
+      dist2(b.cx, b.cy, startRoom.cx, startRoom.cy) - dist2(a.cx, a.cy, startRoom.cx, startRoom.cy)
+      || a.cx - b.cx || a.cy - b.cy);
+    this.startRoom = startRoom;
+    this.stairsRoom = farRooms[0] || startRoom;
+    this.entrance = { x: startRoom.cx, y: startRoom.cy };
     this.stairs = { x: this.stairsRoom.cx, y: this.stairsRoom.cy };
     this.set(this.entrance.x, this.entrance.y, FLOOR);
     this.set(this.stairs.x, this.stairs.y, STAIRS);
     /* stairs must be walkable and inside the room */
     if (this.get(this.stairs.x, this.stairs.y) !== STAIRS) this.set(this.stairs.x, this.stairs.y, STAIRS);
-    left.type = 'normal';
+    startRoom.type = 'normal';
     this.stairsRoom.type = 'stairs';
     /* vault: biggest remote room gets a locked door + treasure */
-    const others = rooms.filter(r => r !== left && r !== this.stairsRoom);
+    const others = rooms.filter(r => r !== startRoom && r !== this.stairsRoom);
     if (others.length > 2) {
       const vault = others.slice().sort((a, b) => b.area - a.area)[0];
       vault.type = 'vault';
@@ -3696,16 +3703,19 @@ const COMPANION = {
       const stride=(x<0?-step:step)*.42;
       ctx.fillStyle=legColor;
       ctx.beginPath(); ctx.roundRect(x-2.2,3+bob+side*4+stride,4.5,8,2); ctx.fill();
+      ctx.strokeStyle='rgba(38,23,14,0.72)'; ctx.lineWidth=.9; ctx.stroke();
       ctx.fillStyle='#e4c99f'; ctx.beginPath(); ctx.ellipse(x,10+bob+side*4+stride,2.6,1.8,0,0,TAU); ctx.fill();
     }
     /* sturdy, elongated body with a cream chest patch */
     const body=ctx.createLinearGradient(0,-9,0,10);
     body.addColorStop(0,this.hurtFlash>0?'#ff9b8a':coat.body0); body.addColorStop(1,coat.body1);
     ctx.fillStyle=body; ctx.beginPath(); ctx.ellipse(0,bob,16,10,0,0,TAU); ctx.fill();
+    ctx.strokeStyle='rgba(38,23,14,0.72)'; ctx.lineWidth=1.1; ctx.stroke();
     ctx.fillStyle='rgba(255,230,192,.82)'; ctx.beginPath(); ctx.ellipse(9,2+bob,5.3,7, -.18,0,TAU); ctx.fill();
     /* head, floppy ears, muzzle and nose */
     const hx=12+lunge*3, hy=-5+bob;
     ctx.fillStyle=coat.head; ctx.beginPath(); ctx.ellipse(hx,hy,9,7.8,.12,0,TAU); ctx.fill();
+    ctx.strokeStyle='rgba(38,23,14,0.72)'; ctx.lineWidth=1; ctx.stroke();
     ctx.fillStyle=coat.ear;
     ctx.beginPath(); ctx.ellipse(hx-3,hy-6,3.2,5.5,-.3,0,TAU); ctx.fill();
     ctx.beginPath(); ctx.ellipse(hx+2,hy+5,3,4.8,.35,0,TAU); ctx.fill();
@@ -6183,6 +6193,8 @@ function startRun(opts = {}) {
      second startRun() on the same page diverge from a fresh replay */
   Game.time = 0;
   Game.ambientT = 0;
+  Game.visionTimer = 0;
+  Game.inCombat = false;
   Game.hitStop = 0;
   Game.cam.shake = 0; Game.cam.shakeT = 0;
   FX.particles.length = 0; FX.texts.length = 0; FX.projectiles.length = 0;
@@ -6203,13 +6215,22 @@ function startRun(opts = {}) {
   /* A fresh run replays the chapters. STORY.reset() existed but nothing called
      it, so every run after the first silently skipped the whole story. */
   STORY.reset();
+  /* A fresh run starts Ember's run-local state cleanly too. spawn() repairs
+     position and HP on floor changes, but intentionally preserves hunger,
+     bond, commands and cooldowns; leaking those across a second new run made
+     seeded replays diverge from a fresh page. */
+  Object.assign(COMPANION, {
+    hungry: 0, mood: 'happy', attackCd: 0, barkCd: 0, face: 1, walkT: 0,
+    hurtFlash: 0, downT: 0, stuckT: 0, bond: 0, treasureSniff: 0,
+    command: 'heel', fetchTarget: null, guardX: 0, guardY: 0, guardHold: false
+  });
   /* Ember joins you from the very first step. */
   Game.companionActive = true;
   COMPANION.spawn(0, 0);
   Game.corpse = corpseForRun();
   buildFloor(1, true);
   showBanner('Floor 1', THEMES[0].name, THEMES[0].sub);
-  toast('You awaken at the mouth of the dungeon. Descend.', 'good');
+  toast('You awaken in a forgotten chamber. Find the stairs.', 'good');
   Sound.startMusic();
   updateHud(true);
   refreshInventoryUI();
@@ -6347,6 +6368,7 @@ function spawnThemeProps(d, room, props, p) {
   };
   const cands = roomWallTiles(room);
   const wanted = Math.min(theme.props.length, 2 + Math.floor(room.area / 40));
+  const placedSpots = [];
   let placed = 0, stationPlaced = false;
   /* the station is the room's reason to exist, so it gets first refusal */
   const kinds = theme.props.slice();
@@ -6357,7 +6379,7 @@ function spawnThemeProps(d, room, props, p) {
   }
   for (const kind of kinds) {
     if (placed >= wanted) break;
-    let spot = null;
+    let spot = null, bestSpacing = -1;
     for (const [tx, ty] of cands) {
       if (d.get(tx, ty) !== FLOOR) continue;
       if (occupied(tx, ty)) continue;
@@ -6365,8 +6387,15 @@ function spawnThemeProps(d, room, props, p) {
       const wx = (tx + 0.5) * TILE, wy = (ty + 0.5) * TILE;
       if (dist2(wx, wy, p.x, p.y) < 80 * 80) continue;
       if (d.merchant && dist2(wx, wy, d.merchant.x, d.merchant.y) < 70 * 70) continue;
+      /* maximize the gap from already placed furniture. This spreads a room's
+         landmarks around its walls instead of clumping every object at the
+         first usable edge of the shuffled perimeter. */
+      const spacing = placedSpots.length
+        ? Math.min(...placedSpots.map(([px, py]) => (tx - px) ** 2 + (ty - py) ** 2))
+        : hash2(tx, ty, room.cx * 31 + room.cy);
+      if (spacing <= bestSpacing) continue;
+      bestSpacing = spacing;
       spot = [tx, ty];
-      break;
     }
     if (!spot) continue;
     const [tx, ty] = spot;
@@ -6379,6 +6408,7 @@ function spawnThemeProps(d, room, props, p) {
       stationPlaced = true;
     }
     props.push(pr);
+    placedSpots.push(spot);
     placed++;
   }
 }
@@ -6460,11 +6490,17 @@ function spawnProps(d) {
      silently losing it to a collision. */
   const propNear = (x, y) => props.some(pr => !pr.dead
     && Math.abs(pr.x - x) < TILE * 0.8 && Math.abs(pr.y - y) < TILE * 0.8);
-  const freeSpotIn = (room, clearance, tries = 6) => {
+  const freeSpotIn = (room, clearance, tries = 6, interactiveGap = 0) => {
     for (let i = 0; i < tries; i++) {
       const spot = d.randomRoomFloor(room, clearance, { x: p.x, y: p.y });
       if (d.get(spot.tx, spot.ty) !== FLOOR) continue;
       if (propNear(spot.x, spot.y)) continue;
+      /* Keep loot targets away from stations and other chests. Otherwise a
+         player standing close enough to open a chest can get a nearer but
+         unintended furniture prompt instead. */
+      if (interactiveGap && props.some(pr => !pr.dead
+          && (pr.kind === 'chest' || pr.station || pr.kind === 'merchantStand' || pr.kind === 'altar')
+          && dist2(pr.x, pr.y, spot.x, spot.y) < interactiveGap * interactiveGap)) continue;
       return spot;
     }
     return null;
@@ -6524,7 +6560,7 @@ function spawnProps(d) {
   const chestRooms = d.rooms.filter(r => r !== d.startRoom);
   for (const room of chestRooms) {
     if (!chance(room.type === 'vault' ? 1 : 0.55)) continue;
-    const spot = freeSpotIn(room, 80, 8);
+    const spot = freeSpotIn(room, 80, 12, 126);
     if (!spot) continue;
     const rare = room.type === 'vault' || d.floor >= 5 && chance(0.3);
     const chest = new Prop('chest', spot.x, spot.y, { solid: true, r: 15, rare });
@@ -8906,6 +8942,107 @@ function drawFloorTile(ctx, d, x, y, sx, sy, art, t, forBake) {
     ctx.restore();
   }
 }
+/* A faint floor-level landmark makes each room personality readable before
+   the player reaches its furniture. Marks stay below props and entities and
+   are baked with the static floor, so they cost nothing on normal frames. */
+function drawRoomMotif(ctx, room, cam) {
+  const decor = room && room.decor;
+  if (!decor || decor === 'empty' || room.type === 'vault' || room.type === 'guardian') return;
+  const cx = (room.x + room.w / 2) * TILE - cam.x;
+  const cy = (room.y + room.h / 2) * TILE - cam.y;
+  const rw = Math.max(36, (room.w - 2) * TILE * 0.62);
+  const rh = Math.max(30, (room.h - 2) * TILE * 0.46);
+  const hash = (salt) => DungeonDetail.hash(room.cx, room.cy, salt + room.depth * 17);
+  ctx.save();
+  ctx.translate(cx, cy);
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+
+  if (decor === 'shrine' || decor === 'ritual') {
+    const c = decor === 'shrine' ? 'rgba(214,177,105,' : 'rgba(160,98,135,';
+    const r = Math.min(rw, rh) * 0.43;
+    ctx.strokeStyle = c + '0.22)'; ctx.lineWidth = 1.2;
+    ctx.beginPath(); ctx.arc(0, 0, r, 0, TAU); ctx.stroke();
+    ctx.strokeStyle = c + '0.14)'; ctx.lineWidth = 0.9;
+    ctx.beginPath(); ctx.arc(0, 0, r * 0.70, 0, TAU); ctx.stroke();
+    ctx.setLineDash([4, 7]);
+    ctx.beginPath(); ctx.arc(0, 0, r * 0.46, 0, TAU); ctx.stroke();
+    ctx.setLineDash([]);
+    for (let i = 0; i < 8; i++) {
+      const a = i * TAU / 8 + hash(1) * 0.16;
+      ctx.beginPath();
+      ctx.moveTo(Math.cos(a) * r * 0.72, Math.sin(a) * r * 0.72);
+      ctx.lineTo(Math.cos(a) * r * 0.96, Math.sin(a) * r * 0.96);
+      ctx.stroke();
+    }
+    ctx.fillStyle = c + '0.20)';
+    ctx.beginPath(); ctx.arc(0, 0, 2.2, 0, TAU); ctx.fill();
+  } else if (decor === 'library' || decor === 'barracks') {
+    const w = Math.min(rw * 0.72, 164), h = Math.min(rh * 0.62, 70);
+    const rug = decor === 'library' ? 'rgba(92,39,42,' : 'rgba(58,62,68,';
+    ctx.fillStyle = rug + '0.12)';
+    ctx.beginPath(); ctx.roundRect(-w / 2, -h / 2, w, h, 4); ctx.fill();
+    ctx.strokeStyle = rug + '0.28)'; ctx.lineWidth = 1;
+    ctx.strokeRect(-w / 2 + 3, -h / 2 + 3, w - 6, h - 6);
+    ctx.strokeStyle = rug + '0.18)';
+    ctx.beginPath();
+    ctx.moveTo(-w * 0.34, 0); ctx.lineTo(w * 0.34, 0);
+    ctx.moveTo(0, -h * 0.28); ctx.lineTo(0, h * 0.28);
+    ctx.stroke();
+  } else if (decor === 'garden') {
+    ctx.fillStyle = 'rgba(73,104,56,0.14)';
+    for (let i = 0; i < 5; i++) {
+      const a = hash(i + 2) * TAU;
+      const rr = 0.18 + hash(i + 8) * 0.42;
+      const x = Math.cos(a) * rw * rr, y = Math.sin(a) * rh * rr;
+      ctx.beginPath();
+      ctx.ellipse(x, y, 8 + hash(i + 12) * 12, 4 + hash(i + 16) * 7, a, 0, TAU);
+      ctx.fill();
+    }
+    ctx.strokeStyle = 'rgba(101,127,72,0.20)'; ctx.lineWidth = 1.1;
+    ctx.beginPath(); ctx.moveTo(-rw * 0.22, rh * 0.18);
+    ctx.quadraticCurveTo(0, -rh * 0.12, rw * 0.19, -rh * 0.04); ctx.stroke();
+  } else if (decor === 'crypt') {
+    const w = Math.min(rw * 0.62, 130), h = Math.min(rh * 0.42, 46);
+    ctx.fillStyle = 'rgba(14,12,14,0.10)';
+    ctx.beginPath(); ctx.roundRect(-w / 2, -h / 2, w, h, 8); ctx.fill();
+    ctx.strokeStyle = 'rgba(192,177,148,0.22)'; ctx.lineWidth = 1.2;
+    ctx.beginPath(); ctx.roundRect(-w / 2, -h / 2, w, h, 8); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(-w * 0.25, 0); ctx.lineTo(w * 0.25, 0);
+    ctx.moveTo(0, -h * 0.23); ctx.lineTo(0, h * 0.23); ctx.stroke();
+  } else if (decor === 'treasury') {
+    const r = Math.min(rw, rh) * 0.28;
+    ctx.strokeStyle = 'rgba(190,157,83,0.20)'; ctx.lineWidth = 1.1;
+    ctx.beginPath(); ctx.arc(0, 0, r, 0, TAU); ctx.stroke();
+    ctx.beginPath(); ctx.arc(0, 0, r * 0.66, 0, TAU); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(0, -r * 0.75); ctx.lineTo(r * 0.75, 0);
+    ctx.lineTo(0, r * 0.75); ctx.lineTo(-r * 0.75, 0); ctx.closePath(); ctx.stroke();
+  } else if (decor === 'workshop') {
+    ctx.fillStyle = 'rgba(28,19,14,0.11)';
+    ctx.beginPath(); ctx.ellipse(0, 0, rw * 0.20, rh * 0.18, hash(3) * 0.4, 0, TAU); ctx.fill();
+    ctx.strokeStyle = 'rgba(144,103,67,0.20)'; ctx.lineWidth = 1;
+    for (let i = -1; i <= 1; i++) {
+      ctx.beginPath(); ctx.moveTo(-rw * 0.12, i * 5); ctx.lineTo(rw * 0.12, i * 5); ctx.stroke();
+    }
+  } else if (decor === 'prison') {
+    ctx.strokeStyle = 'rgba(137,145,130,0.17)'; ctx.lineWidth = 1;
+    for (let i = 0; i < 7; i++) {
+      const x = (hash(i + 21) - 0.5) * rw * 0.64;
+      const y = (hash(i + 31) - 0.5) * rh * 0.48;
+      const len = 5 + hash(i + 41) * 12;
+      ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + len, y + (hash(i + 51) - 0.5) * 4); ctx.stroke();
+    }
+  } else if (decor === 'kitchen') {
+    ctx.fillStyle = 'rgba(88,65,42,0.10)';
+    for (let i = 0; i < 3; i++) {
+      const x = (hash(i + 61) - 0.5) * rw * 0.45;
+      const y = (hash(i + 71) - 0.5) * rh * 0.42;
+      ctx.beginPath(); ctx.ellipse(x, y, 9 + hash(i + 81) * 9, 4 + hash(i + 91) * 5, hash(i + 101), 0, TAU); ctx.fill();
+    }
+  }
+  ctx.restore();
+}
+
 function bakeFloorStatic(d) {
   if (!d) return;
   const w = d.W * TILE, h = d.H * TILE;
@@ -8921,6 +9058,7 @@ function bakeFloorStatic(d) {
       drawFloorTile(c, d, x, y, x * TILE, y * TILE, art, 0, true);
     }
   }
+  for (const room of d.rooms) drawRoomMotif(c, room, { x: 0, y: 0 });
   drawAmbientOcclusion(c, { x: 0, y: 0 }, true);
   d.staticCanvas = cv;
   d.staticW = w; d.staticH = h;
@@ -8971,6 +9109,9 @@ function renderWorld(ctx) {
         if (!d.exploredMap[idx] && !d.visible[idx]) continue;
         drawFloorTile(ctx, d, x, y, x * TILE - camX, y * TILE - camY, art, t, false);
       }
+    }
+    for (const room of d.rooms) {
+      if (room.explored || room === d.roomAt(p.x, p.y)) drawRoomMotif(ctx, room, drawCam);
     }
     /* ---- ambient occlusion over the floor ---- */
     drawAmbientOcclusion(ctx, drawCam);
@@ -10088,6 +10229,7 @@ function drawHeroShape(ctx, p, t, bob, swingT, ghost) {
   ctx.quadraticCurveTo(4, 16, 9 - capeWave, 15);
   ctx.quadraticCurveTo(13, 4, 6, -6);
   ctx.closePath(); ctx.fill();
+  ctx.strokeStyle = 'rgba(8,6,10,0.72)'; ctx.lineWidth = 1.8; ctx.stroke();
   ctx.restore();
   /* legs — alternating stride with a lift on the passing leg */
   const stride = p.moving ? Math.sin(p.walkT * 11) : 0;
@@ -10101,6 +10243,7 @@ function drawHeroShape(ctx, p, t, bob, swingT, ghost) {
     ctx.rotate(ph * 0.16 * s);
     ctx.fillStyle = shade(bootC, s * 0.08);
     ctx.beginPath(); ctx.roundRect(-3, 0, 6, 9 - lift * 0.3, 2.2); ctx.fill();
+    ctx.strokeStyle = 'rgba(8,6,10,0.72)'; ctx.lineWidth = 0.9; ctx.stroke();
     ctx.fillStyle = 'rgba(10,8,6,0.7)';
     ctx.fillRect(-3, 7 - lift * 0.3, 6, 2);
     /* sole highlight catches the torch light as the foot plants */
@@ -10124,6 +10267,7 @@ function drawHeroShape(ctx, p, t, bob, swingT, ghost) {
   ctx.quadraticCurveTo(12, 0, 8, -10);
   ctx.quadraticCurveTo(0, -14, -8, -10);
   ctx.closePath(); ctx.fill();
+  ctx.strokeStyle = 'rgba(8,6,10,0.78)'; ctx.lineWidth = 1.7; ctx.stroke();
   if (eq.armor) {
     /* armor trim + gem */
     ctx.strokeStyle = 'rgba(240,220,180,0.30)'; ctx.lineWidth = 1;
@@ -10157,6 +10301,7 @@ function drawHeroShape(ctx, p, t, bob, swingT, ghost) {
   const headY = -16;
   ctx.fillStyle = '#d9b08c';
   ctx.beginPath(); ctx.ellipse(0, headY, 6.2, 6.8, 0, 0, TAU); ctx.fill();
+  ctx.strokeStyle = 'rgba(8,6,10,0.72)'; ctx.lineWidth = 1.3; ctx.stroke();
   /* hair */
   ctx.fillStyle = '#3a2a22';
   ctx.beginPath(); ctx.arc(0, headY - 2.2, 6.2, Math.PI * 1.08, Math.PI * 1.98); ctx.fill();
@@ -11137,15 +11282,17 @@ const Lights = {
                 + Math.sin(Game.time * 23.1) * 0.009;
     out.push({
       x: p.x, y: p.y,
-      /* generous primary pool: the player must be able to read the room they
-         are fighting in, and the vignette adds the claustrophobia budget */
-      r: Math.min(Game.W, Game.H) * 0.78 * flick * heroLightMult(),
+      /* Keep the carried light local: the old 0.78-screen pool flattened the
+         room's darkness gradient, making every floor read like a lit arena.
+         This broader warm spill still preserves combat readability while
+         leaving room silhouettes and unlit corners visibly darker. */
+      r: Math.min(Game.W, Game.H) * 0.68 * flick * heroLightMult(),
       intensity: 1, colour: d.theme.torchColor, hero: true,
       falloff: 1.7
     });
-    /* a tight bright core so the player is always readable */
+    /* a warm, compact core keeps the hero legible without a white-hot halo */
     out.push({
-      x: p.x, y: p.y, r: 150 * flick * heroLightMult(), intensity: 0.62,
+      x: p.x, y: p.y, r: 126 * flick * heroLightMult(), intensity: 0.54,
       colour: '#fff2d0', hero: true, falloff: 2.2
     });
 
@@ -11161,8 +11308,8 @@ const Lights = {
         const big = pr.kind === 'brazier';
         out.push({
           x: pr.x, y: pr.y - (big ? 16 : 22),
-          r: (big ? 210 : 150) * fl,
-          intensity: big ? 1.0 : 0.90,
+          r: (big ? 184 : 132) * fl,
+          intensity: big ? 0.92 : 0.80,
           colour: d.theme.torchColor, falloff: 1.5
         });
       } else if (pr.kind === 'chest' && !pr.opened) {
@@ -11505,7 +11652,9 @@ function drawPostProcess(ctx) {
       Math.max(1, Math.round(Game.W * Game.dpr / down)),
       Math.max(1, Math.round(Game.H * Game.dpr / down)));
     ctx.globalCompositeOperation = 'lighter';
-    ctx.globalAlpha = 0.16;
+    /* restrained bloom preserves the hand-painted glow while keeping edges,
+       armor and warm character colours from washing into white. */
+    ctx.globalAlpha = 0.10;
     ctx.imageSmoothingEnabled = true;
     ctx.drawImage(bc, 0, 0, Game.W, Game.H);
     ctx.globalAlpha = 1;
