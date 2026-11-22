@@ -290,13 +290,25 @@ try {
   section('Interactions');
   const interact = await page.evaluate(() => {
     Game.state = 'playing'; Game.paused = false;
-    const chest = Game.props.find(pr => pr.kind === 'chest' && !pr.opened);
-    if (!chest) return { skipped: true };
-    /* stand beside the chest, never inside it: chests are solid since the
-       prop-collider pass, and a body spawned on one cannot move off it */
-    const spot = findFreeSpot(chest.x, chest.y + 54, Game.player.radius);
-    Game.player.x = spot.x; Game.player.y = spot.y;
-    const before = nearestInteractable();
+    const chests = Game.props.filter(pr => pr.kind === 'chest' && !pr.opened);
+    if (!chests.length) return { skipped: true };
+    /* Stand beside a chest, never inside it: chests are solid. Find a position
+       where the chest is actually the nearest prompt; room stations or a
+       merchant may legitimately take priority over a chest near the entrance. */
+    let chest = null, before = null;
+    for (const candidate of chests) {
+      for (let i = 0; i < 16; i++) {
+        const a = i * Math.PI / 8;
+        const spot = findFreeSpot(candidate.x + Math.cos(a) * 54, candidate.y + Math.sin(a) * 54, Game.player.radius);
+        Game.player.x = spot.x; Game.player.y = spot.y;
+        const target = nearestInteractable();
+        if (target && target.kind === 'chest' && target.x === candidate.x && target.y === candidate.y) {
+          chest = candidate; before = target; break;
+        }
+      }
+      if (chest) break;
+    }
+    if (!chest) return { skipped: true, reason: 'no chest without a closer interaction target' };
     openChest(chest);
     const after = nearestInteractable();
     return {

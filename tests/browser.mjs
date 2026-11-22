@@ -60,6 +60,30 @@ try {
   check('player hp is inside its maximum', playing.hp > 0 && playing.hp <= playing.maxHp, playing);
   check('enemies were placed', playing.enemies > 0, playing.enemies);
 
+  const framing = await page.evaluate(() => ({
+    x: Game.player.x - Game.cam.x, y: Game.player.y - Game.cam.y,
+    width: Game.W, height: Game.H,
+  }));
+  check('opening focal point stays composed on a wide viewport',
+    framing.x > framing.width * 0.38 && framing.x < framing.width * 0.62
+      && framing.y > framing.height * 0.35 && framing.y < framing.height * 0.65,
+    framing);
+
+  const motifs = await page.evaluate(() => {
+    const decor = ['library', 'prison', 'kitchen', 'shrine', 'workshop', 'crypt', 'garden', 'treasury', 'barracks', 'ritual'];
+    return decor.map((name) => {
+      const cv = document.createElement('canvas'); cv.width = 256; cv.height = 192;
+      const cx = cv.getContext('2d');
+      drawRoomMotif(cx, { decor: name, type: 'normal', x: 0, y: 0, w: 10, h: 8, cx: 5, cy: 4, depth: 1 }, { x: 0, y: 0 });
+      const data = cx.getImageData(0, 0, cv.width, cv.height).data;
+      let marks = 0;
+      for (let i = 3; i < data.length; i += 4) if (data[i] > 0) marks++;
+      return { name, marks };
+    });
+  });
+  check('every themed room has a painted floor landmark',
+    motifs.every((m) => m.marks > 20), motifs);
+
   /* the canvas must actually have paint on it, not just a cleared buffer.
      Sampled once the title overlay is gone — the menu dims the world on
      purpose, so the title screen is the wrong place to look. */

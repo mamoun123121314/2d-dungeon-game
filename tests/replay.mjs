@@ -27,6 +27,12 @@ try {
       if (STORY.open && STORY.close) STORY.close();
       Game.state = 'playing'; Game.paused = false;
       Game.player.invuln = 999;
+      /* The simulation timeline includes aim as well as movement. Pin the
+         cursor to the left-center of the viewport so a browser's stale mouse
+         position cannot make the attack targets depend on the prior run's
+         camera. */
+      Game.input.mx = Game.W * 0.05;
+      Game.input.my = Game.H * 0.5;
       const dirs = [];
       let s = policySeed >>> 0;
       const rnd = () => { s = (Math.imul(s, 1664525) + 1013904223) >>> 0; return s / 4294967296; };
