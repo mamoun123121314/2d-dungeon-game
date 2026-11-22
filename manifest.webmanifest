@@ -1,0 +1,16 @@
+{
+  "name": "Dungeon Rogue",
+  "short_name": "Dungeon Rogue",
+  "description": "A procedural 2D action-RPG with no downloaded assets.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#05040a",
+  "theme_color": "#09070d",
+  "categories": ["games"],
+  "icons": [
+    { "src": "./assets/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" },
+    { "src": "./assets/icon-maskable.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "maskable" }
+  ]
+}

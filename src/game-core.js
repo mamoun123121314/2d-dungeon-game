@@ -66,12 +66,158 @@ function hash2(x, y, seed = 0) {
   return ((h ^ (h >>> 16)) >>> 0) / 4294967295;
 }
 function mulberry32(a) {
-  return function () {
+  function nextRand() {
     a |= 0; a = (a + 0x6D2B79F5) | 0;
     let t = Math.imul(a ^ (a >>> 15), 1 | a);
     t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
     return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
+  }
+  /* deterministic replays need to snapshot/restore the stream position */
+  nextRand.getState = () => a | 0;
+  nextRand.setState = (v) => { a = v | 0; };
+  return nextRand;
+}
+
+/* ---- run identity -------------------------------------------------------
+   A run is (seed + contract + heat). The seed drives every floor through
+   buildFloor(), so it can be shown to the player as a shareable code, reused
+   for the daily dungeon, and replayed by the fuzz harness. */
+function seedToCode(seed) {
+  const n = (seed >>> 0).toString(36).toUpperCase().padStart(7, '0');
+  return 'DR-' + n.slice(0, 4) + '-' + n.slice(4);
+}
+function codeToSeed(code) {
+  const clean = String(code || '').toUpperCase().replace(/[^0-9A-Z]/g, '');
+  /* only the documented DR-XXXX-XXX shape is a run code; accepting arbitrary
+     seven-character words turned "NOT-A-RUN" into a real seed */
+  if (!clean.startsWith('DR')) return 0;
+  const body = clean.slice(2);
+  if (body.length < 5 || body.length > 7) return 0;
+  const n = parseInt(body, 36);
+  return Number.isFinite(n) && n > 0 ? (n >>> 0) : 0;
+}
+function dailySeed() {
+  const now = new Date();
+  const key = now.getUTCFullYear() * 10000 + (now.getUTCMonth() + 1) * 100 + now.getUTCDate();
+  let h = 2166136261 ^ key;
+  for (const ch of 'DUNGEON-ROGUE-DAILY') { h ^= ch.charCodeAt(0); h = Math.imul(h, 16777619); }
+  return (h >>> 0) || 1;
+}
+function floorSeedFor(runSeed, floorN) {
+  let h = (runSeed >>> 0) ^ Math.imul(floorN | 0, 0x9e3779b9);
+  h = Math.imul(h ^ (h >>> 16), 2246822507) ^ Math.imul(h ^ (h >>> 13), 3266489909);
+  return (h >>> 0) || 1;
+}
+/* ---- ghost race ---------------------------------------------------------
+   Every run with a seed records a breadcrumb every second. The best attempt
+   on that seed is replayed as a translucent silhouette that walks the route a
+   previous delver took at the same elapsed time. Pure local data, no server. */
+function loadGhostForRun(seed) {
+  if (!seed) return null;
+  try { return (Save.meta().ghosts || {})[seedToCode(seed)] || null; } catch (e) { return null; }
+}
+function recordGhostTick() {
+  const rec = Game.ghostRecording;
+  if (!rec || !Game.player || Game.state !== 'playing') return;
+  if (rec.points.length && Game.elapsedRun - rec.lastT < 1) return;
+  rec.lastT = Game.elapsedRun;
+  rec.points.push([Math.round(Game.player.x), Math.round(Game.player.y), Game.floor, +Game.elapsedRun.toFixed(1)]);
+  if (rec.points.length > 720) rec.points.shift();
+}
+function saveGhostBest() {
+  const rec = Game.ghostRecording;
+  if (!rec || !rec.seed || !rec.points.length) return;
+  const m = Save.meta();
+  const key = seedToCode(rec.seed);
+  const prev = (m.ghosts && m.ghosts[key]) || null;
+  const depth = Math.max(Game.floor, Game.player ? Game.player.depthReached || 1 : 1);
+  const time = +Game.elapsedRun.toFixed(1);
+  const better = !prev || depth > prev.bestDepth || (depth === prev.bestDepth && time < (prev.bestTime || Infinity));
+  if (!better) return;
+  m.ghosts = m.ghosts || {};
+  m.ghosts[key] = { seed: rec.seed, bestDepth: depth, bestTime: time, points: rec.points.slice(-720) };
+  Save.writeMeta(m);
+}
+/* the silhouette drawn during a run: latest breadcrumb at or before now */
+function ghostPose() {
+  const g = Game.ghost;
+  if (!g || !Array.isArray(g.points) || !g.points.length) return null;
+  let best = null;
+  for (const pt of g.points) {
+    if (pt[2] !== Game.floor) continue;
+    if (pt[3] > Game.elapsedRun) break;
+    best = pt;
+  }
+  return best ? { x: best[0], y: best[1] } : null;
+}
+
+/* ---- corpse runs --------------------------------------------------------
+   The dungeon remembers your last death. A later run that reaches the same
+   floor finds a marker; touching it returns the best item the dead delver
+   carried and one line of story. This is the existing fiction made real. */
+function corpseForRun() {
+  const c = Save.meta().corpse;
+  if (!c || c.recovered) return null;
+  return c;
+}
+function placeCorpseMarker(d, floorN) {
+  const c = Game.corpse;
+  if (!c || c.recovered || c.floor !== floorN || Game.corpsePlacedFor === floorN) return;
+  Game.corpsePlacedFor = floorN;
+  /* put the remains on walkable floor near the stairs, or near the entrance */
+  const d2 = d;
+  const ax = ((d2.stairs && d2.stairs.x) || d2.entrance.x) * TILE + TILE / 2;
+  const ay = ((d2.stairs && d2.stairs.y) || d2.entrance.y) * TILE + TILE / 2;
+  let spot = findFreeSpot(ax - 70, ay + 60, 11);
+  if (circleBlocked(spot.x, spot.y, 11)) spot = findFreeSpot(ax, ay, 11);
+  const pr = new Prop('remains', spot.x, spot.y, { solid: false, r: 10 });
+  pr.corpseItem = c.item || null;
+  pr.corpseName = c.name || 'the Wanderer';
+  Game.props.push(pr);
+  Game.corpseProp = pr;
+  rebuildPropHash();
+}
+function recoverCorpse(pr) {
+  const p = Game.player;
+  if (!p || !pr || pr.dead) return false;
+  const c = Game.corpse || Save.meta().corpse;
+  let item = null;
+  if (c && c.item) {
+    try { item = Save.reviveItem(c.item); } catch (e) { item = null; }
+  }
+  if (!item && pr.corpseItem) { try { item = Save.reviveItem(pr.corpseItem); } catch (e) { item = null; } }
+  pr.dead = true;
+  Game.corpse = null;
+  Game.corpseProp = null;
+  const m = Save.meta();
+  if (m.corpse) { m.corpse.recovered = true; Save.writeMeta(m); }
+  let line = 'You find only bones and a cold clasp.';
+  if (item) {
+    if (p.addItem(item)) {
+      line = 'You recover ' + item.name + ' from ' + (c && c.name ? c.name : 'the fallen') + '.';
+      revealLoot(item);
+    } else {
+      const val = Math.round(item.value * 0.5);
+      p.gold += val; p.totalGold += val; Game.runStats.gold += val;
+      line = 'Your pack is full; ' + item.name + ' is melted down for ' + val + ' gold.';
+    }
+  }
+  toast(line, 'loot');
+  SR.announce(line);
+  FX.spark(pr.x, pr.y, { count: 26, color: '#9fd8ff', speed: 170 });
+  FX.text(pr.x, pr.y - 26, 'REMAINS RECOVERED', { color: '#9fd8ff', size: 13, bold: true });
+  Sound.play('loot');
+  rebuildPropHash();
+  refreshInventoryUI(); updateHud(); Save.requestSave();
+  return true;
+}
+
+/* The simulation stream. update() swaps this in for the duration of a tick,
+   so AI, crits, loot and boss patterns are reproducible from the run seed. */
+function withRunRng(fn) {
+  const prev = rngSource;
+  if (Game.simRng) rngSource = Game.simRng;
+  try { return fn(); } finally { rngSource = prev; }
 }
 function rgba(hex, a) {
   const h = hex.replace('#', '');
@@ -126,13 +272,47 @@ function hsl(h, s, l, a = 1) { return `hsla(${h},${s}%,${l}%,${a})`; }
 const $ = (id) => document.getElementById(id);
 const $$ = (sel) => Array.prototype.slice.call(document.querySelectorAll(sel));
 
+/* Screen-reader narration. The game is canvas-first, so combat and loot are
+   otherwise invisible to assistive tech. A polite live region receives short
+   sentences; it is deliberately rate-limited so a busy fight does not turn
+   into a wall of speech. */
+const SR = {
+  el: null, last: '', lastAt: 0, queue: [],
+  init() {
+    this.el = $('srLog');
+    if (!this.el) return;
+    this.el.setAttribute('aria-live', 'polite');
+    this.el.setAttribute('aria-atomic', 'false');
+  },
+  announce(text, force) {
+    const clean = String(text || '').replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+    if (!clean) return;
+    const now = Date.now();
+    if (!force && now - this.lastAt < 900) { this.queue.push(clean); if (this.queue.length > 6) this.queue.shift(); return; }
+    /* a forced line is newer and more important than anything waiting */
+    if (force) {
+      this.queue.length = 0;
+      if (this.timer) { clearTimeout(this.timer); this.timer = null; }
+    }
+    this.lastAt = now; this.last = clean;
+    if (!this.el) this.init();
+    if (!this.el) return;
+    /* Replacing textContent is the most reliable trigger across browsers. */
+    this.el.textContent = clean;
+    if (this.queue.length) {
+      const next = this.queue.shift();
+      this.timer = setTimeout(() => { this.timer = null; this.announce(next, true); }, 950);
+    }
+  }
+};
+
 /* ============================== 02. AUDIO ENGINE ==========================
    Effects are real recordings, inlined as MP3 and decoded on first use. Only
    the looping score and the wind bed are generated. See the CLIPS table below
    for the recording sources and the processing applied to each. */
 const Settings = {
   KEY: 'dungeonRogue.settings.v1',
-  value: { volume: 0.85, muted: false, screenShake: true, reducedMotion: false, damageNumbers: true, highContrast: false, largeUI: false, palette: 'cinder', companionAura: 'none', heroAspect: 'wayfarer', contract: 'standard' },
+  value: { volume: 0.85, muted: false, screenShake: true, reducedMotion: false, damageNumbers: true, highContrast: false, largeUI: false, colorBlind: false, palette: 'cinder', companionAura: 'none', heroAspect: 'wayfarer', contract: 'standard', heat: 0, keybinds: {} },
   load() {
     try { const raw = JSON.parse(localStorage.getItem(this.KEY) || '{}'); this.value = Object.assign({}, this.value, raw); } catch (e) {}
     this.value.volume = clamp(Number(this.value.volume) || 0, 0, 1);
@@ -142,6 +322,9 @@ const Settings = {
     this.value.damageNumbers = this.value.damageNumbers !== false;
     this.value.highContrast = !!this.value.highContrast;
     this.value.largeUI = !!this.value.largeUI;
+    this.value.colorBlind = !!this.value.colorBlind;
+    this.value.heat = clamp(Math.floor(Number(this.value.heat) || 0), 0, 3);
+    if (!this.value.keybinds || typeof this.value.keybinds !== 'object') this.value.keybinds = {};
     if (!['cinder','moon','moss'].includes(this.value.palette)) this.value.palette='cinder';
     if (!['none','ember','moon'].includes(this.value.companionAura)) this.value.companionAura='none';
     if (!['wayfarer','moonblade','thornbound'].includes(this.value.heroAspect)) this.value.heroAspect='wayfarer';
@@ -156,6 +339,7 @@ const Settings = {
     document.body.classList.toggle('reduced-motion', !!this.value.reducedMotion);
     document.body.classList.toggle('high-contrast', !!this.value.highContrast);
     document.body.classList.toggle('large-ui', !!this.value.largeUI);
+    document.body.classList.toggle('colorblind', !!this.value.colorBlind);
     document.body.classList.toggle('palette-moon', this.value.palette === 'moon');
     document.body.classList.toggle('palette-moss', this.value.palette === 'moss');
   },
@@ -167,6 +351,9 @@ const Settings = {
     else if (key === 'damageNumbers') this.value.damageNumbers = !!value;
     else if (key === 'highContrast') this.value.highContrast = !!value;
     else if (key === 'largeUI') this.value.largeUI = !!value;
+    else if (key === 'colorBlind') this.value.colorBlind = !!value;
+    else if (key === 'heat') this.value.heat = clamp(Math.floor(Number(value) || 0), 0, 3);
+    else if (key === 'keybinds' && value && typeof value === 'object') this.value.keybinds = Object.assign({}, value);
     else if (key === 'palette' && ['cinder','moon','moss'].includes(value)) this.value.palette = value;
     else if (key === 'companionAura' && ['none','ember','moon'].includes(value)) this.value.companionAura = value;
     else if (key === 'heroAspect' && ['wayfarer','moonblade','thornbound'].includes(value)) this.value.heroAspect = value;
@@ -1210,7 +1397,7 @@ function tierForFloor(floorLevel, jitter = true) {
 }
 function rollItem(floorLevel, opts = {}) {
   const slot = opts.slot || pick(ITEM_SLOTS);
-  const rarity = opts.rarity || rollRarity(floorLevel, opts.luck || 0);
+  const rarity = opts.rarity || rollRarity(floorLevel, (opts.luck || 0) + (Game.heat || 0) * 2.5);
   const tier = opts.tier || tierForFloor(floorLevel);
   const bases = BASES[slot];
   const base = bases[clamp(tier - 1 + randInt(-1, 0), 0, bases.length - 1)];
@@ -1241,7 +1428,7 @@ function rollItem(floorLevel, opts = {}) {
     const pool = source.filter(a => !usedText.has(a.text));
     if (!pool.length) { if (wantSuffix) suffix = ''; else prefix = ''; continue; }
     const a = pick(pool);
-    if (usedStats.has(a.stat) && Math.random() < 0.7) continue;
+    if (usedStats.has(a.stat) && rngNow() < 0.7) continue;
     const raw = randInt(a.range[0], a.range[1]);
     const val = Math.round(raw * (raw < 0 ? 1 : rarity.mult * (0.75 + floorLevel * 0.02)));
     if (val === 0) continue;
@@ -1265,11 +1452,11 @@ function rollItem(floorLevel, opts = {}) {
   let element = 'physical';
   if ((slot === 'weapon' || slot === 'ring') && rarity.id >= 1) {
     const chanceByRarity = [0, 0.28, 0.52, 0.78][rarity.id];
-    if (Math.random() < chanceByRarity) {
+    if (rngNow() < chanceByRarity) {
       const pool = ['fire', 'ice', 'storm'];
       /* bias toward the floor's biome so loot feels placed, not random */
       const biomeBias = { lava: 'fire', ice: 'ice', stone: null }[(Game.dungeon && Game.dungeon.theme && Game.dungeon.theme.key) || 'stone'];
-      element = (biomeBias && Math.random() < 0.55) ? biomeBias : pick(pool);
+      element = (biomeBias && rngNow() < 0.55) ? biomeBias : pick(pool);
     }
   }
   if (element !== 'physical') {
@@ -1281,7 +1468,7 @@ function rollItem(floorLevel, opts = {}) {
   /* value */
   let value = Math.round((8 + tier * tier * 5 + floorLevel * 3) * rarity.valueMult * rand(0.85, 1.2));
   const item = {
-    id: 'it' + (Math.random() * 1e9 | 0).toString(36),
+    id: 'it' + (rngNow() * 1e9 | 0).toString(36),
     slot, rarity: rarity.id, tier, level: floorLevel,
     name, baseName, stats, value,
     iconKind: SLOT_ICON[slot],
@@ -2554,6 +2741,85 @@ function applyElement(enemy, element, amount, source) {
   }
 }
 
+/* ---- elemental reactions ------------------------------------------------
+   The status engine already had Burn, Chill and Shock. Reactions read the
+   status the target is carrying, consume it, and convert one element roll into
+   a build decision. Chain damage is applied directly (never recursively
+   through damageEnemy) so a reaction cannot cascade infinitely. */
+const REACTIONS = {
+  shatter:    { name: 'SHATTER',    colour: '#cfe9ff', a: 'fire', b: 'ice' },
+  conduction: { name: 'CONDUCTION', colour: '#9fd8ff', a: 'ice',  b: 'storm' },
+  plasma:     { name: 'PLASMA',     colour: '#ffb0ff', a: 'fire', b: 'storm' }
+};
+function killByReaction(other) {
+  if (other && !other.dead && other.hp <= 0) { other.die(); Combat.onEnemyDeath(other); }
+}
+function maybeElementalReaction(enemy, element, dealt, source) {
+  if (!enemy || !enemy.alive || !element || element === 'physical') return false;
+  const burning = (enemy.burnT || 0) > 0;
+  const chilled = (enemy.chillT || 0) > 0;
+  const shocked = (enemy.shockT || 0) > 0;
+  const p = Game.player;
+
+  /* Fire + Frost = Shatter: a burst that consumes both statuses. */
+  if ((element === 'fire' && chilled) || (element === 'ice' && burning)) {
+    const bonus = Math.max(4, Math.round(dealt * 0.42 + p.attackPower * 0.22));
+    enemy.hp -= bonus;
+    enemy.burnT = 0; enemy.burnPower = 0; enemy.chillT = 0;
+    enemy.stunT = Math.max(enemy.stunT || 0, 0.3);
+    FX.shatter(enemy.x, enemy.y, 20, ['#dff3ff', '#9fd8ff', '#ffffff']);
+    FX.ring(enemy.x, enemy.y, 74, 'rgba(200,235,255,0.7)', 0.45, 4);
+    FX.text(enemy.x, enemy.y - enemy.radius - 28, 'SHATTER +' + bonus, { color: '#cfe9ff', size: 14, bold: true, life: 1.0 });
+    Sound.play('crit', 0.7);
+    killByReaction(enemy);
+    return true;
+  }
+  /* Frost + Storm = Conduction: the charge runs through damp, armoured foes. */
+  if ((element === 'ice' && shocked) || (element === 'storm' && chilled)) {
+    enemy.chillT = 0;
+    let chained = 0;
+    for (const other of Game.enemies) {
+      if (chained >= 3) break;
+      if (dist2(other.x, other.y, enemy.x, enemy.y) > 190 * 190) continue;
+      if (other === enemy || !other.alive) continue;
+      const dmg = Math.max(3, Math.round(dealt * 0.32));
+      other.hp -= dmg;
+      other.hurtFlash = 0.2;
+      other.shockT = Math.max(other.shockT || 0, 1.6);
+      FX.arcBolt(enemy.x, enemy.y - 8, other.x, other.y - 8, '#9fd8ff');
+      FX.text(other.x, other.y - other.radius - 8, String(dmg), { color: '#9fd8ff', size: 11 });
+      chained++;
+      killByReaction(other);
+    }
+    if (chained) {
+      FX.ring(enemy.x, enemy.y, 96, 'rgba(140,220,255,0.55)', 0.4, 3);
+      FX.text(enemy.x, enemy.y - enemy.radius - 28, 'CONDUCTION ×' + chained, { color: '#9fd8ff', size: 13, bold: true, life: 1.0 });
+      Sound.play('magicHit', 0.8);
+      return true;
+    }
+  }
+  /* Fire + Storm = Plasma: the burn leaps in an arc around the target. */
+  if ((element === 'fire' && shocked) || (element === 'storm' && burning)) {
+    enemy.shockT = 0;
+    let spread = 0;
+    for (const other of Game.enemies) {
+      if (dist2(other.x, other.y, enemy.x, enemy.y) > 130 * 130) continue;
+      if (other === enemy || !other.alive) continue;
+      other.hp -= Math.max(2, Math.round(dealt * 0.16));
+      other.burnT = Math.max(other.burnT || 0, 2.4);
+      other.burnTick = Math.min(other.burnTick || STATUS.BURN.tickEvery, 0.25);
+      other.burnPower = Math.max(other.burnPower || 0, Math.max(2, Math.round(dealt * 0.18)));
+      FX.ember(other.x, other.y, 4, '#ffb0ff');
+      spread++;
+      killByReaction(other);
+    }
+    FX.ring(enemy.x, enemy.y, 82, 'rgba(255,150,255,0.55)', 0.45, 3);
+    FX.text(enemy.x, enemy.y - enemy.radius - 28, 'PLASMA' + (spread ? ' ×' + spread : ''), { color: '#ffb0ff', size: 13, bold: true, life: 1.0 });
+    return true;
+  }
+  return false;
+}
+
 /** Per-frame status tick. Called from updateEnemy before the state machine. */
 function tickStatus(enemy, dt) {
   /* burn */
@@ -2688,7 +2954,7 @@ class Enemy {
     this.hp = this.maxHp;
     this.atk = t.atk + floorLevel * 1.2;
     this.defense = t.def + floorLevel * 0.7;
-    this.speed = t.speed * (0.94 + Math.random() * 0.12);
+    this.speed = t.speed * (0.94 + rngNow() * 0.12);
     this.radius = t.radius;
     this.xpValue = Math.round(t.xp * (1 + (floorLevel - 1) * 0.2));
     this.goldRange = t.gold;
@@ -2837,6 +3103,112 @@ function runOathStat(stat) {
   return SHRINE_OATHS.reduce((sum,o)=>sum+(o.stats[stat]||0)*(ranks[o.id]||0),0);
 }
 
+/* ---- endless relics ----------------------------------------------------
+   A small, deliberately blunt pool: no hidden math, no stat affixes attached
+   to gear. Each relic is one rule the player can feel, and only three are
+   offered so a run develops a shape. */
+const RELICS = [
+  { id: 'glassEdge', name: 'Glass Edge', glyph: '⚔', colour: '#ff8f8f',
+    desc: '+15% damage dealt. You are also 8% easier to kill.' },
+  { id: 'goldenCoil', name: 'Golden Coil', glyph: '◉', colour: '#ffd97a',
+    desc: '+30% gold from every source.' },
+  { id: 'swiftRoot', name: 'Swift Root', glyph: '❧', colour: '#8fe0a8',
+    desc: '+10% movement speed.' },
+  { id: 'bloodLedger', name: 'Blood Ledger', glyph: '✚', colour: '#ff6f8a',
+    desc: '+3% life steal on every hit.' },
+  { id: 'secondWind', name: 'Second Wind', glyph: '✦', colour: '#9fd8ff',
+    desc: 'Once per floor, survive a killing blow at 1 HP.' },
+  { id: 'attuned', name: 'Attuned Core', glyph: '◈', colour: '#b99bff',
+    desc: '+20% elemental reaction power.' },
+  { id: 'ironHide', name: 'Iron Hide', glyph: '⛨', colour: '#c9d4e0',
+    desc: '+10 defense.' },
+  { id: 'luckyCoin', name: 'Lucky Coin', glyph: '◍', colour: '#ffe07a',
+    desc: '+5% critical chance.' },
+  { id: 'manaWell', name: 'Mana Well', glyph: '◌', colour: '#8fd8ff',
+    desc: '+25 maximum mana.' },
+  { id: 'thornCoat', name: 'Thorn Coat', glyph: '✳', colour: '#a8d47a',
+    desc: '+5 thorns damage to anything that hits you.' },
+  { id: 'warden', name: 'Warden Heart', glyph: '❤', colour: '#ff9a7a',
+    desc: '+18 maximum health.' },
+  { id: 'scavenger', name: 'Scavenger', glyph: '⌘', colour: '#d9b56b',
+    desc: 'Find one extra potion at the start of every floor.' }
+];
+function hasRelic(id) { return (Game.relics || []).some(r => r === id); }
+function relicDef(id) { return RELICS.find(r => r.id === id) || null; }
+function relicCount() { return (Game.relics || []).length; }
+function renderRelicHud() {
+  const el = $('relicBar');
+  if (!el) return;
+  const owned = (Game.relics || []).map(relicDef).filter(Boolean);
+  if (!owned.length) { el.innerHTML = ''; el.classList.add('hidden'); return; }
+  el.classList.remove('hidden');
+  el.innerHTML = owned.map(r => '<span class="relicChip" style="--c:' + r.colour + '" title="'
+    + escapeHtml(r.name + ' — ' + r.desc) + '">' + r.glyph + ' ' + escapeHtml(r.name) + '</span>').join('');
+}
+function isRelicDraftFloor() {
+  const standardSpot = (Game.floor === 5 || Game.floor === 10);
+  const endlessSpot = Game.endless && Game.floor > 10 && (Game.floor - 10) % 3 === 0;
+  return standardSpot || endlessSpot;
+}
+function offerRelicDraft() {
+  if (Game.relicDraftOpen || Game.state !== 'playing' || !isRelicDraftFloor()) return;
+  /* never stack the draft on top of a chapter card or an open menu: wait for
+     the player to actually be in control, then offer it again shortly */
+  if (storyHolds() || Game.paused) {
+    if (!Game.relicDraftRetry) Game.relicDraftRetry = 0;
+    if (Game.relicDraftRetry < 20) {
+      Game.relicDraftRetry++;
+      setTimeout(() => offerRelicDraft(), 2000);
+    }
+    return;
+  }
+  const pool = RELICS.filter(r => !hasRelic(r.id));
+  if (!pool.length) return;
+  shuffle(pool);
+  const picks = pool.slice(0, Math.min(3, pool.length));
+  Game.relicChoices = picks.map(r => r.id);
+  Game.relicDraftOpen = true;
+  Game.relicDraftRetry = 0;
+  Game.relicDraftFloor = Game.floor;
+  Game.paused = true;
+  const wrap = $('relicChoices');
+  if (!wrap) return;
+  wrap.innerHTML = picks.map(r => '<button type="button" class="relicCard" data-relic="' + r.id + '" style="--c:' + r.colour + '">'
+    + '<span class="relicGlyph">' + r.glyph + '</span><b>' + escapeHtml(r.name) + '</b>'
+    + '<small>' + escapeHtml(r.desc) + '</small></button>').join('');
+  wrap.querySelectorAll('[data-relic]').forEach(btn => btn.addEventListener('click', () => chooseRelic(btn.dataset.relic)));
+  $('relicDraftOverlay').classList.add('show');
+  $('relicDraftOverlay').setAttribute('aria-hidden', 'false');
+  syncMenuOpen();
+  const firstCard = wrap.querySelector('[data-relic]');
+  if (firstCard) setTimeout(() => firstCard.focus(), 30);
+  SR.announce('A relic draft: three choices.', true);
+  Sound.play('ui');
+}
+function chooseRelic(id) {
+  const def = relicDef(id);
+  if (!def || hasRelic(id)) return false;
+  Game.relics = (Game.relics || []).concat([id]);
+  Game.relicDraftOpen = false;
+  Game.relicChoices = [];
+  const ov = $('relicDraftOverlay'); if (ov) { ov.classList.remove('show'); ov.setAttribute('aria-hidden', 'true'); }
+  syncMenuOpen();
+  Game.paused = false;
+  Game.state = 'playing';
+  renderRelicHud();
+  if (id === 'secondWind') Game.secondWindUsed = false;
+  if (id === 'glassEdge') Game.player.hp = Math.min(Game.player.hp, Game.player.maxHp);
+  toast('Relic claimed — ' + def.name + '.', 'gold');
+  SR.announce('Relic claimed: ' + def.name, true);
+  Save.requestSave();
+  return true;
+}
+function maybeOfferRelicDraft() {
+  if (!isRelicDraftFloor()) return;
+  if (Game.relicDraftFloor >= Game.floor) return;
+  setTimeout(() => offerRelicDraft(), 550);
+}
+
 class Player {
   constructor() {
     this.x = 0; this.y = 0;
@@ -2937,27 +3309,36 @@ class Player {
     }
     return sum;
   }
-  get maxHp() { return Math.round(this.baseMaxHp + (this.level - 1) * 14 + this.equipStats.hp + this.skillStats.hp + runOathStat('maxHp')); }
-  get maxMana() { return Math.round(this.baseMaxMana + (this.level - 1) * 6 + this.equipStats.mana + this.skillStats.mana + runOathStat('maxMana')); }
+  get maxHp() {
+    const wound = hasRelic('glassEdge') ? 0.92 : 1;
+    const warden = hasRelic('warden') ? 18 : 0;
+    return Math.max(1, Math.round((this.baseMaxHp + (this.level - 1) * 14 + this.equipStats.hp + this.skillStats.hp + runOathStat('maxHp') + ((Game.buffs && Game.buffs.maxHp) || 0) + warden) * wound));
+  }
+  get maxMana() { return Math.round(this.baseMaxMana + (this.level - 1) * 6 + this.equipStats.mana + this.skillStats.mana + runOathStat('maxMana') + (hasRelic('manaWell') ? 25 : 0)); }
   get attackPower() {
     const base = this.baseAtk + (this.level - 1) * 2.1 + this.equipStats.atk;
     /* Heavy Blow adds 6% of the raw base per rank, so it scales with the character */
-    return Math.round(base * (1 + this.skillStats.atk / 100) * (1 + runOathStat('attackPct')));
+    return Math.round(base * (1 + this.skillStats.atk / 100) * (1 + runOathStat('attackPct')) * (hasRelic('glassEdge') ? 1.15 : 1));
   }
-  /* the element your attacks carry — weapon wins over ring */
-  get element() {
+  /* Both attunements now coexist. The weapon is the primary (used for the
+     HUD and for flavour), but a ring of a different element is a second
+     channel that can react with the first. That turns "weapon wins" into a
+     build decision instead of a dead affix. */
+  get elements() {
+    const out = [];
     const w = this.equipment.weapon, r = this.equipment.ring;
-    if (w && w.element && w.element !== 'physical') return w.element;
-    if (r && r.element && r.element !== 'physical') return r.element;
-    return 'physical';
+    if (w && w.element && w.element !== 'physical') out.push(w.element);
+    if (r && r.element && r.element !== 'physical' && out.indexOf(r.element) < 0) out.push(r.element);
+    return out;
   }
+  get element() { return this.elements[0] || 'physical'; }
   /* elemental damage bonus, expressed as a multiplier on final damage */
-  get elementPower() { return this.element === 'physical' ? 0 : 0.18; }
-  get defense() { return Math.round(this.baseDef + (this.level - 1) * 1.15 + this.equipStats.def + this.skillStats.def + runOathStat('defense')); }
-  get critChance() { return clamp(this.baseCrit + this.equipStats.crit + this.skillStats.crit + runOathStat('crit'), 0, 75); }
+  get elementPower() { return this.elements.length ? (this.elements.length > 1 ? 0.24 : 0.18) * (hasRelic('attuned') ? 1.2 : 1) : 0; }
+  get defense() { return Math.round(this.baseDef + (this.level - 1) * 1.15 + this.equipStats.def + this.skillStats.def + runOathStat('defense') + (hasRelic('ironHide') ? 10 : 0)); }
+  get critChance() { return clamp(this.baseCrit + this.equipStats.crit + this.skillStats.crit + runOathStat('crit') + (hasRelic('luckyCoin') ? 5 : 0), 0, 75); }
   get moveSpeed() {
     const pct = this.skillStats.speed;            /* +5% per Fleet Foot rank */
-    return (this.baseSpeed + this.equipStats.speed * 1.6) * (1 + pct / 100) * (1 + runOathStat('speedPct'));
+    return (this.baseSpeed + this.equipStats.speed * 1.6) * (1 + pct / 100) * (1 + runOathStat('speedPct')) * (hasRelic('swiftRoot') ? 1.1 : 1);
   }
   get cleaveTargets() { return 3 + Math.round(this.skillStats.cleave); }
   get swingReach() { return this.skillStats.reach; }
@@ -2965,9 +3346,9 @@ class Player {
   get manaCostMul() { return clamp(1 + this.skillStats.manaCostMul + runOathStat('manaCostMul'), 0.35, 1); }
   get dodgeCdMul() { return clamp(1 + this.skillStats.dodgeCdMul, 0.4, 1); }
   get skillRegen() { return this.skillStats.regen; }
-  get lifesteal() { return clamp(this.equipStats.lifesteal, 0, 30); }
-  get thorns() { return this.equipStats.thorns; }
-  get goldFind() { return clamp(this.equipStats.gold + this.skillStats.goldFind + runOathStat('goldFind'), 0, 200); }
+  get lifesteal() { return clamp(this.equipStats.lifesteal + (hasRelic('bloodLedger') ? 3 : 0), 0, 30); }
+  get thorns() { return this.equipStats.thorns + (hasRelic('thornCoat') ? 5 : 0); }
+  get goldFind() { return clamp(this.equipStats.gold + this.skillStats.goldFind + runOathStat('goldFind') + (hasRelic('goldenCoil') ? 30 : 0), 0, 200); }
   get hpPct() { return clamp(this.hp / this.maxHp, 0, 1); }
   get manaPct() { return clamp(this.mana / this.maxMana, 0, 1); }
   get xpPct() { return clamp(this.xp / this.xpNext, 0, 1); }
@@ -3059,6 +3440,10 @@ const COMPANION = {
   stuckT: 0,          /* recovers if wall collision traps her away from the hero */
   bond: 0,            /* 0..100 — grows with kills shared and floors cleared */
   treasureSniff: 0,   /* cooldown on the "she found something" hint */
+  command: 'heel',    /* heel | fetch | sniff | guard */
+  fetchTarget: null,
+  guardX: 0, guardY: 0,
+  guardHold: false,
 
   /* her damage scales with the hero so she stays useful, never carries you */
   get damage() {
@@ -3097,20 +3482,51 @@ const COMPANION = {
     this.attackCd = Math.max(0, this.attackCd - dt);
     this.barkCd = Math.max(0, this.barkCd - dt);
     this.treasureSniff = Math.max(0, this.treasureSniff - dt);
+    Game.emberSniffCd = Math.max(0, (Game.emberSniffCd || 0) - dt);
+
+    /* ---- commands -----------------------------------------------------
+       C cycles heel → fetch → sniff → guard. Fetch targets the nearest drop;
+       guard plants her at the current spot and slows enemies that try to walk
+       through; sniff is a one-shot reveal with a long cooldown. */
+    if (this.command === 'fetch' && this.fetchTarget) {
+      const idx = Game.drops.indexOf(this.fetchTarget);
+      if (idx < 0) this.fetchTarget = null;
+      else if (dist2(this.x, this.y, this.fetchTarget.x, this.fetchTarget.y) < 34 * 34) {
+        const drop = this.fetchTarget;
+        const di = Game.drops.indexOf(drop);
+        if (di >= 0) {
+          pickupDrop(drop, di);
+          FX.text(this.x, this.y - 24, 'FETCHED', { color: '#ffd88a', size: 11 });
+          this.command = 'heel'; this.fetchTarget = null;
+          syncEmberCommandHud();
+        }
+      }
+    }
+    if (!this.fetchTarget && this.command === 'fetch') {
+      this.command = 'heel';
+      syncEmberCommandHud();
+    }
+    if (this.command === 'guard') {
+      this.guardHold = true;
+    }
 
     /* pick the closest live enemy inside a sane leash of the player */
-    let target = null, bestD = 175 * 175;
+    let target = null, bestD = (this.command === 'guard' ? 150 : 175) ** 2;
     for (const e of Game.enemies) {
       if (!e.alive) continue;
       const d2 = dist2(e.x, e.y, p.x, p.y);
-      if (d2 > 175 * 175) continue;
+      if (d2 > bestD) continue;
       const own = dist2(e.x, e.y, this.x, this.y);
       if (own < bestD) { bestD = own; target = e; }
     }
 
-    /* movement: chase the target, otherwise heel behind the hero */
+    /* movement: fetch > guard > chase/heal */
     let tx, ty;
-    if (target) {
+    if (this.command === 'fetch' && this.fetchTarget) {
+      tx = this.fetchTarget.x; ty = this.fetchTarget.y;
+    } else if (this.command === 'guard' && this.guardHold) {
+      tx = this.guardX; ty = this.guardY;
+    } else if (target) {
       tx = target.x - Math.cos(Math.atan2(target.y - this.y, target.x - this.x)) * 26;
       ty = target.y - Math.sin(Math.atan2(target.y - this.y, target.x - this.x)) * 26;
     } else {
@@ -3141,7 +3557,7 @@ const COMPANION = {
     if(playerGap>118 && moved<Math.max(1, speed*dt*0.16)) this.stuckT+=dt;
     else if(playerGap<92) this.stuckT=0;
     else this.stuckT=Math.max(0,this.stuckT-dt*1.5);
-    if(playerGap>155 || this.stuckT>0.85){
+    if((playerGap>155 || this.stuckT>0.85) && this.command !== 'fetch' && this.command !== 'guard'){
       const followX=p.x-Math.cos(p.aimAngle)*42, followY=p.y-Math.sin(p.aimAngle)*42;
       let regroup=findFreeSpot(followX,followY,this.radius);
       if(circleHitsWalls(regroup.x,regroup.y,this.radius)) regroup=findFreeSpot(p.x,p.y,this.radius);
@@ -3185,11 +3601,42 @@ const COMPANION = {
     this.hurtFlash = 1;
     if (this.hp <= 0) {
       this.hp = 0;
-      this.downT = 9;
+      /* a bonded Ember gets back up almost at once, once per floor */
+      const bonded = this.bond >= 40 && !Game.emberReviveUsed;
+      if (bonded) { Game.emberReviveUsed = true; this.downT = 2.2; }
+      else this.downT = 9;
       Sound.play('hurt');
       FX.text(this.x, this.y - 24, 'EMBER IS DOWN', { color: '#e0554d', size: 13, bold: true });
       toast('Ember yelps and goes down. She will get back up — give her a moment.', 'danger');
     }
+  },
+
+  setCommand(cmd) {
+    this.command = cmd;
+    this.fetchTarget = null;
+    this.guardHold = false;
+    if (cmd === 'guard') { this.guardX = this.x; this.guardY = this.y; this.guardHold = true; }
+    if (cmd === 'fetch') {
+      let best = null, bestD = 720 * 720;
+      for (const d of Game.drops) {
+        const dd = dist2(d.x, d.y, Game.player.x, Game.player.y);
+        if (dd < bestD) { bestD = dd; best = d; }
+      }
+      if (best) this.fetchTarget = best;
+      else { toast('Ember looks around, but there is nothing loose to fetch.', 'danger'); this.command = 'heel'; }
+    }
+    if (cmd === 'sniff') {
+      if ((Game.emberSniffCd || 0) > 0) {
+        toast('Ember is still catching her breath. Sniff ready in ' + Math.ceil(Game.emberSniffCd) + 's.', 'danger');
+        this.command = 'heel';
+      } else {
+        Game.emberSniffCd = 28;
+        emberSniff();
+      }
+    }
+    syncEmberCommandHud();
+    Sound.play('ui');
+    return this.command;
   },
 
   feed() {
@@ -3271,6 +3718,51 @@ const COMPANION = {
     ctx.restore();
   }
 };
+
+function syncEmberCommandHud() {
+  const el = $('compCmd');
+  if (!el) return;
+  const cmd = (typeof COMPANION !== 'undefined' && COMPANION.command) || 'heel';
+  const label = cmd === 'fetch' ? 'FETCH' : cmd === 'sniff' ? 'SNIFF' : cmd === 'guard' ? 'GUARD' : 'HEEL';
+  el.textContent = 'C · ' + label;
+  el.classList.toggle('active', cmd !== 'heel');
+}
+function cycleEmberCommand() {
+  if (typeof COMPANION === 'undefined' || !COMPANION.active) {
+    toast('Ember is not with you on this floor.', 'danger');
+    return 'heel';
+  }
+  const order = ['heel', 'fetch', 'sniff', 'guard'];
+  const at = order.indexOf(COMPANION.command);
+  const next = order[(at + 1) % order.length];
+  COMPANION.setCommand(next);
+  return COMPANION.command;
+}
+/* One-shot reveal: mark unopened chests, the sealed vault and loose keys for
+   ~22 seconds. She is a bloodhound, not a wallhack: the marks stop at objects
+   the floor actually contains. */
+function emberSniff() {
+  const marks = [];
+  const until = Game.time + 22;
+  for (const pr of Game.props) {
+    if (pr.dead || pr.opened) continue;
+    if (pr.kind === 'chest' || pr.station) marks.push({ x: pr.x, y: pr.y, kind: pr.station ? 'station' : 'chest', until });
+  }
+  const d = Game.dungeon;
+  if (d && d.vaultDoor && d.vaultDoor.locked) {
+    marks.push({ x: (d.vaultDoor.x + 0.5) * TILE, y: (d.vaultDoor.y + 0.5) * TILE, kind: 'vault', until });
+  }
+  for (const drop of Game.drops) if (drop.kind === 'key') marks.push({ x: drop.x, y: drop.y, kind: 'key', until });
+  Game.scentMarks = marks.slice(0, 8);
+  if (!marks.length) {
+    toast('Ember circles once and sneezes. Nothing left to find on this floor.', 'danger');
+    return;
+  }
+  toast('Ember catches a scent — ' + marks.length + ' mark' + (marks.length === 1 ? '' : 's') + ' on your map.', 'good');
+  for (const m of marks) FX.spark(m.x, m.y, { count: 5, color: '#ffd88a', speed: 80 });
+  FX.text(COMPANION.x, COMPANION.y - 26, 'SNIFF', { color: '#ffd88a', size: 12 });
+  Sound.play('bark', 0.8);
+}
 
 /* ============================== 09. FX SYSTEM ============================ */
 const FX = {
@@ -3811,8 +4303,12 @@ const STORY = {
     if (!ch) return;
     /* Stagger the card slightly after the floor transition so it does not
        collide with the "Floor N" banner. */
+    const shownFloor = Game.floor;
     setTimeout(() => {
-      if (Game.state !== 'playing') return;
+      /* A fast descent could leave the previous floor's timeout to fire on the
+         new one, showing the wrong chapter. Only a card whose floor is still
+         the current one (and whose chapter has not been superseded) shows. */
+      if (Game.state !== 'playing' || Game.floor !== shownFloor || this.chapter !== idx) return;
       this.showCard(ch);
     }, 900);
   },
@@ -3946,8 +4442,15 @@ const Save = {
       seed: Game.dungeon.seed,
       endless: !!Game.endless,
       expedition: Game.expedition || 'standard',
+      runSeed: Game.runSeed || 0,
+      simState: Game.simRng && Game.simRng.getState ? Game.simRng.getState() : 0,
+      heat: Game.heat || 0,
+      relics: (Game.relics || []).slice(0, 12),
+      hunt: Game.hunt ? Object.assign({}, Game.hunt) : null,
+      director: Game.director ? { pressure: Game.director.pressure || 0, damageTaken: Game.director.damageTaken || 0, kills: Game.director.kills || 0, potions: Game.director.potions || 0 } : null,
       maxFloor: MAX_FLOOR_DYNAMIC,
       elapsedRun: Game.elapsedRun,
+      time: Game.time || 0,
       combatIntensity: Game.combatIntensity || 0,
       runStats: Object.assign({}, Game.runStats),
       shopDiscountUsed: !!Game.shopDiscountUsed,
@@ -3963,6 +4466,8 @@ const Save = {
         id: b.id, name: b.name, desc: b.desc, target: b.target,
         gold: b.gold, xp: b.xp, done: b.done
       })),
+      buffs: Object.assign({}, Game.buffs || {}),
+      emberCommand: Game.emberCommand || 'heel',
       player: {
         x: p.x, y: p.y,
         level: p.level, xp: p.xp, xpNext: p.xpNext,
@@ -3971,11 +4476,14 @@ const Save = {
         baseAtk: p.baseAtk, baseDef: p.baseDef, baseMaxHp: p.baseMaxHp, baseMaxMana: p.baseMaxMana,
         baseCrit: p.baseCrit, baseSpeed: p.baseSpeed,
         skillPoints: p.skillPoints, skills: Object.assign({}, p.skills),
-        equipment: this.slimSlots(p.equipment),
         totalKills: p.totalKills, totalGold: p.totalGold, depthReached: p.depthReached,
-        inventorySlots: p.maxInv
+        inventorySlots: p.maxInv,
+        invuln: p.invuln, attackCd: p.attackCd, magicCd: p.magicCd, potionCd: p.potionCd,
+        slamCd: p.slamCd, dodgeCd: p.dodgeCd, dodging: p.dodging, hurtFlash: p.hurtFlash
       },
-      /* gear and bag contents live here so both survive a reload */
+      /* Gear lives here (and only here — the player block used to carry a
+         second, stale copy, which doubled the save size). Bag contents follow
+         so both survive a reload. */
       equipment: this.slimSlots(p.equipment),
       inventory: p.inventory.map(it => this.slimItem(it)),
       companion: COMPANION && COMPANION.active ? {
@@ -3983,8 +4491,193 @@ const Save = {
         coat: COMPANION.coat || 'ember'
       } : null,
       runBoons: Object.assign({}, Game.runBoons || {}),
-      floorShrineUsed: !!Game.floorShrineUsed
+      floorShrineUsed: !!Game.floorShrineUsed,
+      /* Chapter cards are once-per-run, so "seen" has to survive a reload.
+         Without this a resumed run replayed its chapters and one could open
+         mid-fight, freezing the hero with nothing apparently wrong. */
+      storySeen: Object.keys(STORY.seen).map(Number),
+      /* The floor's live state. The dungeon itself is rebuilt from the seed,
+         but without these the reload resurrected every monster, closed every
+         opened chest and re-sealed the vault — which let a player farm the
+         same floor by reloading. */
+      vaultUnlocked: !!(Game.dungeon && Game.dungeon.vaultDoor && !Game.dungeon.vaultDoor.locked),
+      props: this.slimProps(),
+      drops: this.slimDrops(),
+      enemies: this.slimEnemies(),
+      shopStock: (Game.shopStock || []).map(it => this.slimItem(it))
     };
+  },
+
+  /* Props that differ from their freshly generated state, keyed by index.
+     Indexes are safe now that a floor's prop layout is seed-deterministic. */
+  slimProps() {
+    const out = [];
+    (Game.props || []).forEach((pr, i) => {
+      if (!pr.opened && !pr.dead && !pr.used) return;
+      const flag = pr.dead ? 'd' : (pr.used ? 'u' : 'o');
+      out.push(i + ':' + flag + ':' + pr.kind);
+    });
+    return out.slice(0, 600);
+  },
+
+  slimDrops() {
+    return (Game.drops || []).slice(0, 160).map(dr => ({
+      kind: dr.kind, amount: Number(dr.amount) || 0,
+      x: Math.round(Number(dr.x) || 0), y: Math.round(Number(dr.y) || 0),
+      vx: Number(dr.vx) || 0, vy: Number(dr.vy) || 0,
+      life: clamp(Number(dr.life) || 0, 1, 180), bob: Number(dr.bob) || 0,
+      item: dr.item ? this.slimItem(dr.item) : null
+    }));
+  },
+
+  slimEnemies() {
+    return (Game.enemies || []).filter(e => e && e.alive).slice(0, 90).map(e => ({
+      type: e.type, x: Math.round(e.x), y: Math.round(e.y),
+      hp: Math.round(e.hp), maxHp: Math.round(e.maxHp),
+      atk: e.atk, defense: e.defense, speed: e.speed, radius: e.radius,
+      xpValue: e.xpValue, isElite: !!e.isElite, isBoss: !!e.isBoss,
+      eliteTrait: e.eliteTrait || null, huntTarget: !!e.huntTarget,
+      huntName: e.huntTarget ? String(e.huntName || '') : '', summoner: !!e.summoner,
+      lifesteal: Number(e.lifesteal) || 0, explodeOnDeath: !!e.explodeOnDeath,
+      goldMult: Number(e.goldMult) || 1, guardsVault: !!e.guardsVault,
+      summoned: !!e.summoned, aggro: !!e.aggro,
+      status: [Number(e.burnT) || 0, Number(e.burnPower) || 0,
+               Number(e.chillT) || 0, Number(e.shockT) || 0],
+      cooldown: Number(e.def && e.def.cooldown) || 1,
+      windup: Number(e.def && e.def.windup) || 0.4
+    }));
+  },
+
+  /* Put the saved floor's live state back on top of a freshly rebuilt floor.
+     Runs after buildFloor(), so the seed has already recreated the layout and
+     this only replays what the player actually changed. */
+  restoreFloorState(snap) {
+    const d = Game.dungeon;
+    if (!d) return;
+
+    /* merchant: stock, prices and the reroll budget. buildFloor() rolls a fresh
+       stock and resets the tokens, so these have to be re-applied *after* it —
+       otherwise reloading handed back two cheap rerolls every time. */
+    Game.shopRep = clamp(Number(snap.shopRep) || 0, 0, 9);
+    if (Number.isFinite(Number(snap.shopRerolls))) {
+      Game.shopRerolls = clamp(Math.floor(Number(snap.shopRerolls)), 0, 99);
+    }
+    if (Number.isFinite(Number(snap.shopRerollCost))) {
+      Game.shopRerollCost = clamp(Math.round(Number(snap.shopRerollCost)), 1, 1000000);
+    }
+    if (Array.isArray(snap.shopStock) && snap.shopStock.length) {
+      const stock = [];
+      for (const raw of snap.shopStock.slice(0, 24)) {
+        const it = this.reviveItem(raw);
+        if (!it || !it.slot) continue;
+        if (!it.basePrice) it.basePrice = Math.max(1, Math.round(it.value || 1));
+        if (!it.price) it.price = merchantPrice(it.basePrice, it);
+        stock.push(it);
+      }
+      if (stock.length) Game.shopStock = stock;
+    }
+
+    /* opened chests and smashed crates */
+    if (Array.isArray(snap.props)) {
+      for (const entry of snap.props.slice(0, 600)) {
+        const parts = String(entry).split(':');
+        const idx = Number(parts[0]);
+        const flag = parts[1];
+        const kind = parts[2];
+        const pr = Game.props[idx];
+        if (!pr || (kind && pr.kind !== kind)) continue;
+        if (flag === 'o') pr.opened = true;
+        else if (flag === 'u') pr.used = true;
+        else if (flag === 'd') { pr.dead = true; pr.hp = 0; }
+      }
+    }
+
+    rebuildPropHash();
+    /* a vault whose guardian already fell stays open */
+    if (snap.vaultUnlocked && d.vaultDoor) {
+      d.vaultDoor.locked = false;
+      d.vaultDoor.opened = true;
+    }
+
+    /* living monsters, exactly where the fight left them */
+    if (Array.isArray(snap.enemies)) {
+      const restored = [];
+      for (const raw of snap.enemies.slice(0, 90)) {
+        if (!raw || !ENEMY_TYPES[raw.type]) continue;
+        const x = Number(raw.x), y = Number(raw.y);
+        if (!Number.isFinite(x) || !Number.isFinite(y)) continue;
+        let e;
+        try { e = new Enemy(raw.type, x, y, Game.floor); } catch (err) { continue; }
+        e.x = clamp(x, TILE, (d.W - 1) * TILE);
+        e.y = clamp(y, TILE, (d.H - 1) * TILE);
+        const maxHp = Number(raw.maxHp);
+        if (Number.isFinite(maxHp)) e.maxHp = clamp(Math.round(maxHp), 1, 1e9);
+        const hp = Number(raw.hp);
+        e.hp = clamp(Math.round(Number.isFinite(hp) ? hp : e.maxHp), 1, e.maxHp);
+        for (const k of ['atk', 'defense', 'speed', 'radius', 'xpValue']) {
+          const v = Number(raw[k]);
+          if (Number.isFinite(v) && v > 0) e[k] = v;
+        }
+        e.isElite = !!raw.isElite;
+        e.isBoss = !!raw.isBoss || raw.type === 'boss';
+        if (raw.eliteTrait && ELITE_TRAITS[raw.eliteTrait]) e.eliteTrait = raw.eliteTrait;
+        if (raw.huntTarget) { e.huntTarget = true; e.huntName = String(raw.huntName || 'The Hunted').slice(0, 120); }
+        e.summoner = !!raw.summoner;
+        e.lifesteal = clamp(Number(raw.lifesteal) || 0, 0, 5);
+        e.explodeOnDeath = !!raw.explodeOnDeath;
+        e.goldMult = clamp(Number(raw.goldMult) || 1, 0, 100);
+        e.guardsVault = !!raw.guardsVault;
+        e.summoned = !!raw.summoned;
+        e.aggro = !!raw.aggro;
+        e.state = e.aggro ? 'chase' : 'patrol';
+        e.stateT = 1.2;
+        e.attackCd = Math.max(0.6, Number(raw.cooldown) || 1);
+        if (Array.isArray(raw.status)) {
+          e.burnT = clamp(Number(raw.status[0]) || 0, 0, 10);
+          e.burnPower = clamp(Number(raw.status[1]) || 0, 0, 1e6);
+          e.chillT = clamp(Number(raw.status[2]) || 0, 0, 10);
+          e.shockT = clamp(Number(raw.status[3]) || 0, 0, 10);
+          if (e.burnT > 0) e.burnTick = STATUS.BURN.tickEvery;
+        }
+        e.def = Object.assign({}, e.def, {
+          cooldown: clamp(Number(raw.cooldown) || e.def.cooldown, 0.1, 20),
+          windup: clamp(Number(raw.windup) || e.def.windup, 0.05, 8)
+        });
+        e.homeRoom = d.roomAt(e.x, e.y);
+        if (circleBlocked(e.x, e.y, e.radius * 0.85)) {
+          const spot = findFreeSpot(e.x, e.y, e.radius * 0.85);
+          e.x = spot.x; e.y = spot.y;
+        }
+        restored.push(e);
+      }
+      Game.enemies = restored;
+    }
+
+    /* loot that was on the ground when the run was sealed */
+    if (Array.isArray(snap.drops)) {
+      const drops = [];
+      for (const raw of snap.drops.slice(0, 160)) {
+        if (!raw || !['item', 'gold', 'potion', 'key'].includes(raw.kind)) continue;
+        const x = Number(raw.x), y = Number(raw.y);
+        if (!Number.isFinite(x) || !Number.isFinite(y) || !d.isWalkablePx(x, y)) continue;
+        const drop = {
+          kind: raw.kind,
+          x, y,
+          vx: Number(raw.vx) || 0, vy: Number(raw.vy) || 0,
+          life: clamp(Number(raw.life) || 30, 1, 120),
+          bob: Number(raw.bob) || 0
+        };
+        if (raw.kind === 'item') {
+          const item = this.reviveItem(raw.item);
+          if (!item) continue;
+          drop.item = item;
+        } else if (raw.kind === 'gold') {
+          drop.amount = clamp(Math.round(Number(raw.amount) || 0), 1, 1e9);
+        }
+        drops.push(drop);
+      }
+      Game.drops = drops;
+    }
   },
 
   slimSlots(slots) {
@@ -4008,7 +4701,10 @@ const Save = {
          colours and every blade came back the default grey */
       metal: it.metal || null, blade: it.blade ? it.blade.slice(0, 3) : null,
       grip: it.grip || null, gem: it.gem || null, leather: it.leather || null,
-      stackable: !!it.stackable, heal: it.heal
+      stackable: !!it.stackable, heal: it.heal,
+      /* shop stock only: without these the merchant's prices were recomputed
+         from scratch (and a rerolled stock vanished) on every reload */
+      basePrice: Number(it.basePrice) || 0, price: Number(it.price) || 0
     };
   },
 
@@ -4049,7 +4745,9 @@ const Save = {
       iconSeed: Number(raw.iconSeed) || 1234,
       iconKind: raw.iconKind || null,
       stackable: !!raw.stackable,
-      heal: Number(raw.heal) || 0
+      heal: Number(raw.heal) || 0,
+      basePrice: Math.max(0, Number(raw.basePrice) || 0),
+      price: Math.max(0, Number(raw.price) || 0)
     };
   },
 
@@ -4149,6 +4847,17 @@ const Save = {
     }
   },
 
+  /* Commit a transaction almost immediately. The 5 s autosave leaves a window
+     where a bad reroll, purchase, chest or level-up can be undone by a reload;
+     this debounced write closes it without writing once per frame. */
+  requestSave() {
+    if (this._reqTimer) clearTimeout(this._reqTimer);
+    this._reqTimer = setTimeout(() => {
+      this._reqTimer = null;
+      if ((Game.state === 'playing' || Game.state === 'paused') && Game.player && !Game.player.dead) this.save();
+    }, 200);
+  },
+
   has() {
     if (this.newest()) return true;
     /* saves written before slots existed */
@@ -4215,6 +4924,21 @@ const Save = {
       Game.expedition = ['standard','pilgrim','reclaimer','glass'].includes(snap.expedition) ? snap.expedition : 'standard';
       MAX_FLOOR_DYNAMIC = Math.max(MAX_FLOOR, snap.maxFloor || MAX_FLOOR);
       Game.elapsedRun = Number(snap.elapsedRun) || 0;
+      Game.time = Math.max(0, Number(snap.time) || 0);
+      Game.runSeed = Number(snap.runSeed) || Number(snap.seed) || 0;
+      Game.lastSeedCode = seedToCode(Game.runSeed);
+      Game.heat = clamp(Number(snap.heat) || 0, 0, 3);
+      Game.simRng = mulberry32((Game.runSeed ^ Math.imul(Game.heat + 1, 0x85ebca6b)) | 0 || 1);
+      if (Game.simRng.setState && Number.isFinite(Number(snap.simState))) Game.simRng.setState(Number(snap.simState));
+      Game.relics = Array.isArray(snap.relics) ? snap.relics.filter(id => !!relicDef(id)).slice(0, 12) : [];
+      Game.relicDraftOpen = false;
+      Game.secondWindUsed = false;
+      if (snap.director && typeof snap.director === 'object') {
+        Game.director.pressure = clamp(Number(snap.director.pressure) || 0, -1, 1);
+        Game.director.damageTaken = Math.max(0, Number(snap.director.damageTaken) || 0);
+        Game.director.kills = Math.max(0, Number(snap.director.kills) || 0);
+        Game.director.potions = Math.max(0, Number(snap.director.potions) || 0);
+      }
       Game.runBoons = {};
       if (snap.runBoons && typeof snap.runBoons === 'object') {
         for (const oath of SHRINE_OATHS) {
@@ -4257,6 +4981,21 @@ const Save = {
       p.potions = Math.max(0, Number(pdata.potions) || 0);
       p.keys = Math.max(0, Number(pdata.keys) || 0);
       p.gold = Math.max(0, Number(pdata.gold) || 0);
+      p.invuln = clamp(Number(pdata.invuln) || 0, 0, 5);
+      p.attackCd = clamp(Number(pdata.attackCd) || 0, 0, 10);
+      p.magicCd = clamp(Number(pdata.magicCd) || 0, 0, 10);
+      p.potionCd = clamp(Number(pdata.potionCd) || 0, 0, 10);
+      p.slamCd = clamp(Number(pdata.slamCd) || 0, 0, 10);
+      p.dodgeCd = clamp(Number(pdata.dodgeCd) || 0, 0, 10);
+      p.dodging = clamp(Number(pdata.dodging) || 0, 0, 1);
+      p.hurtFlash = 0;
+      Game.buffs = { maxHp: clamp(Number(snap.buffs && snap.buffs.maxHp) || 0, 0, 400),
+        regen: clamp(Number(snap.buffs && snap.buffs.regen) || 0, 0, 20),
+        t: clamp(Number(snap.buffs && snap.buffs.t) || 0, 0, 999) };
+      Game.emberCommand = ['heel','fetch','sniff','guard'].includes(snap.emberCommand) ? snap.emberCommand : 'heel';
+      if (typeof COMPANION !== 'undefined') COMPANION.command = Game.emberCommand;
+      Game.scentMarks = [];
+      if (typeof syncEmberCommandHud === 'function') syncEmberCommandHud();
       p.inventory = [];
       if (Array.isArray(snap.inventory)) {
         for (const raw of snap.inventory) {
@@ -4265,12 +5004,25 @@ const Save = {
         }
       }
       for (const slot of ITEM_SLOTS) {
-        const raw = (snap.equipment || {})[slot];
+        /* older snapshots also kept a copy under player.equipment */
+        const raw = (snap.equipment || pdata.equipment || {})[slot];
         p.equipment[slot] = raw ? this.reviveItem(raw) : null;
       }
 
       /* rebuild the floor from the saved seed, then drop the player back in */
       const floorN = clamp(Number(snap.floor) || 1, 1, 9999);
+      /* Restore which chapters the run has already told. Older saves have no
+         list; a run that reached floor N has plainly seen chapters 1..N, so
+         treat those as read rather than interrupting the resume with a card. */
+      STORY.reset();
+      if (Array.isArray(snap.storySeen)) {
+        for (const raw of snap.storySeen) {
+          const idx = Math.floor(Number(raw));
+          if (idx >= 0 && idx < STORY.chapters.length) STORY.seen[idx] = true;
+        }
+      } else {
+        for (let i = 0; i < Math.min(STORY.chapters.length, floorN); i++) STORY.seen[i] = true;
+      }
       /* Ember is part of the saved party, not a menu-only spawn. A fresh page
          used to leave companionActive undefined, so Continue rebuilt the floor
          without her and the HUD stayed hidden. */
@@ -4279,6 +5031,19 @@ const Save = {
       buildFloor(floorN, false, snap.seed);
       Game.floorShrineUsed = !!snap.floorShrineUsed;
       Game.loadingSave = false;
+      /* replay what the player changed on top of the fresh floor */
+      this.restoreFloorState(snap);
+      if (snap.hunt && typeof snap.hunt === 'object' && snap.hunt.name) {
+        Game.hunt = { name: String(snap.hunt.name).slice(0, 120), title: String(snap.hunt.title || '').slice(0, 60),
+          floor: clamp(Number(snap.hunt.floor) || floorN, 1, 9999), seed: Number(snap.hunt.seed) || Game.runSeed,
+          type: String(snap.hunt.type || ''), eliteTrait: snap.hunt.eliteTrait || null,
+          shards: clamp(Number(snap.hunt.shards) || 3, 1, 99), killed: !!snap.hunt.killed };
+      }
+      Game.ghost = loadGhostForRun(Game.runSeed);
+      Game.ghostRecording = { seed: Game.runSeed, points: [], bestDepth: 0, lastT: -1 };
+      Game.emberReviveUsed = false;
+      Game.secondWindUsed = false;
+      renderRelicHud();
       COMPANION.active = true;
       COMPANION.coat = this.meta().activeCoat || 'ember';
       COMPANION.upgrades = Object.assign({},this.meta().companionUpgrades);
@@ -4317,11 +5082,23 @@ const Save = {
           if (Number.isFinite(v)) Game.bountyState[k] = Math.max(0, v);
         }
       }
+      /* buildFloor() zeroes the live streak; restore it too or the first kill
+         after loading would rewind a flawless bounty's progress to 1. */
+      Game.flawlessStreak = clamp(Number(Game.bountyState.flawless) || 0, 0, 100000);
       renderBountyHud();
       /* position (only if walkable) */
       const sx = Number(pdata.x), sy = Number(pdata.y);
       if (Number.isFinite(sx) && Number.isFinite(sy) && Game.dungeon.isWalkablePx(sx, sy)) {
         p.x = sx; p.y = sy;
+      }
+      /* A tile can be walkable while the hero's collision circle is already
+         overlapping its wall (a save made flush against masonry, or an older
+         floor layout). Every direction then counted as blocked and the run
+         resumed unable to move. Nudge the restored body to the nearest spot
+         with room to stand and somewhere to walk. */
+      if (circleBlocked(p.x, p.y, PLAYER_COLLISION_RADIUS)) {
+        const safe = findFreeSpot(p.x, p.y, PLAYER_COLLISION_RADIUS, TILE);
+        p.x = safe.x; p.y = safe.y;
       }
       /* buildFloor initially places her by the entrance; after restoring a
          mid-floor player position, bring her back beside the player too. */
@@ -4394,7 +5171,8 @@ const Save = {
   meta() {
     const empty = { runs: 0, deepestFloor: 0, totalKills: 0, totalGold: 0,
                     bossesSlain: 0, bestTime: 0, unlocked: {}, deaths: 0,
-                    shards: 0, claimedRewards: [], unlockedCoats: ['ember'], activeCoat: 'ember', companionUpgrades: {health:0,fangs:0,paws:0} };
+                    shards: 0, claimedRewards: [], unlockedCoats: ['ember'], activeCoat: 'ember', companionUpgrades: {health:0,fangs:0,paws:0},
+                    corpse: null, hunts: [], titles: [], ghosts: {}, chronicles: [] };
     if (!this.available()) return empty;
     try {
       const raw = JSON.parse(window.localStorage.getItem(this.META_KEY));
@@ -4408,6 +5186,35 @@ const Save = {
       out.claimedRewards = Array.isArray(raw.claimedRewards) ? raw.claimedRewards.map(String).slice(0,100) : [];
       out.unlockedCoats = Array.isArray(raw.unlockedCoats) ? [...new Set(['ember', ...raw.unlockedCoats.filter(k => ['frost','moon','moss'].includes(k))])] : ['ember'];
       out.activeCoat = ['ember','frost','moon','moss'].includes(raw.activeCoat) && out.unlockedCoats.includes(raw.activeCoat) ? raw.activeCoat : 'ember';
+      /* cross-run memory: corpse, hunts, ghost lines and keepsake chronicles */
+      if (raw.corpse && typeof raw.corpse === 'object') {
+        const c = raw.corpse;
+        const fl = clamp(Math.floor(Number(c.floor) || 0), 0, 9999);
+        if (fl && !c.recovered) out.corpse = {
+          floor: fl, seed: Number(c.seed) || 0, x: Number(c.x) || 0, y: Number(c.y) || 0,
+          name: String(c.name || 'a fallen delver').slice(0, 40),
+          item: c.item && typeof c.item === 'object' ? c.item : null,
+          recovered: false
+        };
+      }
+      out.hunts = Array.isArray(raw.hunts) ? raw.hunts.slice(-40).map(h => ({
+        name: String(h && h.name || 'Unknown').slice(0, 48),
+        title: String(h && h.title || '').slice(0, 40),
+        floor: clamp(Math.floor(Number(h && h.floor) || 0), 0, 9999)
+      })) : [];
+      out.titles = Array.isArray(raw.titles) ? raw.titles.map(String).filter(Boolean).slice(-40) : [];
+      out.chronicles = Array.isArray(raw.chronicles) ? raw.chronicles.map(String).filter(Boolean).slice(-20) : [];
+      out.ghosts = {};
+      if (raw.ghosts && typeof raw.ghosts === 'object') {
+        const keys = Object.keys(raw.ghosts).slice(-8);
+        for (const k of keys) {
+          const g = raw.ghosts[k];
+          if (!g || !Array.isArray(g.points)) continue;
+          out.ghosts[k] = { seed: Number(g.seed) || 0, bestDepth: clamp(Number(g.bestDepth) || 1, 1, 9999),
+            bestTime: clamp(Number(g.bestTime) || 0, 0, 86400),
+            points: g.points.slice(0, 720).filter(p => Array.isArray(p) && p.length >= 4).map(p => [Number(p[0]) || 0, Number(p[1]) || 0, Number(p[2]) || 1, clamp(Number(p[3]) || 0, 0, 9999)]) };
+        }
+      }
       const ranks=raw.companionUpgrades&&typeof raw.companionUpgrades==='object'?raw.companionUpgrades:{};
       out.companionUpgrades={health:clamp(Math.floor(Number(ranks.health)||0),0,3),fangs:clamp(Math.floor(Number(ranks.fangs)||0),0,3),paws:clamp(Math.floor(Number(ranks.paws)||0),0,3)};
       if (raw.unlocked && typeof raw.unlocked === 'object') {
@@ -4455,6 +5262,27 @@ const Save = {
     this.refreshMenuControls();
     refreshMetaPages();
   },
+  /* Write the corpse of this run into meta, so a later run on this device can
+     find it. Only one corpse is kept: the dungeon remembers the most recent
+     failure, which is the one the player is about to avenge. */
+  recordCorpse(source) {
+    const m = this.meta();
+    const p = Game.player;
+    if (!p) return;
+    const carried = [p.equipment.weapon, p.equipment.ring, p.equipment.armor, p.equipment.helmet,
+                     p.equipment.shield, p.equipment.boots].concat(p.inventory || []).filter(Boolean);
+    carried.sort((a, b) => (b.rarity || 0) - (a.rarity || 0) || (b.value || 0) - (a.value || 0));
+    m.corpse = {
+      floor: Game.floor,
+      seed: Game.runSeed || (Game.dungeon && Game.dungeon.seed) || 0,
+      x: p.x, y: p.y,
+      name: Profile.get().name || 'the Wanderer',
+      item: carried[0] ? this.slimItem(carried[0]) : null,
+      recovered: false
+    };
+    this.writeMeta(m);
+  },
+
   /* paint the start menu with whatever progress exists */
   refreshMenuControls() {
     const cont = $('continueBtn');
@@ -4575,12 +5403,28 @@ function closePage(id) {
     utilityReturnFocus.focus(); utilityReturnFocus=null;
   }
 }
+/* Keyboard focus stays inside a modal page: Tab/Shift+Tab wrap instead of
+   escaping into the game behind it. */
+function trapFocus(ev, root) {
+  if (!root) return;
+  const nodes = Array.prototype.slice.call(root.querySelectorAll(
+    'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+  )).filter(el => el.offsetParent !== null);
+  if (!nodes.length) return;
+  const first = nodes[0], last = nodes[nodes.length - 1];
+  if (ev.shiftKey && document.activeElement === first) { ev.preventDefault(); last.focus(); }
+  else if (!ev.shiftKey && document.activeElement === last) { ev.preventDefault(); first.focus(); }
+}
 function refreshSettingsPage() {
   const v=Settings.get();
   $('volumeSetting').value=Math.round(v.volume*100); $('volumeValue').textContent=Math.round(v.volume*100)+'%';
   $('shakeSetting').checked=v.screenShake; $('motionSetting').checked=v.reducedMotion; $('soundSetting').checked=!v.muted;
-  $('numbersSetting').checked=v.damageNumbers; $('contrastSetting').checked=v.highContrast; $('largeUISetting').checked=v.largeUI; $('paletteSetting').value=v.palette; $('auraSetting').value=v.companionAura; $('heroAspectSetting').value=v.heroAspect; $('contractSetting').value=v.contract;
+  $('numbersSetting').checked=v.damageNumbers; $('contrastSetting').checked=v.highContrast; $('largeUISetting').checked=v.largeUI;
+  const cb = $('colorBlindSetting'); if (cb) cb.checked = v.colorBlind;
+  const heat = $('heatSetting'); if (heat) heat.value = String(v.heat || 0);
+  $('paletteSetting').value=v.palette; $('auraSetting').value=v.companionAura; $('heroAspectSetting').value=v.heroAspect; $('contractSetting').value=v.contract;
   syncSelectTriggers();
+  refreshHeatChips();
 }
 /* ---------- themed list + toggle controls -------------------------------
    Native selects and checkboxes are drawn by the operating system: on iOS a
@@ -5102,7 +5946,10 @@ function buyCompanionUpgrade(id) {
 }
 function exportBackup() {
   let freshRun=true;
-  if(Game.state==='playing'&&Game.player&&!Game.player.dead) freshRun=Save.save();
+  /* Export is opened from Profile & Backup, which is usually reached from the
+     pause menu. The old guard only saved while state was exactly 'playing', so
+     a paused run exported the previous autosave. */
+  if((Game.state==='playing'||Game.state==='paused')&&Game.player&&!Game.player.dead) freshRun=Save.save();
   const slots={};
   Save.slotList().forEach(sl=>{ if(sl.snap) slots[sl.id]={name:sl.name,savedAt:Number(sl.snap.savedAt)||0,run:sl.snap}; });
   const payload={app:'dungeon-rogue-backup',version:2,exportedAt:new Date().toISOString(),
@@ -5122,21 +5969,32 @@ function importBackupFile(file) {
     try {
       const data=JSON.parse(String(reader.result||''));
       if(data.app!=='dungeon-rogue-backup'||![1,2].includes(data.version)||!data.meta||typeof data.meta!=='object'||(data.run&&(!data.run.player||data.run.v!==1))) throw new Error('format');
-      if(!window.confirm('Replace this device’s saved runs, profile, rewards and visuals with the selected backup?')) return;
-      /* A backup may hold up to three slots. Older v1 backups only have one
-         run, which is restored into slot I. */
-      Save.SLOTS.forEach(sl=>{ try{ localStorage.removeItem(sl.key); }catch(e){} });
-      let restored = 0;
+      /* Validate every run BEFORE touching this device's saves. The old order
+         cleared all three slots first and only then discovered that the backup
+         held no readable run — a malformed file could wipe real progress and
+         leave nothing in its place. */
+      const validRuns = [];
+      const claimsRuns = !!(data.run || (data.slots && typeof data.slots==='object' && Object.keys(data.slots).length));
       if(data.slots && typeof data.slots==='object'){
         for(const id of Object.keys(data.slots)){
-          const entry=data.slots[id];
-          const run=entry&&entry.run;
+          if(!Save.SLOTS.some(sl=>sl.id===id)) continue;
+          const run=data.slots[id]&&data.slots[id].run;
           if(!run||run.v!==1||!run.player) continue;
-          try{ localStorage.setItem(Save.slot(id).key,JSON.stringify(run)); restored++; }catch(e){}
+          validRuns.push({ id, run });
         }
       }
-      if(!restored && data.run){
-        try{ localStorage.setItem(Save.slot('a').key,JSON.stringify(data.run)); restored=1; }catch(e){}
+      /* A backup may hold up to three slots. Older v1 backups only have one
+         run, which is restored into slot I. */
+      if(!validRuns.length && data.run && data.run.v===1 && data.run.player) validRuns.push({ id:'a', run:data.run });
+      if(claimsRuns && !validRuns.length){
+        $('backupStatus').textContent='Import failed: this backup names saved runs but none of them can be read. Nothing on this device was changed.';
+        return;
+      }
+      if(!window.confirm('Replace this device’s saved runs, profile, rewards and visuals with the selected backup?')) return;
+      Save.SLOTS.forEach(sl=>{ try{ localStorage.removeItem(sl.key); }catch(e){} });
+      let restored = 0;
+      for(const entry of validRuns){
+        try{ localStorage.setItem(Save.slot(entry.id).key,JSON.stringify(entry.run)); restored++; }catch(e){}
       }
       if(restored){ Save.setActiveSlot(Save.newest().id); try{ localStorage.setItem(Save.KEY,JSON.stringify(Save.peek())); }catch(e){} }
       else { try{ localStorage.removeItem(Save.KEY); }catch(e){} }
@@ -5211,7 +6069,30 @@ const Game = {
   runStats: { kills: 0, gold: 0, chests: 0, items: 0, depth: 1, time: 0 },
   deathBy: '',
   lastInteractHint: '',
-  hitStop: 0
+  hitStop: 0,
+  /* run identity, deterministic simulation, and the feature state below */
+  runSeed: 0,
+  simRng: null,
+  heat: 0,
+  relics: [],
+  relicDraftFloor: 0,
+  director: { damageTaken: 0, kills: 0, potions: 0, floorStart: 0, pressure: 0, floorDamage: 0, floorKills: 0, floorPotions: 0 },
+  hunt: null,
+  corpse: null,
+  corpseSeen: false,
+  ghost: null,
+  ghostRecording: null,
+  photo: { active: false, zoom: 1.45, x: 0, y: 0, dragging: false },
+  emberCommand: 'heel',
+  emberSniffCd: 0,
+  emberGuard: null,
+  emberReviveUsed: false,
+  scentMarks: [],
+  pad: { x: 0, y: 0, aimX: 0, aimY: 0, connected: false, prev: [] },
+  buffs: { maxHp: 0, regen: 0, t: 0 },
+  acc: 0,
+  alpha: 1,
+  interp: []
 };
 
 /* ---------- canvas & resize ---------- */
@@ -5264,8 +6145,29 @@ function resizeCanvas() {
 }
 
 /* ---------- floor bootstrap ---------- */
-function startRun() {
+function startRun(opts = {}) {
   Game.expedition = Settings.get().contract || 'standard';
+  const requestedSeed = Number(opts.seed) || 0;
+  Game.dailyRun = !!opts.daily;
+  Game.runSeed = requestedSeed || (opts.daily ? dailySeed() : (Math.random() * 1e9 | 0) || 1);
+  Game.lastSeedCode = seedToCode(Game.runSeed);
+  Game.heat = clamp(opts.heat !== undefined ? Math.floor(Number(opts.heat) || 0) : (Settings.get().heat || 0), 0, 3);
+  Game.simRng = mulberry32((Game.runSeed ^ Math.imul(Game.heat + 1, 0x85ebca6b)) | 0 || 1);
+  Game.relics = [];
+  Game.relicDraftFloor = 0;
+  Game.hunt = null;
+  Game.corpse = null;
+  Game.corpseSeen = false;
+  Game.ghost = loadGhostForRun(Game.runSeed);
+  Game.ghostRecording = { seed: Game.runSeed, points: [], bestDepth: 0, lastT: -1 };
+  Game.director = { damageTaken: 0, kills: 0, potions: 0, floorStart: 0, pressure: 0, floorDamage: 0, floorKills: 0, floorPotions: 0 };
+  Game.buffs = { maxHp: 0, regen: 0, t: 0 };
+  Game.emberCommand = 'heel'; Game.emberSniffCd = 0; Game.emberGuard = null;
+  Game.emberReviveUsed = false; Game.scentMarks = []; Game.secondWindUsed = false;
+  if (typeof syncEmberCommandHud === 'function') syncEmberCommandHud();
+  Game.relicDraftOpen = false; Game.relicDraftFloor = 0; Game.scavengerFloor = 0;
+  { const ov = $('relicDraftOverlay'); if (ov) ov.classList.remove('show'); }
+  renderRelicHud();
   Game.floor = 1;
   Game.runBoons = {};
   Game.floorShrineUsed = false;
@@ -5277,6 +6179,12 @@ function startRun() {
   Game.state = 'playing';
   Game.paused = false;
   Game.elapsedRun = 0;
+  /* animation/patrol clocks belong to a run; leaving them running made a
+     second startRun() on the same page diverge from a fresh replay */
+  Game.time = 0;
+  Game.ambientT = 0;
+  Game.hitStop = 0;
+  Game.cam.shake = 0; Game.cam.shakeT = 0;
   FX.particles.length = 0; FX.texts.length = 0; FX.projectiles.length = 0;
   FX.decals.length = 0; FX.rings.length = 0;
   Game.shopDiscountUsed = false;
@@ -5298,6 +6206,7 @@ function startRun() {
   /* Ember joins you from the very first step. */
   Game.companionActive = true;
   COMPANION.spawn(0, 0);
+  Game.corpse = corpseForRun();
   buildFloor(1, true);
   showBanner('Floor 1', THEMES[0].name, THEMES[0].sub);
   toast('You awaken at the mouth of the dungeon. Descend.', 'good');
@@ -5319,10 +6228,20 @@ function startRun() {
 function buildFloor(n, first = false, seed) {
   const p = Game.player;
   Game.floor = n;
+  Game.emberReviveUsed = false;
+  Game.secondWindUsed = false;
+  Game.corpsePlacedFor = 0;
+  if (!first && !Game.loadingSave) updateDirector();
+  if (Game.director) {
+    Game.director.floorDamage = 0; Game.director.floorKills = 0; Game.director.floorPotions = 0;
+    Game.director.floorStart = Game.elapsedRun || 0;
+  }
   Game.floorShrineUsed = false;
   Game.shrineOpen = false;
   Game.shrineChoices = [];
-  Game.dungeon = new Dungeon(n, seed !== undefined ? { seed: seed } : {});
+  const floorSeed = seed !== undefined ? seed
+    : (Game.runSeed ? floorSeedFor(Game.runSeed, n) : undefined);
+  Game.dungeon = new Dungeon(n, floorSeed !== undefined ? { seed: floorSeed } : {});
   const d = Game.dungeon;
   d.exploredMap.fill(0);
   Game.enemies = [];
@@ -5343,22 +6262,38 @@ function buildFloor(n, first = false, seed) {
   Game.cam.x = p.x - Game.W / 2;
   Game.cam.y = p.y - Game.H / 2;
   clampCamera();
-  /* endless affixes are rolled per floor, before spawning uses them */
-  Game.endlessBundle = rollEndlessAffixes(n);
-  rollBounties(n);
-  spawnProps(d);
-  spawnEnemies(d);
+  /* Everything that lives on the floor — props, monsters, bounties and the
+     merchant's stock — used to be rolled on the *global* Math.random stream
+     after the seeded layout was built. The tiles were reproducible from a save
+     seed but the chests, the monsters and the shop were not, so "Continue"
+     rebuilt a different floor than the one the player left. Seeding the whole
+     content pass (with a derived seed, so the layout draws are untouched)
+     makes a floor genuinely reproducible, which is what the save system and
+     the README both promise. */
+  withSeededRng((d.seed ^ 0x9e3779b9) | 0, () => {
+    /* endless affixes are rolled per floor, before spawning uses them */
+    Game.endlessBundle = rollEndlessAffixes(n);
+    rollBounties(n);
+    spawnProps(d);
+    /* monsters must collide against this floor's furniture, not the previous
+       floor's hash; this also keeps seeded rebuilds byte-identical */
+    rebuildPropHash();
+    spawnEnemies(d);
+    /* Ember comes with you. She is re-placed beside the hero on every floor so
+       she is never left behind in a wall. */
+    if (Game.companionActive) {
+      const spot3 = findFreeSpot(Game.player.x - 40, Game.player.y + 20, COMPANION.radius);
+      COMPANION.spawn(spot3.x, spot3.y);
+      COMPANION.active = true;
+      Game.companionActive = true;
+    }
+    spawnMerchantStock(n);
+  });
+  rebuildPropHash();
+  placeCorpseMarker(d, n);
+  bakeFloorStatic(d);
   /* every floor opens a chapter the first time you reach it */
   STORY.enter(n);
-  /* Ember comes with you. She is re-placed beside the hero on every floor so
-     she is never left behind in a wall. */
-  if (Game.companionActive) {
-    const spot3 = findFreeSpot(Game.player.x - 40, Game.player.y + 20, COMPANION.radius);
-    COMPANION.spawn(spot3.x, spot3.y);
-    COMPANION.active = true;
-    Game.companionActive = true;
-  }
-  spawnMerchantStock(n);
   renderAffixHud();
   Sound.setAmbient(d.theme.key === 'lava' ? 0.7 : d.theme.key === 'ice' ? 0.45 : 0.3);
   $('ambientTint').style.background = d.theme.tint;
@@ -5379,6 +6314,13 @@ function buildFloor(n, first = false, seed) {
   if (!first && !Game.loadingSave) checkMilestone(n);
   /* the seed is captured here so the floor can be rebuilt on load */
   Game.lastFloorSeed = d.seed;
+  if (hasRelic('scavenger') && Game.scavengerFloor !== n) {
+    Game.scavengerFloor = n;
+    p.potions += 1;
+    toast('Scavenger: one extra potion found on this floor.', 'good');
+  }
+  renderRelicHud();
+  if (!first && !Game.loadingSave) maybeOfferRelicDraft();
 }
 
 /* ---------- prop placement ---------- */
@@ -5405,8 +6347,15 @@ function spawnThemeProps(d, room, props, p) {
   };
   const cands = roomWallTiles(room);
   const wanted = Math.min(theme.props.length, 2 + Math.floor(room.area / 40));
-  let placed = 0;
-  for (const kind of theme.props) {
+  let placed = 0, stationPlaced = false;
+  /* the station is the room's reason to exist, so it gets first refusal */
+  const kinds = theme.props.slice();
+  const stationKey = STATIONS[room.decor] && STATIONS[room.decor].kind;
+  if (stationKey) {
+    const at = kinds.indexOf(stationKey);
+    if (at > 0) { kinds.splice(at, 1); kinds.unshift(stationKey); }
+  }
+  for (const kind of kinds) {
     if (placed >= wanted) break;
     let spot = null;
     for (const [tx, ty] of cands) {
@@ -5423,10 +6372,34 @@ function spawnThemeProps(d, room, props, p) {
     const [tx, ty] = spot;
     const pr = makeThemeProp(kind, (tx + 0.5) * TILE, (ty + 0.5) * TILE);
     if (!pr) continue;
+    /* exactly one station per personality room */
+    if (!stationPlaced && room.decor && STATIONS[room.decor] && STATIONS[room.decor].kind === kind) {
+      pr.station = room.decor;
+      pr.used = false;
+      stationPlaced = true;
+    }
     props.push(pr);
     placed++;
   }
 }
+/* ---- room stations ------------------------------------------------------
+   Six of the eleven room personalities are no longer decoration. Each has one
+   interactable piece of furniture that can be used once per floor. The
+   mechanic is deliberately small and readable: a station should feel like a
+   found opportunity, not a second shop screen. */
+const STATIONS = {
+  library:  { kind: 'lectern',     label: 'Study the Ledger',   verb: 'inscribe a bonus on your gear', cost: 0 },
+  kitchen:  { kind: 'cauldron',    label: 'Brew the Stew',      verb: 'trade 2 potions for permanent vigour', cost: 0 },
+  workshop: { kind: 'anvil',       label: 'Use the Anvil',      verb: 'upgrade a worn item for gold', cost: 0 },
+  crypt:    { kind: 'sarcophagus', label: 'Open the Sarcophagus', verb: 'claim a rare relic and wake the dead', cost: 0 },
+  treasury: { kind: 'strongbox',   label: 'Wager at the Scale', verb: 'gamble gold on a coin flip', cost: 0 },
+  garden:   { kind: 'planter',     label: 'Harvest the Garden', verb: 'take a herb for a potion and a heal', cost: 0 }
+};
+function stationFor(kind) {
+  for (const key in STATIONS) if (STATIONS[key].kind === kind) return key;
+  return null;
+}
+
 /* Small factory so the spawner and the draw switch agree on kind names. */
 function makeThemeProp(kind, x, y) {
   switch (kind) {
@@ -5480,6 +6453,22 @@ function makeThemeProp(kind, x, y) {
 function spawnProps(d) {
   const props = Game.props;
   const p = Game.player;
+  /* Two props rolled onto the same tile used to stack: double crates at one
+     spot (double loot, one sprite) and chests buried inside a bookshelf. The
+     lookup is deliberately generous — a prop is about a tile wide — and the
+     spot finder retries, so a room still gets its furniture instead of
+     silently losing it to a collision. */
+  const propNear = (x, y) => props.some(pr => !pr.dead
+    && Math.abs(pr.x - x) < TILE * 0.8 && Math.abs(pr.y - y) < TILE * 0.8);
+  const freeSpotIn = (room, clearance, tries = 6) => {
+    for (let i = 0; i < tries; i++) {
+      const spot = d.randomRoomFloor(room, clearance, { x: p.x, y: p.y });
+      if (d.get(spot.tx, spot.ty) !== FLOOR) continue;
+      if (propNear(spot.x, spot.y)) continue;
+      return spot;
+    }
+    return null;
+  };
   /* torches on walls of every room */
   for (const room of d.rooms) {
     const perimeter = [];
@@ -5501,8 +6490,8 @@ function spawnProps(d) {
     /* decorative clutter */
     const decorN = randInt(0, 3);
     for (let i = 0; i < decorN; i++) {
-      const spot = d.randomRoomFloor(room, 70, { x: p.x, y: p.y });
-      if (d.get(spot.tx, spot.ty) !== FLOOR) continue;
+      const spot = freeSpotIn(room, 70);
+      if (!spot) continue;
       props.push(new Prop(pick(['bones', 'web', 'mold', 'banner', 'urn']), spot.x, spot.y, {
         solid: chance(0.35), r: 10
       }));
@@ -5511,8 +6500,8 @@ function spawnProps(d) {
     if (chance(0.7)) {
       const n = randInt(1, 3);
       for (let i = 0; i < n; i++) {
-        const spot = d.randomRoomFloor(room, 90, { x: p.x, y: p.y });
-        if (d.get(spot.tx, spot.ty) !== FLOOR) continue;
+        const spot = freeSpotIn(room, 90);
+        if (!spot) continue;
         const pr = new Prop('crate', spot.x, spot.y, { hp: 2, solid: true, r: 13 });
         pr.loot = { gold: randInt(3, 12) + d.floor * 2, potion: chance(0.28) };
         props.push(pr);
@@ -5520,10 +6509,12 @@ function spawnProps(d) {
     }
     /* braziers in bigger rooms */
     if (room.area > 90 && chance(0.55)) {
-      const spot = d.randomRoomFloor(room, 90, { x: p.x, y: p.y });
-      const pr = new Prop('brazier', spot.x, spot.y, { solid: true, r: 12 });
-      pr.lightR = 4.2;
-      props.push(pr);
+      const spot = freeSpotIn(room, 90);
+      if (spot) {
+        const pr = new Prop('brazier', spot.x, spot.y, { solid: true, r: 12 });
+        pr.lightR = 4.2;
+        props.push(pr);
+      }
     }
     /* theme furniture — the room's personality, laid out against the walls so
        the middle stays walkable and fights keep their space */
@@ -5533,7 +6524,8 @@ function spawnProps(d) {
   const chestRooms = d.rooms.filter(r => r !== d.startRoom);
   for (const room of chestRooms) {
     if (!chance(room.type === 'vault' ? 1 : 0.55)) continue;
-    const spot = d.randomRoomFloor(room, 80, { x: p.x, y: p.y });
+    const spot = freeSpotIn(room, 80, 8);
+    if (!spot) continue;
     const rare = room.type === 'vault' || d.floor >= 5 && chance(0.3);
     const chest = new Prop('chest', spot.x, spot.y, { solid: true, r: 15, rare });
     chest.lootTable = () => {
@@ -5556,7 +6548,7 @@ function spawnProps(d) {
        then permanently locked. Search for a room floor the entrance can
        actually reach, and fall back to the entrance itself. */
     const reach = d.spawnReach();
-    const reachableAt = (spot) => reach(spot.ty, spot.tx);
+    const reachableAt = (spot) => reach(spot.ty, spot.tx) && !propNear(spot.x, spot.y);
     const candidates = [];
     const roomsToUse = chestRooms.length ? chestRooms : d.rooms;
     for (const room of roomsToUse) {
@@ -5654,7 +6646,7 @@ function findFreeSpot(x, y, radius, needRoom) {
      sealed on every side — which is how a guardian ended up wedged in a wall
      corner, alive, visible, and physically unable to move a single pixel. */
   const fits = (px, py) => {
-    if (circleHitsWalls(px, py, radius)) return false;
+    if (circleBlocked(px, py, radius)) return false;
     if (!needRoom) return true;
     for (let i = 0; i < 8; i++) {
       const a = (i / 8) * TAU;
@@ -5776,6 +6768,92 @@ function floorEnemyPool(floorN, themePool) {
   return pool;
 }
 
+/* ---- adaptive director --------------------------------------------------
+   The director never touches raw stats. It watches the previous floor's
+   damage taken, kills and potion use and shifts the *composition* of the next
+   spawn: comfortable players meet more ranged pressure and rushers, struggling
+   players meet more of the readable chaff. Nothing is announced; the floor
+   simply feels like it is answering you. */
+function updateDirector() {
+  const dr = Game.director;
+  const p = Game.player;
+  if (!dr || !p) return;
+  const seconds = Math.max(20, (Game.elapsedRun || 0) - (dr.floorStart || 0));
+  const dmgShare = clamp((dr.floorDamage || 0) / Math.max(1, p.maxHp), 0, 3);
+  const killRate = (dr.floorKills || 0) / seconds;
+  /* positive = comfortable (more pressure), negative = struggling */
+  dr.pressure = clamp(0.34 - dmgShare * 1.35 + (killRate - 0.10) * 3.2 - (dr.floorPotions || 0) * 0.12, -1, 1);
+  dr.damageTaken += dr.floorDamage || 0;
+  dr.kills += dr.floorKills || 0;
+  dr.potions += dr.floorPotions || 0;
+  dr.floorDamage = 0; dr.floorKills = 0; dr.floorPotions = 0;
+  dr.floorStart = Game.elapsedRun || 0;
+}
+function directorPick(pool) {
+  const pressure = (Game.director && Game.director.pressure) || 0;
+  if (Math.abs(pressure) < 0.18 || !pool.length) return pick(pool);
+  const comfortable = pressure > 0;
+  const entries = pool.map((t) => {
+    const def = ENEMY_TYPES[t] || {};
+    const ranged = def.behavior === 'caster' || def.behavior === 'skirmisher';
+    const rusher = def.behavior === 'rusher';
+    const weak = t === 'crawler' || t === 'bat' || t === 'slime';
+    let w = 1;
+    if (comfortable) w = ranged ? 1.7 : rusher ? 1.45 : 0.9;
+    else w = weak ? 1.8 : ranged ? 0.55 : 0.8;
+    return [t, w];
+  });
+  return weightedPick(entries);
+}
+
+/* ---- hunt board ---------------------------------------------------------
+   One named champion per floor, drawn from the elite traits and a biome
+   prefix. The Quartermaster keeps the poster; killing the target pays Ember
+   Shards and a cosmetic title that survives across runs. */
+const HUNT_FIRST = ['Marrow', 'Ash', 'Gloam', 'Rime', 'Ember', 'Vault', 'Bone', 'Gutter', 'Mire', 'Cinder'];
+const HUNT_LAST = ['hand', 'jaw', 'wake', 'claw', 'throne', 'grasp', 'song', 'maw'];
+const HUNT_TITLE = ['the Guttering', 'the Unquiet', 'the Late', 'the Sworn', 'the Hollow', 'the Patient', 'the Unmourned', 'the Brazen'];
+function makeHuntTarget(d) {
+  const candidates = Game.enemies.filter(e => e.alive && !e.isBoss && !e.guardsVault && e.type !== 'crawler');
+  let e = candidates.find(z => z.isElite) || candidates[Math.floor(rngNow() * candidates.length)];
+  if (!e) return null;
+  if (!e.isElite) {
+    e.isElite = true;
+    e.maxHp = Math.round(e.maxHp * 1.55);
+    e.hp = e.maxHp;
+    e.xpValue = Math.round(e.xpValue * 1.9);
+    applyEliteTrait(e);
+  }
+  const first = HUNT_FIRST[Math.floor(rngNow() * HUNT_FIRST.length)];
+  const last = HUNT_LAST[Math.floor(rngNow() * HUNT_LAST.length)];
+  const title = HUNT_TITLE[Math.floor(rngNow() * HUNT_TITLE.length)];
+  const name = first + last + ', ' + title;
+  e.huntTarget = true;
+  e.huntName = name;
+  Game.hunt = {
+    name, title: String(title).replace(/^the /, ''), floor: d.floor,
+    seed: Game.runSeed || 0, type: e.type, eliteTrait: e.eliteTrait || null,
+    shards: 3 + Math.floor(d.floor * 0.8), killed: false
+  };
+  FX.text(e.x, e.y - e.radius - 24, name, { color: '#ff9a7a', size: 11, bold: true, life: 2.2 });
+  return e;
+}
+function completeHunt(e) {
+  if (!e || !e.huntTarget || !Game.hunt || Game.hunt.killed) return;
+  Game.hunt.killed = true;
+  const m = Save.meta();
+  m.shards = (m.shards || 0) + (Game.hunt.shards || 3);
+  m.hunts = (m.hunts || []).concat({ name: Game.hunt.name, title: Game.hunt.title, floor: Game.floor }).slice(-40);
+  m.titles = Array.from(new Set((m.titles || []).concat([Game.hunt.title]))).slice(-40);
+  Save.writeMeta(m);
+  toast('Hunt complete — ' + Game.hunt.name + ' · +' + Game.hunt.shards + ' Ember Shards · title: ' + Game.hunt.title, 'gold');
+  SR.announce('Hunt complete: ' + Game.hunt.name, true);
+  FX.screenSparkle();
+  Sound.play('bounty');
+  refreshMetaPages();
+  Save.requestSave();
+}
+
 function spawnEnemies(d) {
   const pool = floorEnemyPool(d.floor, d.theme.enemies);
   const rooms = d.rooms.filter(r => r !== d.startRoom);
@@ -5783,7 +6861,7 @@ function spawnEnemies(d) {
   const aff = Game.endlessBundle || {};
   /* Harder than before: the old curve topped out well below the cap, so late
      floors never actually got crowded. This one keeps climbing. */
-  const maxEnemies = clamp(Math.round((7 + d.floor * 2.35) * (aff.enemyMult || 1) * expeditionRule().enemyCount), 6, 60);
+  const maxEnemies = clamp(Math.round((7 + d.floor * 2.35) * (aff.enemyMult || 1) * expeditionRule().enemyCount * (1 + (Game.heat || 0) * 0.10)), 6, 60);
   const roster = [];
   for (const room of rooms) {
     const isGuardian = room === d.guardianRoom;
@@ -5791,7 +6869,7 @@ function spawnEnemies(d) {
     for (let i = 0; i < n; i++) {
       const spot = d.randomRoomFloor(room, 140, { x: Game.player.x, y: Game.player.y });
       if (!d.isWalkable(spot.tx, spot.ty)) continue;
-      const typeKey = pick(pool);
+      const typeKey = directorPick(pool);
       const e = new Enemy(typeKey, spot.x, spot.y, d.floor);
       /* from floor 3 a few spawns are champions — the loot is worth the risk */
       if (d.floor >= 3 && !e.isElite && chance(0.055 + Math.min(0.10, d.floor * 0.006))) {
@@ -5816,12 +6894,28 @@ function spawnEnemies(d) {
     const room = pick(rooms.length ? rooms : d.rooms);
     const spot = d.randomRoomFloor(room, 150, { x: Game.player.x, y: Game.player.y });
     if (!d.isWalkable(spot.tx, spot.ty)) continue;
-    const typeKey = pick(pool);
+    const typeKey = directorPick(pool);
     const e = new Enemy(typeKey, spot.x, spot.y, d.floor, { hpMult: 1.6 });
     e.isElite = true;
     e.maxHp = Math.round(e.maxHp * 1.35);
     e.hp = e.maxHp;
     e.xpValue = Math.round(e.xpValue * 1.8);
+    e.homeRoom = room;
+    applyEliteTrait(e);
+    applyAffixesToEnemy(e, aff);
+    Game.enemies.push(e);
+  }
+  /* player-chosen Heat: extra champions on every floor above 1 */
+  for (let i = 0; i < (Game.heat || 0); i++) {
+    if (d.floor < 2) break;
+    const room = pick(rooms.length ? rooms : d.rooms);
+    const spot = d.randomRoomFloor(room, 150, { x: Game.player.x, y: Game.player.y });
+    if (!d.isWalkable(spot.tx, spot.ty)) continue;
+    const e = new Enemy(directorPick(pool), spot.x, spot.y, d.floor, { hpMult: 1.2 + i * 0.15 });
+    e.isElite = true;
+    e.maxHp = Math.round(e.maxHp * 1.35);
+    e.hp = e.maxHp;
+    e.xpValue = Math.round(e.xpValue * 1.7);
     e.homeRoom = room;
     applyEliteTrait(e);
     applyAffixesToEnemy(e, aff);
@@ -5853,9 +6947,11 @@ function spawnEnemies(d) {
     applyAffixesToEnemy(boss, Game.endlessBundle || null);
     Game.enemies.push(boss);
   }
-  /* never leave a monster embedded in masonry */
+  /* one named bounty hunter's quarry per floor */
+  if (Game.floor >= 2) makeHuntTarget(d);
+  /* never leave a monster embedded in masonry or furniture */
   for (const e of Game.enemies) {
-    if (circleHitsWalls(e.x, e.y, e.radius * 0.85)) {
+    if (circleBlocked(e.x, e.y, e.radius * 0.85)) {
       const spot3 = findFreeSpot(e.x, e.y, e.radius * 0.85);
       e.x = spot3.x; e.y = spot3.y;
     }
@@ -5885,7 +6981,7 @@ function rollBounties(floorN) {
   const pool = BOUNTY_POOL.filter(b => !b.floorOnly || floorN >= b.floorOnly);
   const chosen = [];
   while (chosen.length < 3 && pool.length) {
-    const b = pool.splice(Math.floor(Math.random() * pool.length), 1)[0];
+    const b = pool.splice((rngNow() * pool.length) | 0, 1)[0];
     chosen.push(b);
   }
   Game.bounties = chosen.map(b => {
@@ -6067,7 +7163,7 @@ function rollEndlessAffixes(floorN) {
   const count = clamp(1 + Math.floor((depth - 1) / 3), 1, 4);
   const pool = AFFIX_KEYS.slice();
   for (let i = 0; i < count && pool.length; i++) {
-    const k = pool.splice(Math.floor(Math.random() * pool.length), 1)[0];
+    const k = pool.splice((rngNow() * pool.length) | 0, 1)[0];
     bundle.list.push(k);
     AFFIXES[k].apply(bundle);
   }
@@ -6082,19 +7178,22 @@ function affixSummary(bundle) {
 function heroLightMult() {
   const b = Game.endlessBundle;
   const m = (b && b.lightMult) || 1;
-  return clamp(m, 0.78, 1);
+  return clamp(m * (1 - (Game.heat || 0) * 0.055), 0.78, 1);
 }
 function renderAffixHud() {
   const el = $('affixBar');
   if (!el) return;
   const b = Game.endlessBundle;
-  if (!b || !b.list || !b.list.length) { el.classList.add('hidden'); el.innerHTML = ''; return; }
+  const heat = Game.heat || 0;
+  const heatChip = heat ? '<span class="affixChip" style="--c:#ff8a4c" title="Player-chosen Heat: better loot, worse odds">'
+    + '<i>☲</i>HEAT ' + heat + '</span>' : '';
+  if ((!b || !b.list || !b.list.length) && !heat) { el.classList.add('hidden'); el.innerHTML = ''; return; }
   el.classList.remove('hidden');
-  el.innerHTML = b.list.map(k => {
+  el.innerHTML = heatChip + (b && b.list ? b.list.map(k => {
     const a = AFFIXES[k];
     return '<span class="affixChip" style="--c:' + a.colour + '" title="' + escapeHtml(a.desc) + '">'
          + '<i>' + a.icon + '</i>' + escapeHtml(a.name) + '</span>';
-  }).join('');
+  }).join('') : '');
 }
 
 /* ---------- merchant stock ---------- */
@@ -6133,7 +7232,7 @@ function descend() {
   if (Game.state !== 'playing' || Game.paused || storyHolds()) return;
   const d = Game.dungeon;
   const px = Game.player.x, py = Game.player.y;
-  const onStairs = d.roomAt(px, py) === d.stairsRoom && dist(px, py, (d.stairs.x + 0.5) * TILE, (d.stairs.y + 0.5) * TILE) < 52;
+  const onStairs = d.roomAt(px, py) === d.stairsRoom && dist(px, py, (d.stairs.x + 0.5) * TILE, (d.stairs.y + 0.5) * TILE) < INTERACT_RADIUS;
   if (!onStairs && !Game.nearStairs) { toast('You must stand on the stairs to descend.', 'danger'); Sound.play('error'); return; }
   Sound.play('stairs');
   /* save right before the floor changes so a crash mid-transition is safe */
@@ -6189,6 +7288,78 @@ function circleHitsWalls(x, y, r) {
   }
   return null;
 }
+/* Solid furniture is real geometry now. Props were always flagged `solid`,
+   but only placement consulted the flag: the hero and every monster walked
+   through chests, statues and unbroken crates. A 64 px bucket grid keeps the
+   per-move test cheap even on a floor with a hundred props. */
+const PROP_CELL = 64;
+function rebuildPropHash() {
+  const grid = new Map();
+  (Game.props || []).forEach((pr) => {
+    if (!pr || pr.dead || !propBlocks(pr)) return;
+    const cx = Math.floor(pr.x / PROP_CELL), cy = Math.floor(pr.y / PROP_CELL);
+    const key = cx + ',' + cy;
+    let bucket = grid.get(key);
+    if (!bucket) { bucket = []; grid.set(key, bucket); }
+    bucket.push(pr);
+  });
+  Game.propHash = grid;
+}
+function propBlocks(pr) {
+  return !!pr && pr.solid && !pr.dead && pr.r >= 11;
+}
+function propColliderRadius(pr) { return Math.min(13, pr.r * 0.78); }
+function circleHitsProps(x, y, r) {
+  const grid = Game.propHash;
+  if (!grid || !grid.size) return null;
+  const cx = Math.floor(x / PROP_CELL), cy = Math.floor(y / PROP_CELL);
+  for (let gy = cy - 1; gy <= cy + 1; gy++) {
+    for (let gx = cx - 1; gx <= cx + 1; gx++) {
+      const bucket = grid.get(gx + ',' + gy);
+      if (!bucket) continue;
+      for (const pr of bucket) {
+        if (pr.dead) continue;
+        const rr = r + propColliderRadius(pr);
+        if (dist2(x, y, pr.x, pr.y) < rr * rr) return pr;
+      }
+    }
+  }
+  return null;
+}
+/* Enemy separation and projectile hits are neighbour queries, not all-pairs.
+   A 96 px grid keeps late endless floors linear instead of O(n²). */
+const ENEMY_CELL = 96;
+function buildEnemyHash() {
+  const grid = new Map();
+  Game.enemies.forEach((e, i) => {
+    if (!e || !e.alive) return;
+    const key = Math.floor(e.x / ENEMY_CELL) + ',' + Math.floor(e.y / ENEMY_CELL);
+    let bucket = grid.get(key);
+    if (!bucket) { bucket = []; grid.set(key, bucket); }
+    bucket.push({ e, i });
+  });
+  Game.enemyHash = grid;
+  return grid;
+}
+function nearbyEnemies(x, y, r) {
+  const grid = Game.enemyHash;
+  if (!grid) return Game.enemies;
+  const out = [];
+  const minX = Math.floor((x - r) / ENEMY_CELL), maxX = Math.floor((x + r) / ENEMY_CELL);
+  const minY = Math.floor((y - r) / ENEMY_CELL), maxY = Math.floor((y + r) / ENEMY_CELL);
+  for (let gy = minY; gy <= maxY; gy++) {
+    for (let gx = minX; gx <= maxX; gx++) {
+      const bucket = grid.get(gx + ',' + gy);
+      if (bucket) for (const entry of bucket) out.push(entry);
+    }
+  }
+  return out;
+}
+
+/* Steps over low debris; chests, crates, statues, shelves and tables stop you. */
+function circleBlocked(x, y, r) {
+  return circleHitsWalls(x, y, r) || circleHitsProps(x, y, r);
+}
 function moveWithCollision(ent, dx, dy) {
   /* axis-separated collision with corner sliding so the player never snags on
      the seam between two flags. */
@@ -6199,25 +7370,25 @@ function moveWithCollision(ent, dx, dy) {
   for (let i = 0; i < steps; i++) {
     /* --- horizontal --- */
     if (sx !== 0) {
-      if (!circleHitsWalls(ent.x + sx, ent.y, r)) {
+      if (!circleBlocked(ent.x + sx, ent.y, r)) {
         ent.x += sx;
       } else {
         /* slide diagonally around the corner we bumped into */
         const dir = sy !== 0 ? Math.sign(sy) : (Math.sign(sx) * 0.5);
         const slide = Math.abs(sx) * 0.85;
-        if (!circleHitsWalls(ent.x + sx, ent.y + slide * (dir || 1), r)) ent.y += slide * (dir || 1);
-        else if (!circleHitsWalls(ent.x + sx, ent.y - slide * (dir || 1), r)) ent.y -= slide * (dir || 1);
+        if (!circleBlocked(ent.x + sx, ent.y + slide * (dir || 1), r)) ent.y += slide * (dir || 1);
+        else if (!circleBlocked(ent.x + sx, ent.y - slide * (dir || 1), r)) ent.y -= slide * (dir || 1);
       }
     }
     /* --- vertical --- */
     if (sy !== 0) {
-      if (!circleHitsWalls(ent.x, ent.y + sy, r)) {
+      if (!circleBlocked(ent.x, ent.y + sy, r)) {
         ent.y += sy;
       } else {
         const dir = sx !== 0 ? Math.sign(sx) : (Math.sign(sy) * 0.5);
         const slide = Math.abs(sy) * 0.85;
-        if (!circleHitsWalls(ent.x + slide * (dir || 1), ent.y + sy, r)) ent.x += slide * (dir || 1);
-        else if (!circleHitsWalls(ent.x - slide * (dir || 1), ent.y + sy, r)) ent.x -= slide * (dir || 1);
+        if (!circleBlocked(ent.x + slide * (dir || 1), ent.y + sy, r)) ent.x += slide * (dir || 1);
+        else if (!circleBlocked(ent.x - slide * (dir || 1), ent.y + sy, r)) ent.x -= slide * (dir || 1);
       }
     }
   }
@@ -6369,30 +7540,41 @@ const Combat = {
   },
   damageEnemy(e, rawAtk, angle, opts = {}) {
     const p = Game.player;
-    const crit = Math.random() * 100 < p.critChance;
+    const crit = rngNow() * 100 < p.critChance;
     const defense = e.defense;
     /* soft defense curve — armored elites absorb less than they look like they should */
     let dmg = rawAtk * expeditionRule().playerDamage * (100 / (100 + defense * (e.isElite ? 2.1 : 3.4)));
     dmg *= rand(1.08, 0.92);
-    if (Math.random() < 0.06 && !opts.noMiss) {
+    if (rngNow() < 0.06 && !opts.noMiss) {
       FX.text(e.x, e.y - e.radius - 6, 'MISS', { color: '#b9c4d4', size: 14 });
       Sound.play('miss', 0.5);
       return 0;
     }
     if (crit) dmg *= 1.75;
-    /* elemental attunement amplifies the hit slightly and applies status */
-    const el = opts.element || p.element;
-    if (el && el !== 'physical') dmg *= (1 + p.elementPower);
+    /* Every attunement the hero carries adds a little damage; the primary
+       element drives the status application and any reaction. */
+    const elements = opts.element ? [opts.element] : p.elements;
+    const el = elements[0];
+    if (elements.length) dmg *= (1 + p.elementPower);
     const dealt = e.takeDamage(dmg, { crit, knockback: opts.knockback || 0, angle });
     e.aggro = true;
     if (e.state === 'idle' || e.state === 'patrol') e.state = 'chase';
     if (el && el !== 'physical' && e.alive) {
-      applyElement(e, el, dealt, opts.source);
+      /* reaction first: it reads the status the target already had, then the
+         fresh hit applies its own element */
+      const reacted = maybeElementalReaction(e, el, dealt, opts.source);
+      if (!reacted && e.alive) applyElement(e, el, dealt, opts.source);
       const ec = ELEMENTS[el].colour;
-      FX.text(e.x + rand(14, -14), e.y - e.radius - 28, ELEMENTS[el].name.toUpperCase(), { color: ec, size: 10, life: 0.7 });
+      if (!reacted) FX.text(e.x + rand(14, -14), e.y - e.radius - 28, ELEMENTS[el].name.toUpperCase(), { color: ec, size: 10, life: 0.7 });
       if (el === 'fire') FX.ember(e.x, e.y, 5, '#ff7a2a');
       else if (el === 'ice') FX.frost(e.x, e.y, 4);
       else if (el === 'storm') FX.spark(e.x, e.y, { count: 5, color: '#c9a2ff', speed: 150 });
+      /* a second, different element is visible as a twin-colour ring so the
+         player can see both channels are live */
+      if (!reacted && elements[1]) {
+        const ec2 = ELEMENTS[elements[1]].colour;
+        FX.ring(e.x, e.y, 30, rgba(ec2, 0.45), 0.32, 2);
+      }
     }
     /* numbers */
     FX.text(e.x, e.y - e.radius - 12, String(dealt), {
@@ -6415,7 +7597,7 @@ const Combat = {
       /* The creature's own voice, not a shared human grunt. Still rate-limited
          and thinned: the impact sound already carries every blow, and eight
          overlapping throats from one slam turns the mix to mud. */
-      if (Game.time - (this._lastHurtSfx || 0) > 0.09 && Math.random() < 0.55) {
+      if (Game.time - (this._lastHurtSfx || 0) > 0.09 && rngNow() < 0.55) {
         this._lastHurtSfx = Game.time;
         playCreatureVoice(e, 'hurt', { pan: hitPan, volume: 0.55 });
       }
@@ -6425,8 +7607,10 @@ const Combat = {
   onEnemyDeath(e) {
     const p = Game.player;
     e.deathT = 0;
+    if (e && e.huntTarget) completeHunt(e);
     p.totalKills++;
     Game.runStats.kills++;
+    if (Game.director) Game.director.floorKills = (Game.director.floorKills || 0) + 1;
     bountyTick('kills');
     bountyTick('flawless');
     if (e.isBoss) bountyTick('bosses');
@@ -6444,7 +7628,7 @@ const Combat = {
     /* drops */
     const lootMult = (Game.endlessBundle && Game.endlessBundle.lootMult) || 1;
     const dropChance = Math.min(1, (e.isBoss ? 1 : e.isElite ? 0.9 : 0.22) * lootMult);
-    const itemCount = e.isBoss ? 3 : (Math.random() < dropChance ? 1 : 0);
+    const itemCount = e.isBoss ? 3 : (rngNow() < dropChance ? 1 : 0);
     for (let di = 0; di < itemCount; di++) {
       const forced = e.isBoss && di === 0 ? RARITIES[3] : e.isBoss ? RARITIES[2] : null;
       const item = rollItem(Game.floor, { luck: e.isElite || e.isBoss ? 5 : 0, rarity: forced });
@@ -6452,7 +7636,7 @@ const Combat = {
       Game.runStats.items++;
     }
     Game.drops.push({ kind: 'gold', amount: gold, x: e.x + rand(10, -10), y: e.y + rand(10, -10), vx: rand(50, -50), vy: rand(50, -50), life: 22, bob: rand(TAU) });
-    if (chance(0.12)) Game.drops.push({ kind: 'potion', x: e.x, y: e.y, vx: rand(40, -40), vy: rand(40, -40), life: 30, bob: rand(TAU) });
+    if ((Game.heat || 0) < 2 && chance(0.12)) Game.drops.push({ kind: 'potion', x: e.x, y: e.y, vx: rand(40, -40), vy: rand(40, -40), life: 30, bob: rand(TAU) });
     if (chance(0.05) && Game.dungeon.needsKey) Game.drops.push({ kind: 'key', x: e.x, y: e.y, vx: rand(40, -40), vy: rand(40, -40), life: 40, bob: rand(TAU) });
     FX.blood(e.x, e.y, rand(TAU), 24, '#7d1c26');
     FX.shatter(e.x, e.y, 10, e.type === 'imp' ? ['#ff8a3c', '#ffd166', '#c4451f'] : ['#cfd6c4', '#9aa38c', '#e6e9dd']);
@@ -6511,13 +7695,14 @@ const Combat = {
         if (pr.loot.key) Game.drops.push({ kind: 'key', x: pr.x, y: pr.y + 4, vx: rand(50, -50), vy: rand(50, -50), life: 40, bob: 3 });
         if (pr.keyCrate) toast('A rusty key clatters to the ground.', 'gold');
       }
+      Save.requestSave();
     }
   },
   /* Enemies may target the companion. Kept deliberately low probability: she
      is support, not a tank, and constant focus-fire reads as unfair. */
   maybeTargetCompanion(e) {
     if (!COMPANION.active || COMPANION.downT > 0) return false;
-    if (Math.random() > 0.16) return false;
+    if (rngNow() > 0.16) return false;
     return dist2(e.x, e.y, COMPANION.x, COMPANION.y) < 300 * 300;
   },
 
@@ -6541,7 +7726,21 @@ const Combat = {
     FX.text(p.x, p.y - 34, '-' + dmg, { color: '#ff6b6b', size: 19, bold: true });
     FX.blood(p.x, p.y, angleTo(source ? source.x : p.x, source ? source.y : p.y, p.x, p.y), 14, '#b3202c');
     flashDamage(dmg);
-    if (p.hp <= 0) { p.hp = 0; this.onPlayerDeath(source); }
+    if (Game.director) Game.director.floorDamage = (Game.director.floorDamage || 0) + Math.max(0, dmg);
+    if (p.hp <= 0) {
+      if (hasRelic('secondWind') && !Game.secondWindUsed) {
+        Game.secondWindUsed = true;
+        p.hp = 1;
+        p.invuln = 1.6;
+        toast('Second Wind — the relic spends itself and leaves you standing.', 'gold');
+        FX.ring(p.x, p.y, 120, 'rgba(159,216,255,0.8)', 0.9, 5);
+        SR.announce('Second Wind saved you at one health.', true);
+        Save.requestSave();
+      } else {
+        p.hp = 0;
+        this.onPlayerDeath(source);
+      }
+    }
     updateHud();
     return dmg;
   },
@@ -6550,6 +7749,8 @@ const Combat = {
     Game.player.dead = true;
     Game.state = 'dead';
     Game.deathBy = source && source.def ? source.def.name : 'the depths';
+    try { Save.recordCorpse(source); } catch (e) { /* meta is best-effort */ }
+    try { saveGhostBest(); } catch (e) { /* ghost is best-effort */ }
     Game.cam.shake = 22; Game.cam.shakeT = 0.8;
     Sound.play('enemyDie');
     setTimeout(showDeath, 900);
@@ -6578,6 +7779,7 @@ function onLevelUp() {
   }
   Game.cam.shake = 5; Game.cam.shakeT = 0.3;
   updateHud();
+  Save.requestSave();          /* transactions commit immediately */
   if (p.pendingSkillChoice) {
     /* small delay so the level banner finishes before the panel appears */
     setTimeout(() => {
@@ -6616,7 +7818,7 @@ function spawnBossCracks(x, y, count, radius, color) {
     const segs = [];
     let px = x, py = y, ang = a;
     const len = radius * rand(1.0, 0.55);
-    const steps = 4 + Math.floor(Math.random() * 3);
+    const steps = 4 + Math.floor(rngNow() * 3);
     for (let k = 0; k < steps; k++) {
       ang += rand(0.34, -0.34);
       px += Math.cos(ang) * (len / steps);
@@ -6691,7 +7893,7 @@ function bossResolveMove(e) {
       const a = (i / Math.max(1, budget)) * TAU + rand(0.4, -0.4);
       const r = rand(80, 44);
       const spot = findFreeSpot(e.x + Math.cos(a) * r, e.y + Math.sin(a) * r, 16);
-      const type = pool[Math.floor(Math.random() * pool.length)];
+      const type = pool[Math.floor(rngNow() * pool.length)];
       const add = new Enemy(type, spot.x, spot.y, Game.floor, { hpMult: 0.85 });
       add.summoned = true;
       add.aggro = true;
@@ -6825,7 +8027,7 @@ function updateEnemy(e, dt) {
   /* line of sight refresh (throttled) */
   e.losTimer -= dt;
   if (e.losTimer <= 0) {
-    e.losTimer = 0.2 + Math.random() * 0.15;
+    e.losTimer = 0.2 + rngNow() * 0.15;
     e.hasLos = dd < t.aggro * 1.35 && hasLineOfSight(e.x, e.y, p.x, p.y);
     if (e.hasLos && dd < t.aggro) e.aggro = true;
     /* Anything close enough to smell you notices you even around a corner —
@@ -6899,7 +8101,7 @@ function updateEnemy(e, dt) {
       }
     }
     /* brute charge behaviour: occasional dash */
-    if (t.behavior === 'brute' && dd > 80 && dd < 300 && Math.random() < dt * 0.35) {
+    if (t.behavior === 'brute' && dd > 80 && dd < 300 && rngNow() < dt * 0.35) {
       e.kx += Math.cos(angToPlayer) * 220; e.ky += Math.sin(angToPlayer) * 220;
       FX.dustPuff(e.x, e.y, 5);
     }
@@ -7068,7 +8270,7 @@ function updateProjectiles(dt) {
     pr.life -= dt;
     pr.x += pr.vx * dt; pr.y += pr.vy * dt;
     const trailColor = pr.color;
-    if (Math.random() < 0.85) FX.magicTrail(pr.x, pr.y, trailColor);
+    if (rngNow() < 0.85) FX.magicTrail(pr.x, pr.y, trailColor);
     let dead = pr.life <= 0;
     if (!dead) {
       const tile = Game.dungeon.get(Math.floor(pr.x / TILE), Math.floor(pr.y / TILE));
@@ -7079,7 +8281,8 @@ function updateProjectiles(dt) {
       }
     }
     if (!dead && pr.friendly) {
-      for (const e of Game.enemies) {
+      for (const entry of nearbyEnemies(pr.x, pr.y, pr.radius + 40)) {
+        const e = entry.e;
         if (!e.alive || pr.hitSet.has(e)) continue;
         if (dist2(pr.x, pr.y, e.x, e.y) < (pr.radius + e.radius) * (pr.radius + e.radius)) {
           pr.hitSet.add(e);
@@ -7183,6 +8386,7 @@ function checkMilestone(floorN) {
   FX.screenSparkle();
   Sound.play('bounty');
   updateHud();
+  Save.requestSave();
 }
 
 function pickupDrop(d, index) {
@@ -7218,14 +8422,18 @@ function pickupDrop(d, index) {
       revealLoot(item);
       refreshInventoryUI();
     } else {
-      /* inventory full: convert to gold */
+      /* inventory full: convert to gold. Count it as loot everywhere the run
+         reports gold, or the end-of-run and lifetime totals silently lost it. */
       const val = Math.round(item.value * 0.5);
       p.gold += val;
+      p.totalGold += val;
+      Game.runStats.gold += val;
       FX.text(d.x, d.y - 18, 'PACK FULL +' + val + 'g', { color: '#e0554d', size: 11 });
       toast('Satchel full — the item was melted down for gold.', 'danger');
     }
   }
   updateHud();
+  Save.requestSave();
 }
 
 /* ---------- shrine oaths: one run-only choice per floor ---------- */
@@ -7282,25 +8490,38 @@ function renderRunOaths() {
 }
 
 /* ---------- interactions ---------- */
+/* One radius for every prompt and every action. The old build offered stairs
+   at 72 px but descend() demanded 52, so the hint bar could invite a press the
+   game then refused. */
+const INTERACT_RADIUS = 72;
 function nearestInteractable() {
   const p = Game.player, d = Game.dungeon;
-  let best = null, bestD = 72;
+  let best = null, bestD = INTERACT_RADIUS;
   for (const pr of Game.props) {
     if (pr.dead) continue;
-    if (pr.kind !== 'chest' && pr.kind !== 'merchantStand' && !(pr.kind === 'altar' && !Game.floorShrineUsed && hasUnchosenShrineOath())) continue;
+    /* an opened chest used to stay the nearest target, so the hint bar kept
+       saying "press F to open the chest" and F did nothing — and it could
+       outrank the stairs or the merchant standing beside it. */
+    if (pr.kind === 'chest' && pr.opened) continue;
+    if (pr.station && pr.used) continue;
+    if (pr.kind !== 'chest' && pr.kind !== 'merchantStand' && pr.kind !== 'remains'
+        && !pr.station
+        && !(pr.kind === 'altar' && !Game.floorShrineUsed && hasUnchosenShrineOath())) continue;
     /* a chest should never outrank the stall you are standing at: if you are
        within arm's reach of the merchant, trading is what you meant to do */
     let dd = dist(pr.x, pr.y, p.x, p.y);
     if (pr.kind === 'merchantStand') dd -= 26;
-    if (dd < bestD) { bestD = dd; best = pr; }
+    if (dd < bestD && hasLineOfSight(p.x, p.y, pr.x, pr.y)) { bestD = dd; best = pr; }
   }
   if (d.merchant) {
     let dd = dist(d.merchant.x, d.merchant.y, p.x, p.y);
     dd -= 30;   /* same priority nudge, so the counter always wins nearby */
-    if (dd < bestD) { bestD = dd; best = { kind: 'merchant', x: d.merchant.x, y: d.merchant.y }; }
+    if (dd < bestD && hasLineOfSight(p.x, p.y, d.merchant.x, d.merchant.y)) { bestD = dd; best = { kind: 'merchant', x: d.merchant.x, y: d.merchant.y }; }
   }
   const stairsD = dist((d.stairs.x + 0.5) * TILE, (d.stairs.y + 0.5) * TILE, p.x, p.y);
-  if (stairsD < bestD) { bestD = stairsD; best = { kind: 'stairs', x: (d.stairs.x + 0.5) * TILE, y: (d.stairs.y + 0.5) * TILE }; }
+  if (stairsD < bestD && hasLineOfSight(p.x, p.y, (d.stairs.x + 0.5) * TILE, (d.stairs.y + 0.5) * TILE)) {
+    bestD = stairsD; best = { kind: 'stairs', x: (d.stairs.x + 0.5) * TILE, y: (d.stairs.y + 0.5) * TILE };
+  }
   if (best) { best.dist = bestD; }
   return best;
 }
@@ -7310,7 +8531,7 @@ function doInteract() {
   /* vault door */
   if (d.vaultDoor && d.vaultDoor.locked) {
     const vx = (d.vaultDoor.x + 0.5) * TILE, vy = (d.vaultDoor.y + 0.5) * TILE;
-    if (dist(p.x, p.y, vx, vy) < 62) {
+    if (dist(p.x, p.y, vx, vy) < INTERACT_RADIUS) {
       if (p.keys > 0) {
         p.keys--;
         d.vaultDoor.locked = false;
@@ -7336,8 +8557,125 @@ function doInteract() {
      than his own stand, which made the shop look broken on a phone. */
   else if (target.kind === 'merchant' || target.kind === 'merchantStand') openShop();
   else if (target.kind === 'altar') openShrine();
+  else if (target.kind === 'remains') recoverCorpse(target);
+  else if (target.station) useStation(target);
   else if (target.kind === 'stairs') descend();
 }
+/* ---- station interactions ---------------------------------------------- */
+function finishStation(pr, line, kind) {
+  pr.used = true;
+  if (pr === Game.corpseProp) Game.corpseProp = null;
+  toast(line, kind || 'loot');
+  FX.spark(pr.x, pr.y - 10, { count: 18, color: '#ffd88a', speed: 120 });
+  FX.text(pr.x, pr.y - 30, 'STATION USED', { color: '#ffd88a', size: 11, letter: true });
+  Sound.play('ui');
+  updateHud(); refreshInventoryUI(); Save.requestSave();
+}
+function useStation(pr) {
+  if (!pr || !pr.station || pr.used) return false;
+  const key = pr.station, p = Game.player;
+  const st = STATIONS[key];
+  if (!st) return false;
+  if (key === 'library') {
+    const candidates = ITEM_SLOTS.map(sl => p.equipment[sl]).filter(it => it && !it.inscribed);
+    if (!candidates.length) {
+      /* every worn piece is already inscribed: let the station fade */
+      finishStation(pr, 'The ledger has nothing left to teach your gear.');
+      return true;
+    }
+    const item = candidates[Math.floor(rngNow() * candidates.length)];
+    const stat = ['crit', 'mana', 'speed'][Math.floor(rngNow() * 3)];
+    const amount = stat === 'crit' ? 2 : Math.round(4 + Game.floor * 1.6);
+    item.stats[stat] = (item.stats[stat] || 0) + amount;
+    item.value = Math.round((item.value || 1) * 1.12);
+    item.inscribed = true;
+    item.affixes = (item.affixes || []).concat('Inscribed');
+    item.name = 'Inscribed ' + item.name.replace(/^Inscribed /, '');
+    finishStation(pr, 'You copy a margin-note onto ' + item.name + ' (+' + amount + ' ' + STAT_LABEL[stat] + ').');
+    return true;
+  }
+  if (key === 'kitchen') {
+    if (p.potions < 2) {
+      toast('The stew needs two potions. You have ' + p.potions + '.', 'danger');
+      Sound.play('error', 0.6);
+      return false;
+    }
+    p.potions -= 2;
+    Game.buffs.maxHp = (Game.buffs.maxHp || 0) + 12;
+    p.hp = Math.min(p.maxHp, p.hp + Math.round(p.maxHp * 0.35));
+    finishStation(pr, 'You trade two potions for a long stew. +12 max health this run, and a warm meal.');
+    return true;
+  }
+  if (key === 'workshop') {
+    const worn = ITEM_SLOTS.map(sl => p.equipment[sl]).filter(Boolean).sort((a, b) => itemScore(a) - itemScore(b));
+    if (!worn.length) {
+      toast('The anvil needs something to work on. Equip a piece first.', 'danger');
+      Sound.play('error', 0.6);
+      return false;
+    }
+    const cost = 45 + Game.floor * 18;
+    if (p.gold < cost) {
+      toast('The smith wants ' + cost + ' gold. You have ' + fmt(p.gold) + '.', 'danger');
+      Sound.play('error', 0.6);
+      return false;
+    }
+    p.gold -= cost;
+    const item = worn[0];
+    const cracked = rngNow() < 0.18;
+    const mul = cracked ? 0.93 : 1.14;
+    for (const k in item.stats) {
+      if (typeof item.stats[k] === 'number') item.stats[k] = Math.max(1, Math.round(item.stats[k] * mul));
+    }
+    item.tier = clamp((item.tier || 1) + (cracked ? 0 : 1), 1, 6);
+    item.value = Math.round((item.value || 1) * (cracked ? 0.86 : 1.28));
+    if (cracked && !/^Cracked /.test(item.name)) item.name = 'Cracked ' + item.name;
+    finishStation(pr, cracked
+      ? 'The anvil rings badly. ' + item.name + ' is reinforced, but a hairline crack steals some of its strength.'
+      : 'The anvil rings true. ' + item.name + ' is reforged at a higher tier.', cracked ? 'danger' : 'loot');
+    return true;
+  }
+  if (key === 'crypt') {
+    const item = rollItem(Game.floor, { rarity: RARITIES[2], luck: 3 });
+    Game.drops.push({ kind: 'item', item, x: pr.x, y: pr.y + 6, vx: rand(70, -70), vy: rand(70, -70), life: 60, bob: rand(TAU) });
+    const room = Game.dungeon.roomAt(pr.x, pr.y);
+    let woke = 0;
+    for (const e of Game.enemies) {
+      if (!e.alive) continue;
+      if (room && Game.dungeon.roomAt(e.x, e.y) === room) { e.aggro = true; e.state = 'chase'; woke++; }
+    }
+    FX.ring(pr.x, pr.y, 150, 'rgba(200,120,255,0.55)', 0.6, 4);
+    finishStation(pr, 'The lid grinds back. Something rare glints inside — and ' + (woke ? woke + ' sleepless thing' + (woke === 1 ? '' : 's') + ' wake' : 'the dust stirs') + '.', 'loot');
+    return true;
+  }
+  if (key === 'treasury') {
+    const wager = 25 + Game.floor * 10;
+    if (p.gold < wager) {
+      toast('The scale asks for a wager of ' + wager + ' gold. Come back richer.', 'danger');
+      Sound.play('error', 0.6);
+      return false;
+    }
+    p.gold -= wager;
+    const won = rngNow() < 0.5;
+    if (won) {
+      const payout = Math.round(wager * 2.2);
+      p.gold += payout; p.totalGold += payout - wager; Game.runStats.gold += payout - wager;
+      Game.shopRep = Math.min(9, Game.shopRep + 1);
+      finishStation(pr, 'The scale dips your way. You walk away with ' + payout + ' gold (net +' + (payout - wager) + ').', 'gold');
+      FX.coinBurst(pr.x, pr.y, 14);
+    } else {
+      finishStation(pr, 'The scale does not move. ' + wager + ' gold is gone.', 'danger');
+    }
+    return true;
+  }
+  if (key === 'garden') {
+    p.potions++;
+    const healed = p.heal(Math.round(p.maxHp * 0.22));
+    finishStation(pr, 'You pocket a bitter herb (+1 potion) and chew the rest. ' + healed + ' health returns.');
+    return true;
+  }
+  return false;
+}
+
 function openChest(chest) {
   if (chest.opened) return;
   const p = Game.player;
@@ -7361,6 +8699,7 @@ function openChest(chest) {
   if (best) toast('Chest opened: ' + best.name, best.rarity >= 2 ? 'loot' : 'good');
   toast('+' + loot.gold + ' gold from the chest.', 'gold');
   updateHud();
+  Save.requestSave();
 }
 
 /* ---------- vision / fog of war ---------- */
@@ -7526,6 +8865,67 @@ function drawWallBlock(ctx, d, tx, ty, sx, sy, art, v, time) {
   }
 }
 
+/* ---------- static floor bake ----------
+   Tile art, debris, puddles and contact shading never change during a floor,
+   but the old renderer rebuilt their gradients every frame for every visible
+   tile. Bake them once into one offscreen canvas and blit the camera window;
+   lighting, fog, props and entities stay dynamic. */
+function drawFloorTile(ctx, d, x, y, sx, sy, art, t, forBake) {
+  const idx = y * d.W + x;
+  const tile = d.tiles[idx];
+  const vRaw = d.variation ? d.variation[idx] : ((x * 7 + y * 13) & 255);
+  const v = vRaw % TILE_VARIANTS;
+  if (tile === WALL) { drawWallBlock(ctx, d, x, y, sx, sy, art, v, t); return; }
+  if (tile === LAVA) ctx.drawImage(art.lava[v % art.lava.length], sx, sy);
+  else if (tile === ICE) ctx.drawImage(art.ice[v % art.ice.length], sx, sy);
+  else if (tile === WATER) ctx.drawImage(art.water[v % art.water.length], sx, sy);
+  else if (tile === PIT) ctx.drawImage(art.pit[v % art.pit.length], sx, sy);
+  else if (tile === RUBBLE) ctx.drawImage(art.rubble[v % art.rubble.length], sx, sy);
+  else ctx.drawImage(art.floor[v % art.floor.length], sx, sy);
+  if (tile === FLOOR) {
+    const det = DungeonDetail.debrisFor(d.theme.key, x, y);
+    if (det) DungeonDetail.drawDebris(ctx, det.style, sx + det.ox, sy + det.oy,
+                                     det.rot, det.n, det.variant);
+    const enclosed = d.get(x, y - 1) === WALL || d.get(x, y + 1) === WALL
+                  || d.get(x - 1, y) === WALL || d.get(x + 1, y) === WALL;
+    if (enclosed && DungeonDetail.hash(x, y, 11) > 0.90) {
+      const tint = d.theme.key === 'ice' ? 'rgba(150,215,245,0.26)'
+        : d.theme.key === 'lava' ? 'rgba(120,40,18,0.30)'
+        : 'rgba(58,86,104,0.28)';
+      DungeonDetail.drawPuddle(ctx, sx, sy, DungeonDetail.hash(x, y, 12), tint);
+    }
+  }
+  if (!forBake && tile === STAIRS) {
+    const pulse = 0.5 + Math.sin(t * 2.4) * 0.3;
+    ctx.save();
+    ctx.globalCompositeOperation = 'lighter';
+    const gg = ctx.createRadialGradient(sx + 16, sy + 16, 2, sx + 16, sy + 16, 46);
+    gg.addColorStop(0, `rgba(255,215,140,${0.30 * pulse})`);
+    gg.addColorStop(1, 'rgba(255,215,140,0)');
+    ctx.fillStyle = gg; ctx.fillRect(sx - 30, sy - 30, 92, 92);
+    ctx.restore();
+  }
+}
+function bakeFloorStatic(d) {
+  if (!d) return;
+  const w = d.W * TILE, h = d.H * TILE;
+  /* phones get the per-tile path rather than a second 30 MB canvas */
+  const budget = (Game.isPhone ? 7e6 : 16e6);
+  if (w * h > budget) { d.staticCanvas = null; return; }
+  const cv = document.createElement('canvas');
+  cv.width = w; cv.height = h;
+  const c = cv.getContext('2d');
+  const art = TileArt.bake(d.theme);
+  for (let y = 0; y < d.H; y++) {
+    for (let x = 0; x < d.W; x++) {
+      drawFloorTile(c, d, x, y, x * TILE, y * TILE, art, 0, true);
+    }
+  }
+  drawAmbientOcclusion(c, { x: 0, y: 0 }, true);
+  d.staticCanvas = cv;
+  d.staticW = w; d.staticH = h;
+}
+
 /* ---------- world render ---------- */
 function renderWorld(ctx) {
   const d = Game.dungeon, cam = Game.cam, p = Game.player;
@@ -7545,61 +8945,36 @@ function renderWorld(ctx) {
   const endTy = Math.min(d.H - 1, Math.ceil((camY + Game.H) / TILE) + 1);
   const t = Game.time;
 
-  /* ---- floors ---- */
-  for (let y = startTy; y <= endTy; y++) {
-    for (let x = startTx; x <= endTx; x++) {
-      const idx = y * d.W + x;
-      if (!d.exploredMap[idx] && !d.visible[idx]) continue;
-      const tile = d.tiles[idx];
-      /* floor has TILE_VARIANTS variants; the other tile sets still have a
-         handful, so wrap per set when drawing rather than assuming one
-         count everywhere. */
-      const vRaw = d.variation ? d.variation[idx] : ((x * 7 + y * 13) & 255);
-      const v = vRaw % TILE_VARIANTS;
-      const sx = x * TILE - camX, sy = y * TILE - camY;
-      if (tile === WALL) { drawWallBlock(ctx, d, x, y, sx, sy, art, v, t); continue; }
-      if (tile === LAVA) ctx.drawImage(art.lava[v % art.lava.length], sx, sy);
-      else if (tile === ICE) ctx.drawImage(art.ice[v % art.ice.length], sx, sy);
-      else if (tile === WATER) ctx.drawImage(art.water[v % art.water.length], sx, sy);
-      else if (tile === PIT) ctx.drawImage(art.pit[v % art.pit.length], sx, sy);
-      else if (tile === RUBBLE) ctx.drawImage(art.rubble[v % art.rubble.length], sx, sy);
-      else if (tile === STAIRS) ctx.drawImage(art.floor[v % art.floor.length], sx, sy);
-      else ctx.drawImage(art.floor[v % art.floor.length], sx, sy);
-      /* ---- detail layer on walkable floor ----
-         Debris and the odd puddle. Deterministic per tile, so nothing
-         shimmers as the camera moves, and sparse enough to read as decay. */
-      if (tile === FLOOR) {
-        const det = DungeonDetail.debrisFor(d.theme.key, x, y);
-        if (det) {
-          DungeonDetail.drawDebris(ctx, det.style, sx + det.ox, sy + det.oy,
-                                   det.rot, det.n, det.variant);
-        }
-        /* a puddle only where the tile is enclosed on at least one side; a
-           puddle in the middle of a wide hall looks like a bug */
-        const enclosed = d.get(x, y - 1) === WALL || d.get(x, y + 1) === WALL
-                      || d.get(x - 1, y) === WALL || d.get(x + 1, y) === WALL;
-        if (enclosed && DungeonDetail.hash(x, y, 11) > 0.90) {
-          const tint = d.theme.key === 'ice' ? 'rgba(150,215,245,0.26)'
-            : d.theme.key === 'lava' ? 'rgba(120,40,18,0.30)'
-            : 'rgba(58,86,104,0.28)';
-          DungeonDetail.drawPuddle(ctx, sx, sy, DungeonDetail.hash(x, y, 12), tint);
-        }
-      }
-      /* subtle floor grid glow at room edges */
-      if (tile === STAIRS) {
-        const pulse = 0.5 + Math.sin(t * 2.4) * 0.3;
-        ctx.save();
-        ctx.globalCompositeOperation = 'lighter';
-        const gg = ctx.createRadialGradient(sx + 16, sy + 16, 2, sx + 16, sy + 16, 46);
-        gg.addColorStop(0, `rgba(255,215,140,${0.30 * pulse})`);
-        gg.addColorStop(1, 'rgba(255,215,140,0)');
-        ctx.fillStyle = gg; ctx.fillRect(sx - 30, sy - 30, 92, 92);
-        ctx.restore();
+  /* ---- floors: one blit of the baked tile canvas ---- */
+  if (d.staticCanvas) {
+    const sw = Game.W, sh = Game.H;
+    const sx0 = clamp(camX, 0, Math.max(0, d.staticW - sw));
+    const sy0 = clamp(camY, 0, Math.max(0, d.staticH - sh));
+    const dx = camX - sx0, dy = camY - sy0;
+    const cw = Math.min(sw, d.staticW - sx0), ch = Math.min(sh, d.staticH - sy0);
+    ctx.drawImage(d.staticCanvas, sx0, sy0, cw, ch, dx, dy, cw, ch);
+    /* the stairs keep their animated pool of light */
+    const stx = d.stairs.x * TILE - camX, sty = d.stairs.y * TILE - camY;
+    if (stx > -100 && sty > -100 && stx < Game.W + 100 && sty < Game.H + 100) {
+      const pulse = 0.5 + Math.sin(t * 2.4) * 0.3;
+      ctx.save(); ctx.globalCompositeOperation = 'lighter';
+      const gg = ctx.createRadialGradient(stx + 16, sty + 16, 2, stx + 16, sty + 16, 46);
+      gg.addColorStop(0, `rgba(255,215,140,${0.30 * pulse})`);
+      gg.addColorStop(1, 'rgba(255,215,140,0)');
+      ctx.fillStyle = gg; ctx.fillRect(stx - 30, sty - 30, 92, 92);
+      ctx.restore();
+    }
+  } else {
+    for (let y = startTy; y <= endTy; y++) {
+      for (let x = startTx; x <= endTx; x++) {
+        const idx = y * d.W + x;
+        if (!d.exploredMap[idx] && !d.visible[idx]) continue;
+        drawFloorTile(ctx, d, x, y, x * TILE - camX, y * TILE - camY, art, t, false);
       }
     }
+    /* ---- ambient occlusion over the floor ---- */
+    drawAmbientOcclusion(ctx, drawCam);
   }
-  /* ---- ambient occlusion over the floor ---- */
-  drawAmbientOcclusion(ctx, drawCam);
 
   /* ---- stairs art ---- */
   {
@@ -7658,6 +9033,7 @@ function renderWorld(ctx) {
     if (!show) continue;
     ents.push({ y: e.y, draw: () => drawEnemy(ctx, e, drawCam, t) });
   }
+  drawGhost(ctx, drawCam, t);
   ents.push({ y: p.y, draw: () => drawPlayer(ctx, p, drawCam, t) });
   /* Ember sorts into the same depth pass as everything else so she cannot
      render on top of a wall she is standing behind. */
@@ -7684,6 +9060,7 @@ function renderWorld(ctx) {
 
   /* ---- overhead: floating text & smoke above fog ---- */
   FX.drawTexts(ctx, drawCam);
+  drawScentMarks(ctx, drawCam, t);
 }
 function drawProp(ctx, pr, cam, t) {
   const x = pr.x - cam.x, y = pr.y - cam.y;
@@ -8400,12 +9777,60 @@ function drawProp(ctx, pr, cam, t) {
       ctx.beginPath(); ctx.roundRect(-13, -6, 26, 16, 4); ctx.stroke();
       break;
     }
+    case 'remains': {
+      /* a fallen delver: a slumped silhouette, cold blue foxfire */
+      ctx.fillStyle = 'rgba(0,0,0,0.34)';
+      ctx.beginPath(); ctx.ellipse(0, 12, 18, 7, 0, 0, TAU); ctx.fill();
+      ctx.fillStyle = '#3b3a42';
+      ctx.beginPath(); ctx.ellipse(-2, 5, 15, 8, -0.18, 0, TAU); ctx.fill();
+      ctx.fillStyle = '#5a5966';
+      ctx.beginPath(); ctx.ellipse(11, -2, 7, 6, 0.2, 0, TAU); ctx.fill();
+      ctx.strokeStyle = 'rgba(160,220,255,0.45)'; ctx.lineWidth = 1.2;
+      ctx.beginPath(); ctx.ellipse(0, 6, 22, 10, -0.1, 0, TAU); ctx.stroke();
+      ctx.save(); ctx.globalCompositeOperation = 'lighter';
+      const wisp = ctx.createRadialGradient(0, -14, 1, 0, -14, 22);
+      wisp.addColorStop(0, 'rgba(170,230,255,0.55)'); wisp.addColorStop(1, 'rgba(120,190,255,0)');
+      ctx.fillStyle = wisp; ctx.beginPath(); ctx.arc(0, -14 + Math.sin(t * 2.2) * 2, 22, 0, TAU); ctx.fill();
+      ctx.restore();
+      break;
+    }
     case 'merchantStand': {
       /* handled by drawMerchant; keep the stand minimal */
       break;
     }
     case 'stairsGlow': break;
     default: break;
+  }
+  /* interactive station rune: visible from across the room, gone once used */
+  if (pr.station && !pr.used) {
+    ctx.save(); ctx.globalCompositeOperation = 'lighter';
+    const pulse = 0.55 + Math.sin(t * 2.6 + (pr.seed || 0)) * 0.25;
+    ctx.strokeStyle = 'rgba(255,216,138,' + pulse + ')';
+    ctx.lineWidth = 1.4;
+    ctx.beginPath(); ctx.arc(0, -24, 7, 0, TAU); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(-3, -27); ctx.lineTo(3, -21); ctx.moveTo(3, -27); ctx.lineTo(-3, -21); ctx.stroke();
+    ctx.restore();
+  }
+  ctx.restore();
+}
+/* Ember's sniff marks: drawn above the fog so they read like a scent trail
+   rather than a wallhack reveal of the room's art. */
+function drawScentMarks(ctx, cam, t) {
+  const marks = Game.scentMarks || [];
+  if (!marks.length) return;
+  Game.scentMarks = marks.filter(m => m.until > Game.time);
+  ctx.save();
+  ctx.globalCompositeOperation = 'lighter';
+  for (const m of Game.scentMarks) {
+    const x = m.x - cam.x, y = m.y - cam.y;
+    if (x < -40 || y < -40 || x > Game.W + 40 || y > Game.H + 40) continue;
+    const col = m.kind === 'vault' ? '#ff9a5a' : m.kind === 'key' ? '#ffd97a' : m.kind === 'station' ? '#9fd8ff' : '#ffb867';
+    const pulse = 0.55 + Math.sin(t * 3.2 + m.x * 0.02) * 0.25;
+    ctx.strokeStyle = rgba(col, pulse);
+    ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.arc(x, y - 12, 10 + Math.sin(t * 3) * 2, 0, TAU); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(x, y - 24); ctx.lineTo(x + 3, y - 12); ctx.lineTo(x, y); ctx.lineTo(x - 3, y - 12); ctx.closePath();
+    ctx.fillStyle = rgba(col, 0.55 * pulse); ctx.fill();
   }
   ctx.restore();
 }
@@ -8446,6 +9871,20 @@ function drawDrop(ctx, drop, cam, t) {
     }
     const img = Sprite.itemCanvas(item, 64);
     ctx.drawImage(img, x - 15, y - 15 + bob, 30, 30);
+    /* colour-blind players get a shape code on every rarity, because the
+       beam colour alone is the only thing distinguishing a rare from an epic */
+    if (Settings.get().colorBlind) {
+      const glyphs = ['○', '◇', '◆', '★', '✦'];
+      ctx.save();
+      ctx.font = '700 12px "Segoe UI", system-ui, sans-serif';
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillStyle = color;
+      ctx.strokeStyle = 'rgba(0,0,0,.85)'; ctx.lineWidth = 3;
+      const g = glyphs[Math.min(4, item.rarity || 0)];
+      ctx.strokeText(g, x, y - 24 + bob);
+      ctx.fillText(g, x, y - 24 + bob);
+      ctx.restore();
+    }
   }
   ctx.restore();
 }
@@ -8460,6 +9899,27 @@ function drawDrop(ctx, drop, cam, t) {
    absorbs. Corridors are one tile wide, so the footprint itself cannot grow
    past 15px — this is the largest honest body that fits. */
 const HERO_DRAW_SCALE = 0.72;
+/* Replays the best run on this seed as a cold, translucent silhouette. */
+function drawGhost(ctx, cam, t) {
+  const pose = ghostPose();
+  if (!pose) return;
+  const x = pose.x - cam.x, y = pose.y - cam.y;
+  if (x < -40 || y < -40 || x > Game.W + 40 || y > Game.H + 40) return;
+  ctx.save();
+  ctx.globalAlpha = 0.26;
+  ctx.globalCompositeOperation = 'lighter';
+  ctx.translate(x, y);
+  ctx.scale(HERO_DRAW_SCALE, HERO_DRAW_SCALE);
+  drawHeroShape(ctx, Game.player, t, 0, 0, true);
+  ctx.restore();
+  ctx.save();
+  ctx.globalAlpha = 0.7;
+  ctx.font = '700 8px "Segoe UI", system-ui, sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillStyle = '#9fd8ff';
+  ctx.fillText('GHOST', x, y - 26);
+  ctx.restore();
+}
 function drawPlayer(ctx, p, cam, t) {
   const x = p.x - cam.x, y = p.y - cam.y;
 
@@ -9080,8 +10540,10 @@ function drawEnemy(ctx, e, cam, t) {
       ctx.strokeStyle = 'rgba(0,0,0,.8)'; ctx.lineWidth = 2.4;
       /* champion traits get their own coloured label so the read is instant */
       const trait = e.eliteTrait && ELITE_TRAITS[e.eliteTrait];
-      const label = (trait ? trait.name + ' ' : '') + e.def.name.toUpperCase();
-      if (trait) ctx.fillStyle = trait.colour;
+      const label = e.huntTarget ? '◆ ' + e.huntName.toUpperCase()
+        : (trait ? trait.name + ' ' : '') + e.def.name.toUpperCase();
+      if (e.huntTarget) { ctx.font = '800 9px "Segoe UI", system-ui, sans-serif'; ctx.fillStyle = '#ff9a7a'; }
+      else if (trait) ctx.fillStyle = trait.colour;
       ctx.strokeText(label, x, by - 6);
       ctx.fillText(label, x, by - 6);
       ctx.restore();
@@ -9761,6 +11223,22 @@ const Lights = {
   }
 };
 
+/* Radial gradients are immutable and expensive to allocate. Light radii
+   flicker by a pixel or two each frame, so bucket them and translate the
+   context instead of rebuilding the gradient every frame. */
+const _gradCache = new WeakMap();
+function cachedRadial(ctx, key, r, stops) {
+  let map = _gradCache.get(ctx);
+  if (!map) { map = new Map(); _gradCache.set(ctx, map); }
+  let g = map.get(key);
+  if (g) return g;
+  if (map.size > 320) map.clear();
+  g = ctx.createRadialGradient(0, 0, Math.max(0.5, r * 0.05), 0, 0, r);
+  for (const [at, col] of stops) g.addColorStop(at, col);
+  map.set(key, g);
+  return g;
+}
+
 /** Carve the fog mask using every gathered light. */
 function drawFog(ctx, cam) {
   const d = Game.dungeon;
@@ -9770,6 +11248,10 @@ function drawFog(ctx, cam) {
   fctx.setTransform(1, 0, 0, 1, 0, 0);
   fctx.globalCompositeOperation = 'source-over';
   fctx.fillStyle = d.theme.fog;
+  /* Two coats: the baked floor is blitted whole (including tiles the player
+     has not seen), so the fog has to be effectively opaque outside the light
+     pools. 0.94 twice leaves ~0.4% bleed, which is invisible. */
+  fctx.fillRect(0, 0, fw, fh);
   fctx.fillRect(0, 0, fw, fh);
 
   const lights = Lights.gather(cam);
@@ -9782,17 +11264,22 @@ function drawFog(ctx, cam) {
     const cx = (L.x - cam.x) * sx, cy = (L.y - cam.y) * sy;
     const r = L.r * sx;
     if (cx < -r || cy < -r || cx > fw + r || cy > fh + r) continue;
-    const g = fctx.createRadialGradient(cx, cy, Math.max(0.5, r * 0.05), cx, cy, r);
     const i = L.intensity;
+    const rb = Math.max(2, Math.round(r / 4) * 4);
+    const ib = Math.round(i * 20) / 20;
     /* falloff exponent shapes the pool: higher = tighter hot centre */
-    g.addColorStop(0, `rgba(0,0,0,${0.99 * i})`);
-    g.addColorStop(0.28, `rgba(0,0,0,${0.92 * i})`);
-    g.addColorStop(0.52, `rgba(0,0,0,${0.66 * i})`);
-    g.addColorStop(0.74, `rgba(0,0,0,${0.32 * i})`);
-    g.addColorStop(0.90, `rgba(0,0,0,${0.10 * i})`);
-    g.addColorStop(1, 'rgba(0,0,0,0)');
+    const g = cachedRadial(fctx, 'fog:' + rb + ':' + ib, rb, [
+      [0, `rgba(0,0,0,${0.99 * ib})`],
+      [0.28, `rgba(0,0,0,${0.92 * ib})`],
+      [0.52, `rgba(0,0,0,${0.66 * ib})`],
+      [0.74, `rgba(0,0,0,${0.32 * ib})`],
+      [0.90, `rgba(0,0,0,${0.10 * ib})`],
+      [1, 'rgba(0,0,0,0)']
+    ]);
+    fctx.save(); fctx.translate(cx, cy);
     fctx.fillStyle = g;
-    fctx.beginPath(); fctx.arc(cx, cy, r, 0, TAU); fctx.fill();
+    fctx.beginPath(); fctx.arc(0, 0, rb, 0, TAU); fctx.fill();
+    fctx.restore();
   }
 
   /* composite the darkness */
@@ -9831,12 +11318,17 @@ function drawFog(ctx, cam) {
   for (const L of lights) {
     const cx = L.x - cam.x, cy = L.y - cam.y;
     if (cx < -L.r || cy < -L.r || cx > Game.W + L.r || cy > Game.H + L.r) continue;
-    const tg = ctx.createRadialGradient(cx, cy, 2, cx, cy, L.r);
-    tg.addColorStop(0, rgba(L.colour, 0.20 * L.intensity));
-    tg.addColorStop(0.45, rgba(L.colour, 0.09 * L.intensity));
-    tg.addColorStop(1, rgba(L.colour, 0));
+    const rb = Math.max(2, Math.round(L.r / 8) * 8);
+    const ib = Math.round(L.intensity * 20) / 20;
+    const tg = cachedRadial(ctx, 'tint:' + L.colour + ':' + rb + ':' + ib, rb, [
+      [0, rgba(L.colour, 0.20 * ib)],
+      [0.45, rgba(L.colour, 0.09 * ib)],
+      [1, rgba(L.colour, 0)]
+    ]);
+    ctx.save(); ctx.translate(cx, cy);
     ctx.fillStyle = tg;
-    ctx.beginPath(); ctx.arc(cx, cy, L.r, 0, TAU); ctx.fill();
+    ctx.beginPath(); ctx.arc(0, 0, rb, 0, TAU); ctx.fill();
+    ctx.restore();
   }
   ctx.restore();
 }
@@ -9844,7 +11336,7 @@ function drawFog(ctx, cam) {
 /* ---------- ambient occlusion around walls ----------
    Darkens the floor where it meets a wall and adds a contact shadow, which is
    the single cheapest trick for making a tile grid look like real geometry.  */
-function drawAmbientOcclusion(ctx, cam) {
+function drawAmbientOcclusion(ctx, cam, all = false) {
   const d = Game.dungeon;
   if (!d) return;
   const startTx = Math.max(0, Math.floor(cam.x / TILE) - 1);
@@ -9857,7 +11349,7 @@ function drawAmbientOcclusion(ctx, cam) {
   for (let y = startTy; y <= endTy; y++) {
     for (let x = startTx; x <= endTx; x++) {
       const idx = y * d.W + x;
-      if (!d.exploredMap[idx]) continue;
+      if (!all && !d.exploredMap[idx]) continue;
       if (d.tiles[idx] === WALL) continue;
       const sx = x * TILE - cam.x, sy = y * TILE - cam.y;
       if (sx < -TILE || sy < -TILE || sx > Game.W + TILE || sy > Game.H + TILE) continue;
@@ -10172,6 +11664,7 @@ function renderStatList() {
   ).join('');
 }
 function toast(message, kind = '') {
+  if (typeof SR !== 'undefined') SR.announce(message, kind === 'danger' || kind === 'loot' || kind === 'gold');
   const log = $('toastLog');
   const el = document.createElement('div');
   el.className = 'toast ' + kind;
@@ -10269,6 +11762,21 @@ function drawMinimap() {
     if (!d.exploredMap[ty * d.W + tx]) continue;
     ctx.fillStyle = RARITY_COLOR[drop.item.rarity];
     ctx.fillRect(offX + (drop.x / TILE) * ts - 1.4, offY + (drop.y / TILE) * ts - 1.4, 2.8, 2.8);
+  }
+  /* Ember's scent marks */
+  for (const m of (Game.scentMarks || [])) {
+    if (m.until <= Game.time) continue;
+    ctx.fillStyle = m.kind === 'vault' ? '#ff9a5a' : m.kind === 'key' ? '#ffd97a' : '#ffb867';
+    const mx = offX + (m.x / TILE) * ts, my = offY + (m.y / TILE) * ts;
+    ctx.beginPath(); ctx.arc(mx, my, 2.4, 0, TAU); ctx.fill();
+  }
+  /* the previous delver's remains */
+  if (Game.corpseProp && !Game.corpseProp.dead) {
+    ctx.save(); ctx.shadowColor = '#9fd8ff'; ctx.shadowBlur = 7;
+    ctx.fillStyle = '#9fd8ff';
+    ctx.beginPath(); ctx.arc(offX + (Game.corpseProp.x / TILE) * ts,
+      offY + (Game.corpseProp.y / TILE) * ts, 3.1, 0, TAU); ctx.fill();
+    ctx.restore();
   }
   /* player */
   const px = offX + (p.x / TILE) * ts, py = offY + (p.y / TILE) * ts;
@@ -10894,7 +12402,7 @@ function escapeHtml(s) {
    a dozen call sites. While a panel is open the phone touch layer is hidden,
    which stops the movement stick from stealing taps aimed at the panel. */
 const MENU_OVERLAY_IDS = ['inventoryOverlay', 'shopOverlay', 'skillOverlay', 'pauseOverlay',
-                          'deathOverlay', 'victoryOverlay', 'startScreen', 'settingsOverlay', 'profileOverlay', 'rewardsOverlay', 'sanctuaryOverlay', 'shrineOverlay'];
+                          'deathOverlay', 'victoryOverlay', 'startScreen', 'settingsOverlay', 'profileOverlay', 'rewardsOverlay', 'sanctuaryOverlay', 'shrineOverlay', 'relicDraftOverlay'];
 function syncMenuOpen() {
   const any = MENU_OVERLAY_IDS.some(id => {
     const el = document.getElementById(id);
@@ -10975,6 +12483,20 @@ function renderShop() {
     const disc = Game.shopDiscountUsed ? '' : ' · <span style="color:#8fe0a8">welcome discount active (−25%)</span>';
     moodEl.innerHTML = 'Reputation: <b class="shopMoodWarm">' + tier + '</b> (' + pct + '% off)'
       + disc + '. Click a name to inspect.';
+  }
+  const huntEl = $('shopHunt');
+  if (huntEl) {
+    const h = Game.hunt;
+    if (!h) { huntEl.classList.add('hidden'); huntEl.innerHTML = ''; }
+    else if (h.killed) {
+      huntEl.classList.remove('hidden');
+      huntEl.innerHTML = '<b>HUNT CLOSED</b><span>' + escapeHtml(h.name) + ' — poster stamped, shards paid.</span>';
+    } else {
+      huntEl.classList.remove('hidden');
+      huntEl.innerHTML = '<b>BOUNTY · FLOOR ' + h.floor + '</b><span class="huntName">' + escapeHtml(h.name) + '</span>'
+        + '<span class="huntReward">' + h.shards + ' Ember Shards · title "' + escapeHtml(h.title) + '"</span>'
+        + '<span class="huntTip">A named champion stalks this floor. Look for the ◆ banner.</span>';
+    }
   }
   const stockEl = $('shopStock');
   stockEl.innerHTML = '';
@@ -11089,6 +12611,7 @@ function buyItem(item, idx) {
   refreshInventoryUI();
   renderShop();
   updateHud();
+  Save.requestSave();
 }
 /* Reroll the merchant's wares. The potion always stays, the gear is redrawn
    and each reroll costs gold plus one of the run's limited reroll tokens. */
@@ -11127,6 +12650,7 @@ function rerollShop() {
   shopMessage('New stock laid out. The merchant warms to you a little.');
   renderShop();
   updateHud();
+  Save.requestSave();
 }
 /* Buying a non-potion consumes the one-per-run welcome discount. */
 function sellShopInventoryItem(item) {
@@ -11145,6 +12669,7 @@ function sellShopInventoryItem(item) {
   refreshInventoryUI();
   renderShop();
   updateHud();
+  Save.requestSave();
 }
 function refreshShopIfOpen() { if (Game.shopOpen) renderShop(); }
 
@@ -11155,6 +12680,10 @@ function toggleInventory(force) {
   if (open && Game.shopOpen) return;
   Game.invOpen = open;
   Game.paused = open || Game.shopOpen || Game.skillOpen;
+  /* Opening the satchel from the pause menu used to leave the pause overlay
+     painted on top of the game while state went back to 'playing'; closing the
+     satchel then resumed the world behind a pause screen. Only one panel wins. */
+  if (open) { const pauseEl = $('pauseOverlay'); if (pauseEl) pauseEl.classList.remove('show'); }
   if (Game.state === 'paused') Game.state = 'playing';
   $('inventoryOverlay').classList.toggle('show', open); syncMenuOpen();
   if (!open) hideActionSheet();
@@ -11241,6 +12770,7 @@ function refreshSkillUI() {
         FX.screenSparkle();
         refreshSkillUI();
         updateHud();
+        Save.requestSave();
         if (Game.player.skillPoints <= 0) {
           Game.player.pendingSkillChoice = false;
           $('skillSub').textContent = 'Points spent. Every third level grants another.';
@@ -11260,6 +12790,7 @@ function toggleSkills(force) {
   if (open && (Game.shopOpen || Game.invOpen)) return;
   Game.skillOpen = open;
   Game.paused = open || Game.shopOpen || Game.invOpen;
+  if (open) { const pauseEl = $('pauseOverlay'); if (pauseEl) pauseEl.classList.remove('show'); }
   if (Game.state === 'paused') Game.state = 'playing';
   $('skillOverlay').classList.toggle('show', open); syncMenuOpen();
   if (open) {
@@ -11271,10 +12802,78 @@ function toggleSkills(force) {
   }
   updateHud();
 }
+/* ---- chronicle ---------------------------------------------------------
+   A short, factual epilogue written at the end of a run. It is appended to the
+   meta block (last 20) and rendered as selectable text, so a player can keep
+   it, paste it into a notebook, or hand the seed to a friend. */
+function buildChronicleText(outcome) {
+  const p = Game.player || {};
+  const mins = Math.floor((Game.elapsedRun || 0) / 60), secs = Math.floor((Game.elapsedRun || 0) % 60);
+  const relics = (Game.relics || []).map(id => (relicDef(id) || {}).name).filter(Boolean);
+  const hunt = Game.hunt ? (Game.hunt.killed ? 'Hunt complete: ' + Game.hunt.name : 'Hunt open: ' + Game.hunt.name) : 'No bounty taken';
+  const lines = [
+    'DUNGEON ROGUE — ' + outcome.toUpperCase() + ' CHRONICLE',
+    'Seed ' + (Game.lastSeedCode || seedToCode(Game.runSeed || 0)) + ' · Heat ' + (Game.heat || 0) + ' · ' + (Game.expedition || 'standard') + ' contract',
+    'Floor ' + Game.floor + ' · Level ' + (p.level || 1) + ' · ' + (p.totalScore ? Math.round(p.totalScore) : 0) + ' gear score',
+    'Slain ' + fmt(Game.runStats.kills || 0) + ' · Chests ' + fmt(Game.runStats.chests || 0) + ' · Gold ' + fmt(Game.runStats.gold || 0),
+    'Time ' + mins + 'm ' + String(secs).padStart(2, '0') + 's · Cause: ' + (outcome === 'death' ? (Game.deathBy || 'the depths') : 'the Heartstone'),
+    'Relics: ' + (relics.length ? relics.join(', ') : 'none') + ' · ' + hunt
+  ];
+  if (Game.ghost) lines.push('Ghost on this seed: floor ' + Game.ghost.bestDepth + (Game.ghost.bestTime ? ' in ' + Game.ghost.bestTime.toFixed(1) + 's' : ''));
+  return lines.join('\n');
+}
+function publishChronicle(outcome) {
+  const text = buildChronicleText(outcome);
+  Game.lastChronicle = text;
+  try {
+    const m = Save.meta();
+    m.chronicles = (m.chronicles || []).concat([text]).slice(-20);
+    Save.writeMeta(m);
+  } catch (e) { /* best effort */ }
+  return text;
+}
+function renderChronicleInto(box) {
+  if (!box) return;
+  const text = Game.lastChronicle || buildChronicleText('run');
+  box.innerHTML = '<h3>Chronicle</h3>' + escapeHtml(text);
+}
+function copyChronicle() {
+  const text = Game.lastChronicle || buildChronicleText('run');
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(text).then(() => toast('Chronicle copied.', 'good'), () => fallbackCopy(text));
+  } else fallbackCopy(text);
+}
+function fallbackCopy(text) {
+  try {
+    const ta = document.createElement('textarea');
+    ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0';
+    document.body.appendChild(ta); ta.select(); document.execCommand('copy'); ta.remove();
+    toast('Chronicle copied.', 'good');
+  } catch (e) { toast('Copy failed — select the text and copy it manually.', 'danger'); }
+}
+function downloadChronicle() {
+  try {
+    const text = Game.lastChronicle || buildChronicleText('run');
+    const blob = new Blob([text], { type: 'text/markdown' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'dungeon-rogue-chronicle-' + String(Game.lastSeedCode || 'run').replace(/[^A-Z0-9]/gi, '') + '.md';
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 3000);
+    toast('Chronicle downloaded as Markdown.', 'good');
+  } catch (e) { toast('Download failed.', 'danger'); }
+}
+function toggleChronicle(box) {
+  if (!box) return;
+  if (box.hidden) { renderChronicleInto(box); box.hidden = false; }
+  else box.hidden = true;
+}
 function showDeath() {
   const p = Game.player;
   $('deathEpitaph').textContent = 'Cut down on floor ' + Game.floor + ' by ' + Game.deathBy + '. The dungeon keeps its secrets — and your bones.';
   $('deathStats').innerHTML = runStatsHtml(p);
+  publishChronicle('death');
+  const dcb = $('deathChronicle'); if (dcb) dcb.hidden = true;
   $('deathOverlay').classList.add('show'); syncMenuOpen();
   Sound.stopMusic();
   Save.recordDeath();
@@ -11285,7 +12884,10 @@ function showDeath() {
 }
 function showVictory() {
   const p = Game.player;
+  try { saveGhostBest(); } catch (e) { /* ghost is best-effort */ }
   $('victoryStats').innerHTML = runStatsHtml(p);
+  publishChronicle('victory');
+  const vcb = $('victoryChronicle'); if (vcb) vcb.hidden = true;
   $('victoryOverlay').classList.add('show'); syncMenuOpen();
   Sound.stopMusic();
   Save.save();
@@ -11306,6 +12908,134 @@ function runStatsHtml(p) {
 }
 
 /* ============================== 18. INPUT =============================== */
+/* ---- gamepad ------------------------------------------------------------
+   Standard mapping only. The left stick moves, the right stick aims, face
+   buttons cast/interact, and the d-pad is a second movement stick. Buttons
+   are edge-triggered: holding A should not machine-gun the sword. */
+function pollGamepad() {
+  const pad = Game.pad;
+  if (!navigator.getGamepads) return;
+  let gp = null;
+  try { const list = navigator.getGamepads(); for (const p of list) if (p && p.connected) { gp = p; break; } } catch (e) {}
+  if (!gp) {
+    if (pad.connected) { pad.connected = false; pad.x = pad.y = pad.aimX = pad.aimY = 0; }
+    return;
+  }
+  if (!pad.connected) {
+    pad.connected = true;
+    const note = $('gamepadNote');
+    if (note) { note.disabled = false; note.textContent = 'Gamepad: ' + (gp.id || 'connected'); }
+    toast('Gamepad connected — left stick moves, right stick aims.', 'good');
+  }
+  const dz = (v) => Math.abs(v) < 0.24 ? 0 : v;
+  let ax = dz(gp.axes[0] || 0), ay = dz(gp.axes[1] || 0);
+  /* d-pad as a digital alternative */
+  const btn = (i) => !!(gp.buttons[i] && gp.buttons[i].pressed);
+  if (btn(14)) ax = -1; else if (btn(15)) ax = 1;
+  if (btn(12)) ay = -1; else if (btn(13)) ay = 1;
+  pad.x = ax; pad.y = ay;
+  pad.aimX = dz(gp.axes[2] || 0); pad.aimY = dz(gp.axes[3] || 0);
+  const prev = pad.prev;
+  const pressed = (i) => btn(i) && !prev[i];
+  if (Game.state === 'playing' && !Game.paused && !storyHolds()) {
+    if (pressed(0)) Combat.playerAttack();
+    if (pressed(1)) dodgeRoll();
+    if (pressed(2)) doInteract();
+    if (pressed(3)) cycleEmberCommand();
+    if (pressed(4)) { Combat.playerMagic(); flashAbility('ab1'); }
+    if (pressed(5)) { Combat.playerSlam(); flashAbility('ab3'); }
+    if (pressed(6)) { drinkPotion(); flashAbility('ab2'); }
+    if (pressed(8) || pressed(9)) togglePause();
+  } else if (Game.state === 'paused' && pressed(9)) {
+    togglePause(false);
+  }
+  pad.prev = gp.buttons.map(b => !!(b && b.pressed));
+}
+if (typeof window !== 'undefined') {
+  window.addEventListener('gamepadconnected', (ev) => {
+    const note = $('gamepadNote');
+    if (note) { note.disabled = false; note.textContent = 'Gamepad: ' + (ev.gamepad && ev.gamepad.id || 'connected'); }
+  });
+}
+
+/* Rebindable actions. Movement stays on WASD/arrows (both sets always work);
+   everything else can be moved to another key from Settings. */
+const KEYBIND_DEFS = {
+  magic:     { label: 'Cast magic',      code: 'KeyQ' },
+  slam:      { label: 'Ground slam',     code: 'KeyE' },
+  potion:    { label: 'Drink potion',    code: 'KeyR' },
+  dodge:     { label: 'Dodge roll',      code: 'Space' },
+  inventory: { label: 'Inventory',       code: 'KeyI' },
+  skills:    { label: 'Talents',         code: 'KeyT' },
+  interact:  { label: 'Interact',        code: 'KeyF' },
+  command:   { label: 'Ember command',   code: 'KeyC' },
+  pause:     { label: 'Pause',           code: 'KeyP' },
+  mute:      { label: 'Mute',            code: 'KeyM' }
+};
+function keybindCode(action) {
+  const custom = Settings.get().keybinds || {};
+  return custom[action] || (KEYBIND_DEFS[action] ? KEYBIND_DEFS[action].code : '');
+}
+function boundActionForCode(code) {
+  for (const action in KEYBIND_DEFS) if (keybindCode(action) === code) return action;
+  return null;
+}
+function keyLabel(code) {
+  if (!code) return '—';
+  if (code === 'Space') return 'SPACE';
+  if (code.startsWith('Key')) return code.slice(3);
+  if (code.startsWith('Digit')) return code.slice(5);
+  if (code.startsWith('Arrow')) return code.replace('Arrow', '↑↓←→'['ArrowUp ArrowDown ArrowLeft ArrowRight'.split(' ').indexOf(code)] || '');
+  return code.replace('Numpad', 'NUM ');
+}
+function setKeybind(action, code) {
+  if (!KEYBIND_DEFS[action] || !code) return false;
+  const binds = Object.assign({}, Settings.get().keybinds || {});
+  /* a code can only own one action: clear the previous owner */
+  for (const other in KEYBIND_DEFS) if (other !== action && keybindCode(other) === code) delete binds[other];
+  binds[action] = code;
+  Settings.set('keybinds', binds);
+  renderKeybinds();
+  return true;
+}
+function resetKeybinds() {
+  Settings.set('keybinds', {});
+  renderKeybinds();
+  toast('Key bindings reset to defaults.', 'good');
+}
+function renderKeybinds() {
+  const wrap = $('keybindList');
+  if (!wrap) return;
+  wrap.innerHTML = '';
+  for (const action in KEYBIND_DEFS) {
+    const def = KEYBIND_DEFS[action];
+    const row = document.createElement('div');
+    row.className = 'keybindRow';
+    const label = document.createElement('span');
+    label.textContent = def.label;
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.dataset.action = action;
+    btn.textContent = Game.rebinding === action ? 'PRESS…' : keyLabel(keybindCode(action));
+    if (Game.rebinding === action) btn.classList.add('listening');
+    btn.addEventListener('click', () => {
+      Game.rebinding = action;
+      renderKeybinds();
+      setTimeout(() => {
+        window.addEventListener('keydown', function capture(ev) {
+          ev.preventDefault();
+          ev.stopPropagation();
+          if (ev.code !== 'Escape') setKeybind(action, ev.code);
+          Game.rebinding = null;
+          renderKeybinds();
+        }, { capture: true, once: true });
+      }, 0);
+    });
+    row.appendChild(label); row.appendChild(btn);
+    wrap.appendChild(row);
+  }
+}
+
 function setupInput() {
   const canvas = Game.canvas;
   const keyMap = {
@@ -11316,9 +13046,19 @@ function setupInput() {
   };
   window.addEventListener('keydown', (ev) => {
     const code = ev.code;
+    if (Game.rebinding) return;
+    if (Game.relicDraftOpen) {
+      const n = code.startsWith('Digit') ? Number(code.slice(5)) : code.startsWith('Numpad') ? Number(code.slice(6)) : 0;
+      if (n >= 1 && n <= 3 && Game.relicChoices && Game.relicChoices[n - 1]) {
+        ev.preventDefault();
+        chooseRelic(Game.relicChoices[n - 1]);
+      }
+      return;
+    }
     const utilityPage=document.querySelector('#settingsOverlay.show,#profileOverlay.show,#rewardsOverlay.show,#sanctuaryOverlay.show,#shrineOverlay.show');
     if(utilityPage){
       if(code==='Escape'){closePage(utilityPage.id);ev.preventDefault();}
+      else if(code==='Tab'){trapFocus(ev, utilityPage);}
       return; /* do not trigger gameplay or dismiss the pause menu behind a dialog */
     }
     if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Space', 'Tab'].includes(code)) ev.preventDefault();
@@ -11327,25 +13067,36 @@ function setupInput() {
     if (keyMap[code]) Game.input[keyMap[code]] = true;
     if (storyHolds()) return;          /* the chapter card owns the keyboard */
     if (Game.state !== 'playing' && Game.state !== 'paused') return;
+    /* bound actions first, so rebinding never leaves a dead key behind */
+    const action = boundActionForCode(code);
+    if (action) {
+      switch (action) {
+        case 'magic': if (!Game.paused) { Combat.playerMagic(); flashAbility('ab1'); } break;
+        case 'slam': if (!Game.paused) { Combat.playerSlam(); flashAbility('ab3'); } break;
+        case 'potion': if (!Game.paused) { drinkPotion(); flashAbility('ab2'); } break;
+        case 'dodge': if (!Game.paused) dodgeRoll(); break;
+        case 'inventory': toggleInventory(); break;
+        case 'skills': toggleSkills(); break;
+        case 'interact': if (!Game.paused) doInteract(); break;
+        case 'command': if (!Game.paused) cycleEmberCommand(); break;
+        case 'pause': togglePause(); break;
+        case 'mute': toggleSound(); break;
+        default: break;
+      }
+      return;
+    }
     switch (code) {
-      case 'KeyQ': Combat.playerMagic(); flashAbility('ab1'); break;
-      case 'KeyE': Combat.playerSlam(); flashAbility('ab3'); break;
-      case 'KeyR': drinkPotion(); flashAbility('ab2'); break;
-      case 'Space': dodgeRoll(); break;
-      case 'KeyI': case 'Tab': toggleInventory(); break;
-      case 'KeyT': toggleSkills(); break;
+      case 'Tab': toggleInventory(); break;
       case 'Escape':
         if (Game.invOpen) toggleInventory(false);
         else if (Game.shopOpen) closeShop();
         else if (Game.skillOpen) toggleSkills(false);
         else togglePause();
         break;
-      case 'KeyF': if (!Game.paused) doInteract(); break;
-      case 'KeyM': toggleSound(); break;
       case 'KeyS':
         if (ev.ctrlKey || ev.metaKey) { ev.preventDefault(); if (Save.save()) toast('Sealed in ' + Save.activeSlot().name + '.', 'good'); else toast(Save._lastError || 'Saving is unavailable in this browser.', 'danger'); }
         break;
-      case 'KeyP': togglePause(); break;
+      case 'KeyY': if (Game.photo.active) saveFrame(); break;
       case 'Enter': if (Game.paused) togglePause(); break;
       default: break;
     }
@@ -11362,9 +13113,23 @@ function setupInput() {
   canvas.addEventListener('mousemove', (ev) => {
     Game.input.mx = ev.clientX;
     Game.input.my = ev.clientY;
+    if (Game.photo.active && Game.photo.dragging) {
+      Game.photo.x += ev.movementX || 0;
+      Game.photo.y += ev.movementY || 0;
+      Game.photo.x = clamp(Game.photo.x, -Game.W * 0.4, Game.W * 0.4);
+      Game.photo.y = clamp(Game.photo.y, -Game.H * 0.4, Game.H * 0.4);
+      applyPhotoTransform();
+    }
   });
+  window.addEventListener('wheel', (ev) => {
+    if (!Game.photo.active) return;
+    ev.preventDefault();
+    Game.photo.zoom = clamp(Game.photo.zoom * (ev.deltaY > 0 ? 0.92 : 1.08), 1, 2.4);
+    applyPhotoTransform();
+  }, { passive: false });
   canvas.addEventListener('mousedown', (ev) => {
     if (ev.button !== 0) return;
+    if (Game.photo.active) { Game.photo.dragging = true; ev.preventDefault(); return; }
     Sound.init(); Sound.resume();
     if (storyHolds()) return;            /* the card's own tap closes it */
     if (Game.state === 'playing' && !Game.paused) {
@@ -11373,7 +13138,7 @@ function setupInput() {
       flashAbility('ab0');
     }
   });
-  window.addEventListener('mouseup', () => { Game.input.mouseDown = false; });
+  window.addEventListener('mouseup', () => { Game.input.mouseDown = false; Game.photo.dragging = false; });
   canvas.addEventListener('contextmenu', (ev) => ev.preventDefault());
   /* On a touch device the canvas is aim-space: dragging turns the hero to face
      that point. Movement comes from the left thumbstick and actions from the
@@ -11394,6 +13159,11 @@ function setupInput() {
     if (Game.isPhone && Game.state === 'playing' && !Game.paused) Combat.playerAttack();
   }, { passive: true });
 
+  const compHud = $('compHud');
+  if (compHud) {
+    compHud.style.pointerEvents = 'auto';
+    compHud.addEventListener('click', () => { if (Game.state === 'playing' && !Game.paused) cycleEmberCommand(); });
+  }
   /* Tapping the phone prompt bar performs the nearby interaction — there is no
      F key on a phone, so this is how chests, stairs and the vault are used. */
   const hbEl = $('hintBar');
@@ -11438,7 +13208,30 @@ function setupInput() {
   });
   $('soundBtn').addEventListener('click', toggleSound);
   /* overlay buttons */
+  const photoBtn = $('pausePhotoBtn');
+  if (photoBtn) photoBtn.addEventListener('click', () => togglePhotoMode(true));
+  const clipBtn = $('pauseClipBtn');
+  if (clipBtn) clipBtn.addEventListener('click', () => recordClip(5));
+  const installBtn = $('installBtn');
+  if (installBtn) installBtn.addEventListener('click', async () => {
+    if (typeof window.installGame === 'function') {
+      const ok = await window.installGame();
+      if (!ok) toast('Install prompt unavailable — use your browser menu: Add to Home Screen.', 'good');
+    } else {
+      toast('Install prompt unavailable — use your browser menu: Add to Home Screen.', 'good');
+    }
+  });
   $('startBtn').addEventListener('click', beginGame);
+  const dailyBtn = $('dailyBtn');
+  if (dailyBtn) dailyBtn.addEventListener('click', () => beginGame({ daily: true }));
+  const codeInput = $('runCodeInput');
+  if (codeInput) codeInput.addEventListener('input', updateStartIdentityUI);
+  $$('#heatRow .heatChip').forEach(btn => btn.addEventListener('click', () => setChosenHeat(btn.dataset.heat)));
+  const heatSelect = $('heatSetting');
+  if (heatSelect) heatSelect.addEventListener('change', ev => setChosenHeat(ev.target.value));
+  const cbSetting = $('colorBlindSetting');
+  if (cbSetting) cbSetting.addEventListener('change', ev => Settings.set('colorBlind', ev.target.checked));
+  updateStartIdentityUI();
   $('menuSettingsBtn').addEventListener('click',()=>openPage('settingsOverlay'));
   $('menuProfileBtn').addEventListener('click',()=>openPage('profileOverlay'));
   $('menuRewardsBtn').addEventListener('click',()=>openPage('rewardsOverlay'));
@@ -11460,6 +13253,17 @@ function setupInput() {
   $('profileName').addEventListener('change',ev=>{ev.target.value=Profile.setName(ev.target.value);Save.refreshMenuControls();refreshProfileCard();});
   $('profileName').addEventListener('blur',ev=>{ev.target.value=Profile.setName(ev.target.value);Save.refreshMenuControls();});
   $('exportBackupBtn').addEventListener('click',exportBackup);
+  const resetKeys = $('resetKeysBtn');
+  if (resetKeys) resetKeys.addEventListener('click', resetKeybinds);
+  renderKeybinds();
+  const dcbBtn = $('deathChronicleBtn');
+  if (dcbBtn) dcbBtn.addEventListener('click', () => toggleChronicle($('deathChronicle')));
+  const vcbBtn = $('victoryChronicleBtn');
+  if (vcbBtn) vcbBtn.addEventListener('click', () => toggleChronicle($('victoryChronicle')));
+  const dExp = $('deathExportBtn'); if (dExp) dExp.addEventListener('click', exportBackup);
+  const vExp = $('victoryExportBtn'); if (vExp) vExp.addEventListener('click', exportBackup);
+  ['deathChronicleCopyBtn','victoryChronicleCopyBtn'].forEach(id => { const el = $(id); if (el) el.addEventListener('click', copyChronicle); });
+  ['deathChronicleDlBtn','victoryChronicleDlBtn'].forEach(id => { const el = $(id); if (el) el.addEventListener('click', downloadChronicle); });
   $('importBackupBtn').addEventListener('click',()=>$('backupFileInput').click());
   $('backupFileInput').addEventListener('change',ev=>{importBackupFile(ev.target.files&&ev.target.files[0]);ev.target.value='';});
   $('rewardList').addEventListener('click',ev=>{const b=ev.target.closest('[data-claim-reward]');if(b)claimMetaReward(b.dataset.claimReward);});
@@ -11467,7 +13271,7 @@ function setupInput() {
   $('companionUpgradeItems').addEventListener('click',ev=>{const b=ev.target.closest('[data-comp-upgrade]');if(b)buyCompanionUpgrade(b.dataset.compUpgrade);});
   $('shrineChoices').addEventListener('click',ev=>{const b=ev.target.closest('[data-shrine-oath]');if(b)chooseShrineOath(b.dataset.shrineOath);});
 
-  $('continueBtn').addEventListener('click', continueRun);
+  $('continueBtn').addEventListener('click', () => continueRun());
   $('saveNowBtn').addEventListener('click', () => {
     if (Save.save()) { toast('Sealed in ' + Save.activeSlot().name + '.', 'good'); Sound.play('ui'); }
     else toast(Save._lastError || 'Saving is unavailable in this browser.', 'danger');
@@ -11515,6 +13319,9 @@ function setupInput() {
     else toast(Save._lastError || 'Saving is unavailable in this browser.', 'danger');
   });
   $('abandonBtn').addEventListener('click', () => {
+    /* Ending a run is irreversible, so name the run and say where it dies. */
+    const slotName = Save.available() ? Save.activeSlot().name : 'this run';
+    if (!window.confirm('Abandon ' + slotName + ' on Floor ' + Game.floor + '?\n\nThe run ends now and its save slot is cleared. Export a backup first if you want to keep it.')) return;
     togglePause(false);
     Combat.onPlayerDeath(null);
   });
@@ -11834,6 +13641,7 @@ const Phone = {
   }
 };
 function drinkPotion() {
+  if (Game.director) Game.director.floorPotions = (Game.director.floorPotions || 0) + 1;
   const p = Game.player;
   if (!p || p.dead) return;
   if (p.potionCd > 0) return;
@@ -11870,7 +13678,112 @@ function dodgeRoll() {
   Sound.play('dodge', 0.7);
   FX.dustPuff(p.x, p.y + 8, 8, 'rgba(180,170,150,0.35)');
 }
+/* ---- photo mode & 5-second clips --------------------------------------- */
+function applyPhotoTransform() {
+  const cv = $('game');
+  if (!cv) return;
+  if (!Game.photo.active) { cv.style.transform = ''; return; }
+  cv.style.transform = 'translate(' + Game.photo.x.toFixed(1) + 'px,' + Game.photo.y.toFixed(1) + 'px) scale(' + Game.photo.zoom.toFixed(3) + ')';
+}
+function togglePhotoMode(on) {
+  const active = on !== undefined ? !!on : !Game.photo.active;
+  Game.photo.active = active;
+  if (active) { Game.photo.zoom = 1.45; Game.photo.x = 0; Game.photo.y = 0; Game.photo.dragging = false; }
+  document.body.classList.toggle('photo-mode', active);
+  applyPhotoTransform();
+  if (active) {
+    Game.paused = true;
+    Game.state = 'paused';
+    const po = $('pauseOverlay'); if (po) po.classList.remove('show');
+    syncMenuOpen();
+    hideTooltip();
+    toast('Photo mode — drag to pan, wheel to zoom, Y saves the frame, P/Esc leaves.', 'good');
+  } else {
+    Game.paused = false;
+    Game.state = 'playing';
+    toast('Back to the dungeon.', 'good');
+  }
+}
+function saveFrame() {
+  const src = Game.canvas;
+  if (!src) return false;
+  try {
+    const out = document.createElement('canvas');
+    out.width = src.width; out.height = src.height;
+    const c = out.getContext('2d');
+    /* photo mode is a CSS zoom on screen; bake the same crop into the file */
+    const zoom = Game.photo.active ? (Game.photo.zoom || 1.45) : 1;
+    if (zoom > 1.001) {
+      const sw = src.width / zoom, sh = src.height / zoom;
+      const dpr = Game.dpr || 1;
+      const cx = src.width / 2 - (Game.photo.x || 0) * dpr;
+      const cy = src.height / 2 - (Game.photo.y || 0) * dpr;
+      const sx = clamp(cx - sw / 2, 0, src.width - sw);
+      const sy = clamp(cy - sh / 2, 0, src.height - sh);
+      c.drawImage(src, sx, sy, sw, sh, 0, 0, out.width, out.height);
+    } else {
+      c.drawImage(src, 0, 0);
+    }
+    /* letterbox + a small caption so a shared frame says where it came from */
+    const bar = Math.round(out.height * 0.055);
+    c.fillStyle = 'rgba(4,3,7,0.92)';
+    c.fillRect(0, out.height - bar, out.width, bar);
+    c.fillStyle = '#ffe0a8';
+    c.font = '600 ' + Math.round(bar * 0.42) + 'px "Segoe UI", system-ui, sans-serif';
+    c.textAlign = 'left'; c.textBaseline = 'middle';
+    c.fillText('DUNGEON ROGUE · FLOOR ' + Game.floor + ' · ' + Game.lastSeedCode, bar * 0.6, out.height - bar / 2);
+    c.textAlign = 'right';
+    c.fillStyle = '#9fd8ff';
+    c.fillText((Game.player ? 'LV ' + Game.player.level : ''), out.width - bar * 0.6, out.height - bar / 2);
+    const a = document.createElement('a');
+    a.download = 'dungeon-rogue-floor' + Game.floor + '-' + String(Game.lastSeedCode || 'seed').replace(/[^A-Z0-9]/gi, '') + '.png';
+    a.href = out.toDataURL('image/png');
+    a.click();
+    toast('Frame saved to your downloads.', 'good');
+    return true;
+  } catch (e) {
+    toast('This browser refused to export the canvas.', 'danger');
+    return false;
+  }
+}
+function recordClip(seconds = 5) {
+  if (!Game.canvas || !Game.canvas.captureStream || typeof MediaRecorder === 'undefined') {
+    toast('Clip recording is not supported by this browser.', 'danger');
+    return false;
+  }
+  try {
+    const stream = Game.canvas.captureStream(30);
+    const types = ['video/webm;codecs=vp9', 'video/webm;codecs=vp8', 'video/webm'];
+    const mimeType = types.find(t => MediaRecorder.isTypeSupported && MediaRecorder.isTypeSupported(t)) || '';
+    const rec = new MediaRecorder(stream, mimeType ? { mimeType } : undefined);
+    const chunks = [];
+    rec.ondataavailable = (ev) => { if (ev.data && ev.data.size) chunks.push(ev.data); };
+    rec.onstop = () => {
+      try { stream.getTracks().forEach(t => t.stop()); } catch (e) {}
+      if (!chunks.length) { toast('The clip came back empty.', 'danger'); return; }
+      const blob = new Blob(chunks, { type: mimeType || 'video/webm' });
+      const a = document.createElement('a');
+      a.download = 'dungeon-rogue-clip-' + Date.now() + '.webm';
+      a.href = URL.createObjectURL(blob);
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+      toast('5-second clip saved.', 'good');
+    };
+    /* recording from the pause menu should film the game, not a freeze-frame */
+    Game.paused = false; Game.state = 'playing';
+    const po = $('pauseOverlay'); if (po) po.classList.remove('show');
+    syncMenuOpen();
+    rec.start();
+    toast('Recording ' + seconds + 's...', 'good');
+    setTimeout(() => { try { if (rec.state !== 'inactive') rec.stop(); } catch (e) {} }, seconds * 1000);
+    return true;
+  } catch (e) {
+    toast('Clip recording failed.', 'danger');
+    return false;
+  }
+}
 function togglePause(force) {
+  if (Game.photo.active) { togglePhotoMode(false); return; }
   if (Game.state !== 'playing' && Game.state !== 'paused') return;
   const p = force !== undefined ? force : !Game.paused;
   if (Game.invOpen || Game.shopOpen || Game.skillOpen) {
@@ -11929,7 +13842,50 @@ function initSaveState() {
     }
   });
 }
-function beginGame() {
+/* ---- start-screen run identity UI -------------------------------------- */
+function setChosenHeat(v) {
+  Settings.set('heat', clamp(Math.floor(Number(v) || 0), 0, 3));
+  refreshHeatChips();
+  updateStartIdentityUI();
+}
+function refreshHeatChips() {
+  const heat = Settings.get().heat || 0;
+  $$('#heatRow .heatChip').forEach(b => b.classList.toggle('active', Number(b.dataset.heat) === heat));
+  const sel = $('heatSetting');
+  if (sel && sel.value !== String(heat)) sel.value = String(heat);
+}
+function updateStartIdentityUI() {
+  refreshHeatChips();
+  const input = $('runCodeInput');
+  const note = $('ghostNote');
+  if (!input || !note) return;
+  if (!input.value && Game.lastSeedCode) input.value = Game.lastSeedCode;
+  const typed = codeToSeed(input.value);
+  const target = typed || dailySeed();
+  let ghost = null;
+  try { ghost = (Save.meta().ghosts || {})[seedToCode(target)] || null; } catch (e) {}
+  const label = typed ? 'Run ' + seedToCode(target) : 'Daily ' + seedToCode(target);
+  note.classList.remove('hidden');
+  if (ghost) {
+    note.textContent = label + ' · your ghost reached floor ' + ghost.bestDepth
+      + (ghost.bestTime ? ' in ' + ghost.bestTime.toFixed(1) + 's' : '') + ' — outrun it.';
+  } else {
+    note.textContent = label + ' · no ghost on this seed yet. Your best attempt will haunt it.';
+  }
+}
+function beginGame(opts = {}) {
+  const daily = opts && opts.daily === true;
+  let seed = 0;
+  const codeInput = $('runCodeInput');
+  if (!daily && codeInput && codeInput.value.trim()) {
+    seed = codeToSeed(codeInput.value);
+    if (!seed) {
+      toast('That run code is not valid. Use the DR-XXXX-XXX format or the Daily Descent button.', 'danger');
+      codeInput.focus();
+      codeInput.select();
+      return;
+    }
+  }
   /* Three full slots means the oldest run is about to be replaced; say which. */
   if (Save.available() && Save.slotList().every(sl => sl.snap)) {
     const oldest = Save.slotForNewRun();
@@ -11943,17 +13899,31 @@ function beginGame() {
   $('startFade').classList.add('black');
   setTimeout(() => {
     $('startScreen').classList.remove('show'); syncMenuOpen();
-    startRun();
+    startRun({ seed, daily, heat: Settings.get().heat });
     $('startFade').classList.remove('black');
     Game.input.mouseDown = false;
   }, 420);
 }
 /* Resume the autosaved run exactly where it was left. */
 function continueRun(slotId) {
+  /* This is also a click handler, so the browser passes a MouseEvent as the
+     first argument. Treating that as a slot id made Continue call
+     Save.slot(event) — which silently falls back to slot I — so the newest run
+     was not the one that loaded, and a player whose newest save was in II or
+     III could "Continue" into an older run. Only a real id counts. */
+  if (typeof slotId !== 'string') slotId = undefined;
   Sound.init(); Sound.resume();
   $('startFade').classList.add('black');
   setTimeout(() => {
-    $('startScreen').classList.remove('show'); syncMenuOpen();
+    $('startScreen').classList.remove('show');
+    /* Loading from Profile & Backup while paused left the pause (or inventory)
+       panel on top of the freshly resumed run. Clear the in-game panels too,
+       not just the title screen. */
+    ['pauseOverlay', 'inventoryOverlay', 'shopOverlay', 'skillOverlay'].forEach(id => {
+      const el = $(id); if (el) el.classList.remove('show');
+    });
+    Game.invOpen = false; Game.shopOpen = false; Game.skillOpen = false;
+    syncMenuOpen();
     /* a hidden menu must not keep the old run's paused state */
     Game.paused = false;
     const ok = Save.load(slotId);
@@ -12004,7 +13974,11 @@ function updatePlayer(dt) {
   const input = Game.input;
   /* aim toward cursor in world space */
   const wmx = Game.cam.x + input.mx, wmy = Game.cam.y + input.my;
-  p.aimAngle = Math.atan2(wmy - p.y, wmx - p.x);
+  if (Game.pad && (Math.abs(Game.pad.aimX) + Math.abs(Game.pad.aimY) > 0.3)) {
+    p.aimAngle = Math.atan2(Game.pad.aimY, Game.pad.aimX);
+  } else {
+    p.aimAngle = Math.atan2(wmy - p.y, wmx - p.x);
+  }
   /* dodge */
   p.dodgeCd = Math.max(0, p.dodgeCd - dt);
   p.attackCd = Math.max(0, p.attackCd - dt);
@@ -12040,7 +14014,7 @@ function updatePlayer(dt) {
     p.dodging -= dt;
     const sp = 560;
     moveWithCollision(p, Math.cos(p.dodgeAngle) * sp * dt, Math.sin(p.dodgeAngle) * sp * dt);
-    if (Math.random() < 0.7) FX.dustPuff(p.x, p.y + 8, 1, 'rgba(200,190,170,0.18)');
+    if (rngNow() < 0.7) FX.dustPuff(p.x, p.y + 8, 1, 'rgba(200,190,170,0.18)');
   }
   /* movement */
   let dx = 0, dy = 0;
@@ -12052,6 +14026,9 @@ function updatePlayer(dt) {
   if (input.touchDir && dx === 0 && dy === 0) {
     dx = input.touchDir.x; dy = input.touchDir.y;
     if (Math.hypot(dx, dy) < 0.18) { dx = 0; dy = 0; }
+  }
+  if (Game.pad && dx === 0 && dy === 0 && (Game.pad.x || Game.pad.y)) {
+    dx = Game.pad.x; dy = Game.pad.y;
   }
   p.moving = (dx !== 0 || dy !== 0) && p.dodging <= 0;
   if (p.moving) {
@@ -12066,7 +14043,7 @@ function updatePlayer(dt) {
     p.footstepT -= dt;
     if (p.footstepT <= 0) {
       p.footstepT = 0.3;
-      if (Math.random() < 0.6) FX.dustPuff(p.x, p.y + 10, 1, 'rgba(150,140,130,0.2)');
+      if (rngNow() < 0.6) FX.dustPuff(p.x, p.y + 10, 1, 'rgba(150,140,130,0.2)');
     }
   } else {
     p.vx = lerp(p.vx, 0, 1 - Math.pow(0.000001, dt));
@@ -12089,11 +14066,11 @@ function updatePlayer(dt) {
   const tile = Game.dungeon.get(Math.floor(p.x / TILE), Math.floor(p.y / TILE));
   if (tile === LAVA && p.invuln <= 0) {
     p.hp -= 10 * dt;
-    if (Math.random() < dt * 8) FX.ember(p.x, p.y + 8, 1, '#ff8a3c');
+    if (rngNow() < dt * 8) FX.ember(p.x, p.y + 8, 1, '#ff8a3c');
     if (p.hp <= 0) { p.hp = 0; Combat.onPlayerDeath(null); }
   }
   /* footsteps on ice sparkle */
-  if (tile === ICE && p.moving && Math.random() < dt * 5) FX.frost(p.x, p.y + 8, 2);
+  if (tile === ICE && p.moving && rngNow() < dt * 5) FX.frost(p.x, p.y + 8, 2);
   /* reveal vision */
   Game.visionTimer = (Game.visionTimer || 0) - dt;
   if (Game.visionTimer <= 0) {
@@ -12108,9 +14085,9 @@ function updatePlayer(dt) {
     for (const pr of Game.props) {
       if (pr.dead || (pr.kind !== 'torch' && pr.kind !== 'brazier')) continue;
       const dd = dist2(pr.x, pr.y, p.x, p.y);
-      if (dd < 640 * 640 && Math.random() < 0.28) {
+      if (dd < 640 * 640 && rngNow() < 0.28) {
         FX.ember(pr.x, pr.y - 6, 1, pr.kind === 'brazier' ? '#ff9a3c' : '#ffb867');
-        if (Math.random() < 0.12) FX.smoke(pr.x, pr.y - 14, 1, 'rgba(60,55,50,0.25)');
+        if (rngNow() < 0.12) FX.smoke(pr.x, pr.y - 14, 1, 'rgba(60,55,50,0.25)');
       }
     }
   }
@@ -12130,18 +14107,33 @@ function update(dt) {
       STORY.keyHandler = null;
     }
   }
+  pollGamepad();
   const held = Game.paused || storyHolds();
   if (Game.state === 'playing' && !held) {
+    /* the whole simulation draws from the run stream, not Math.random, so a
+       seed + input timeline can be replayed exactly */
+    const prevRng = rngSource;
+    if (Game.simRng) rngSource = Game.simRng;
+    try {
+    /* Hit-stop was decremented but never applied, so the 30 ms of impact
+       freeze the combat code asks for did nothing. Slow the simulated frame
+       (not the clock used for animation) while it lasts. */
+    if (Game.hitStop > 0) {
+      Game.hitStop = Math.max(0, Game.hitStop - dt);
+      dt *= 0.3;
+    }
     Game.elapsedRun += dt;
+    recordGhostTick();
     updatePlayer(dt);
     for (const e of Game.enemies) updateEnemy(e, dt);
-    /* separation between enemies */
+    /* separation between enemies (spatial-hash neighbours only) */
+    buildEnemyHash();
     for (let i = 0; i < Game.enemies.length; i++) {
       const a = Game.enemies[i];
       if (!a.alive) continue;
-      for (let j = i + 1; j < Game.enemies.length; j++) {
-        const b = Game.enemies[j];
-        if (!b.alive) continue;
+      for (const entry of nearbyEnemies(a.x, a.y, a.radius + 34)) {
+        const b = entry.e;
+        if (entry.i <= i || !b.alive) continue;
         const dx = b.x - a.x, dy = b.y - a.y;
         const minD = a.radius + b.radius;
         const d2 = dx * dx + dy * dy;
@@ -12165,6 +14157,7 @@ function update(dt) {
       if (e.deadAt === undefined) e.deadAt = now;
       return e.deathT <= 1.0 && now - e.deadAt < 6;
     });
+    buildEnemyHash();
     updateProjectiles(dt);
     updateDrops(dt);
     FX.update(dt);
@@ -12188,7 +14181,7 @@ function update(dt) {
     if (Game.combatIntensity < 0.005) Game.combatIntensity = 0;
     /* near-stairs flag for descend() */
     const d = Game.dungeon;
-    Game.nearStairs = dist(Game.player.x, Game.player.y, (d.stairs.x + 0.5) * TILE, (d.stairs.y + 0.5) * TILE) < 52;
+    Game.nearStairs = dist(Game.player.x, Game.player.y, (d.stairs.x + 0.5) * TILE, (d.stairs.y + 0.5) * TILE) < INTERACT_RADIUS;
     /* keep the minimap fresh */
     Game.minimapT = (Game.minimapT || 0) + dt;
     if (Game.minimapT > 0.14) { Game.minimapT = 0; drawMinimap(); }
@@ -12204,6 +14197,8 @@ function update(dt) {
         : (target.kind === 'merchant' || target.kind === 'merchantStand')
           ? 'trade with the Quartermaster'
         : target.kind === 'altar' ? 'choose a run oath at the shrine'
+        : target.kind === 'remains' ? 'recover the fallen delver\'s remains'
+        : target.station ? STATIONS[target.station].verb
         : 'descend to the next floor';
       const hint = Game.isPhone ? '<b>TAP</b> to ' + verb : 'Press <b>F</b> to ' + verb + '.';
       if (Game.lastInteractHint !== hint) {
@@ -12219,9 +14214,12 @@ function update(dt) {
     /* vault door prompt */
     if (d.vaultDoor && d.vaultDoor.locked) {
       const vd = dist(Game.player.x, Game.player.y, (d.vaultDoor.x + 0.5) * TILE, (d.vaultDoor.y + 0.5) * TILE);
-      if (vd < 62) $('hintBar').innerHTML = Game.player.keys > 0
+      if (vd < INTERACT_RADIUS) $('hintBar').innerHTML = Game.player.keys > 0
         ? (Game.isPhone ? '<b>TAP</b> to use a key on the vault door.' : 'Press <b>F</b> to use a key on the vault door.')
         : 'The vault door is <b>locked</b>. Search the floor for a key.';
+    }
+    } finally {
+      rngSource = prevRng;
     }
   } else if (Game.state === 'paused') {
     FX.update(0);
@@ -12231,10 +14229,46 @@ function update(dt) {
     updateDrops(dt);
     for (const e of Game.enemies) if (!e.dead) updateEnemy(e, dt * 0.5);
   }
-  if (Game.hitStop > 0) Game.hitStop -= dt;
 }
 
 /* ============================== 20. RENDER LOOP ========================= */
+/* ---- fixed timestep + interpolation -------------------------------------
+   update() always sees 1/60 s. Rendering runs at the display's own rate and
+   lerps entity positions between the last two simulation states, so a 144 Hz
+   monitor is smooth without changing how the game resolves a fight. */
+const FIXED_DT = 1 / 60;
+function capturePrevPositions() {
+  const mark = (e) => { if (e) { e._px = e.x; e._py = e.y; } };
+  mark(Game.player); mark(COMPANION);
+  for (const e of Game.enemies) mark(e);
+  for (const d of Game.drops) mark(d);
+  for (const pr of FX.projectiles) mark(pr);
+  Game.cam._px = Game.cam.x; Game.cam._py = Game.cam.y;
+}
+function applyRenderInterp(alpha) {
+  Game._interp = [];
+  if (!(alpha > 0.0001) || alpha >= 0.9999) return;
+  const lerpEnt = (e) => {
+    if (!e || !Number.isFinite(e._px) || !Number.isFinite(e._py)) return;
+    Game._interp.push([e, e.x, e.y]);
+    e.x = lerp(e._px, e.x, alpha);
+    e.y = lerp(e._py, e.y, alpha);
+  };
+  lerpEnt(Game.player); lerpEnt(COMPANION);
+  for (const e of Game.enemies) lerpEnt(e);
+  for (const d of Game.drops) lerpEnt(d);
+  for (const pr of FX.projectiles) lerpEnt(pr);
+  if (Number.isFinite(Game.cam._px)) {
+    Game._interp.push([Game.cam, Game.cam.x, Game.cam.y]);
+    Game.cam.x = lerp(Game.cam._px, Game.cam.x, alpha);
+    Game.cam.y = lerp(Game.cam._py, Game.cam.y, alpha);
+  }
+}
+function restoreRenderInterp() {
+  if (!Game._interp) return;
+  for (const [e, x, y] of Game._interp) { e.x = x; e.y = y; }
+  Game._interp = null;
+}
 function render() {
   const ctx = Game.ctx;
   ctx.setTransform(Game.dpr, 0, 0, Game.dpr, 0, 0);
@@ -12315,13 +14349,13 @@ function renderTitleBackdrop(ctx) {
 function loop(ts) {
   requestAnimationFrame(loop);
   if (!Game.lastT) Game.lastT = ts;
-  let dt = (ts - Game.lastT) / 1000;
+  let frameDt = (ts - Game.lastT) / 1000;
   Game.lastT = ts;
-  if (dt > 0.05) dt = 0.05;
-  if (dt < 0) dt = 0;
-  Game.dt = dt;
+  if (frameDt > 0.05) frameDt = 0.05;   /* tab-out / breakpoint guard */
+  if (frameDt < 0) frameDt = 0;
+  Game.dt = FIXED_DT;
   Game.fpsFrames++;
-  Game.fpsAccum += dt;
+  Game.fpsAccum += frameDt;
   if (Game.fpsAccum > 0.5) {
     Game.fps = Game.fpsFrames / Game.fpsAccum;
     Game.fpsFrames = 0; Game.fpsAccum = 0;
@@ -12330,9 +14364,25 @@ function loop(ts) {
      way back — the page simply "broke". Swallow the frame, log it once, and
      keep looping so a single bad state can never brick the run. */
   try {
-    update(dt);
-    render();
+    Game.acc = (Game.acc || 0) + frameDt;
+    let steps = 0;
+    while (Game.acc >= FIXED_DT && steps < 5) {
+      capturePrevPositions();
+      withRunRng(() => update(FIXED_DT));
+      Game.acc -= FIXED_DT;
+      steps++;
+    }
+    /* never let a slow frame build an unpayable debt */
+    if (steps >= 5) Game.acc = 0;
+    Game.alpha = clamp(Game.acc / FIXED_DT, 0, 1);
+    applyRenderInterp(Game.alpha);
+    try {
+      render();
+    } finally {
+      restoreRenderInterp();
+    }
   } catch (err) {
+    restoreRenderInterp();
     Game.frameErrors = (Game.frameErrors || 0) + 1;
     Game.lastFrameError = String(err && err.message || err);
     if (Game.frameErrors <= 3 && window.console) console.error('frame error:', err);
@@ -12345,13 +14395,14 @@ function loop(ts) {
   }
   if (Phone.enabled) {
     Phone.updateRail();
-    Phone.railTick = (Phone.railTick || 0) + dt;
+    Phone.railTick = (Phone.railTick || 0) + frameDt;
     if (Phone.railTick > 0.4) { Phone.railTick = 0; Phone.checkOrientation(); }
   }
 }
 
 /* ============================== 21. BOOT ================================ */
 function boot() {
+  SR.init();
   setupCanvas();
   setupInput();
   bakeAbilityIcons();
@@ -12384,7 +14435,8 @@ function boot() {
   };
   window.addEventListener('pointerdown', unlock);
   window.addEventListener('keydown', unlock);
-  $('soundBtn').textContent = '♪';
+  /* The mute icon was overwritten with a note here on every boot, so a player
+     who had muted the game saw the "sound on" glyph until they pressed it. */
 }
 if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', () => { boot(); initSaveState(); });

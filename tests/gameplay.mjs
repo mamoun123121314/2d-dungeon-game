@@ -60,18 +60,24 @@ try {
       const d = Game.dungeon;
       let h = 0;
       for (let y = 0; y < d.H; y++) for (let x = 0; x < d.W; x++) h = ((h * 31) + (d.get(x, y) | 0)) >>> 0;
-      /* the layout, staircase and monster placement are the parts a save must
-         reproduce; cosmetic props are allowed to differ */
       return [h, d.rooms.length, d.stairs.x, d.stairs.y, d.monsters.length].join(':');
     };
+    const content = () => [
+      Game.props.map(pr => [pr.kind, Math.round(pr.x), Math.round(pr.y)].join('@')).join('|'),
+      Game.enemies.map(e => [e.type, Math.round(e.x), Math.round(e.y), e.isElite ? 'E' : ''].join('@')).join('|'),
+      (Game.shopStock || []).map(it => it.name + ':' + it.price).join('|'),
+      (Game.bounties || []).map(b => b.id + ':' + b.target).join('|'),
+    ];
     buildFloor(3, false, 999);
-    const first = fp();
+    const first = fp(), firstContent = content();
     buildFloor(3, false, 999);
-    const second = fp();
+    const second = fp(), secondContent = content();
     if (STORY.open && STORY.close) STORY.close();
-    return { first, second };
+    return { first, second, firstContent, secondContent };
   });
   equal('rebuilding a floor from its seed reproduces its layout', live.first, live.second);
+  equal('it also reproduces its props, monsters, stock and bounties',
+    JSON.stringify(live.firstContent), JSON.stringify(live.secondContent));
 
   /* ============ floor transitions ============ */
   section('Floor transitions');
@@ -280,6 +286,32 @@ try {
     check('skill points never go negative', prog.spNotNegative === true, prog);
   }
 
+  /* ============ interactions ============ */
+  section('Interactions');
+  const interact = await page.evaluate(() => {
+    Game.state = 'playing'; Game.paused = false;
+    const chest = Game.props.find(pr => pr.kind === 'chest' && !pr.opened);
+    if (!chest) return { skipped: true };
+    /* stand beside the chest, never inside it: chests are solid since the
+       prop-collider pass, and a body spawned on one cannot move off it */
+    const spot = findFreeSpot(chest.x, chest.y + 54, Game.player.radius);
+    Game.player.x = spot.x; Game.player.y = spot.y;
+    const before = nearestInteractable();
+    openChest(chest);
+    const after = nearestInteractable();
+    return {
+      beforeKind: before && before.kind,
+      offersOpenedChest: !!(after && after.kind === 'chest' && after.opened),
+      chestOpened: chest.opened,
+    };
+  });
+  if (interact.skipped) check('interaction targets can be checked', true, interact);
+  else {
+    equal('an unopened chest is an interaction target', interact.beforeKind, 'chest');
+    check('the chest opens', interact.chestOpened, interact);
+    check('an opened chest is no longer offered as a target', interact.offersOpenedChest === false, interact);
+  }
+
   /* ============ story chapter card ============ */
   /* The reported "I cannot move". #storyCard ships with class="hidden"
      (display:none !important), and showCard() used to only ADD 'show', so the
@@ -289,6 +321,12 @@ try {
      no layout box to click. */
   section('Story chapter card');
   const story = await page.evaluate(async () => {
+    /* A relic draft can be waiting from the floor-5 transition; resolve it so
+       this test measures the story card rather than a paused draft overlay. */
+    if (Game.relicDraftOpen) {
+      const first = document.querySelector('#relicChoices [data-relic]');
+      if (first) first.click(); else { Game.relicDraftOpen = false; Game.paused = false; }
+    }
     const el = document.getElementById('storyCard');
     const p = Game.player;
     /* the hero may be against a wall, so try every direction and take the best */
@@ -305,6 +343,11 @@ try {
       return best;
     };
 
+    /* the interaction test left the hero beside a chest; start the story
+       check from open floor so all four movement probes have room */
+    const ent = Game.dungeon.entrance;
+    const open = findFreeSpot((ent.x + 0.5) * TILE, (ent.y + 0.5) * TILE, p.radius);
+    p.x = open.x; p.y = open.y; p.vx = 0; p.vy = 0;
     STORY.seen = {};
     STORY.enter(1);                       // exactly what buildFloor() does on floor 1
     await new Promise((r) => setTimeout(r, 1050));
@@ -362,7 +405,8 @@ try {
     Game.input.touchDir = null;
 
     return { shown, after, movedWhileShown, movedAfterDismiss, selfHealed,
-             movedWithStuckFlag, paths, angleBefore };
+             movedWithStuckFlag, paths, angleBefore,
+             };
   });
   check('the story card actually paints', story.shown.display !== 'none' && story.shown.height > 0, story.shown);
   check('the Continue button has a real hit target', story.shown.buttonBox >= 30, story.shown.buttonBox);

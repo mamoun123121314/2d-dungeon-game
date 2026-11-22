@@ -11,7 +11,10 @@
     "test:vault": "node tests/vault.mjs",
     "shots:vault": "node tests/shot-vault.mjs",
     "test:perf": "node tests/perf.mjs",
-    "test:save": "node tests/save.mjs"
+    "test:save": "node tests/save.mjs",
+    "test:features": "node tests/features.mjs",
+    "test:replay": "node tests/replay.mjs",
+    "balance": "node scripts/balance-lab.mjs"
   },
   "devDependencies": {
     "@achingbrain/nss": "^0.0.1",

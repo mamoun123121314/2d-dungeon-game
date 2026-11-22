@@ -189,7 +189,8 @@ try {
         };
         /* leaf elements only: a wrapper's textContent contains its children */
         const leaves = Array.from(document.querySelectorAll('body *'))
-          .filter((el) => el.children.length === 0 && shown(el));
+          .filter((el) => el.children.length === 0 && shown(el)
+            && !el.closest('.sr-only, #srLog'));
         const emberLabels = leaves
           .filter((el) => /^EMBER\b/i.test((el.textContent || '').trim()))
           .map((el) => (el.id || el.className || el.tagName) + ':' + el.textContent.trim());

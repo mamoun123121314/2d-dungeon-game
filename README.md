@@ -1,11 +1,13 @@
-# Dungeon Rogue — a procedural 2D ARPG in one file
+# Dungeon Rogue — a procedural 2D ARPG with no assets
 
-A complete, runnable action-RPG dungeon crawler in a **single `index.html`** file.
-No external images, no libraries, no build step — open the file in a browser and play.
+A complete, runnable action-RPG dungeon crawler: one `index.html` page, its CSS,
+and four classic local scripts (the game, two art/audio modules and the PWA shell). No external images, no libraries, no build step,
+no network requests — open the page in a browser and play.
 
-Every in-game pixel is drawn procedurally with the Canvas 2D API, and every
-sound is synthesized at runtime with the Web Audio API. The game has no external
-asset or library dependencies; the optional promotional media is kept in `ad/`.
+Every in-game pixel is drawn procedurally with the Canvas 2D API, and the audio
+is either synthesized at runtime or decoded from small recordings inlined in the
+page, so the game has no external asset or library dependencies. The optional
+promotional media is kept in `ad/`.
 
 ```
 open index.html          # macOS
@@ -24,12 +26,18 @@ start index.html         # Windows
 | `E` | Ground Slam (18 mana, area burst) |
 | `R` | Drink a healing potion |
 | `Space` | Dodge roll (brief invulnerability) |
-| `F` | Interact — chests, stairs, merchant, vault door |
+| `F` | Interact — chests, stairs, merchant, vault door, stations, remains |
+| `C` | Ember command — heel → fetch → sniff → guard |
 | `I` / `Tab` | Inventory, equipment paperdoll, item tooltips |
 | `T` | Talents — spend points earned every third level |
+| `Y` | In photo mode, save the current frame |
 | `Ctrl`/`Cmd` + `S` | Save now (the game also autosaves) |
 | `M` | Mute |
 | `Esc` | Pause (also closes any open panel) |
+| Gamepad | Left stick moves, right stick aims, A attack, B dodge, X interact, Y Ember, LB/RB magic/slam, Start pause |
+
+Every action key is rebindable in **Settings → Controls**; movement stays on
+WASD/arrows so a binding can never strand the hero.
 
 ### On a phone
 
@@ -125,13 +133,26 @@ status engine:
 - **Chill** slows the target to 55% speed for 3.5 s.
 - **Shock** arcs to up to two more enemies within 150 px for 35% damage.
 
-Status is applied by your equipped weapon and ring element. Weapons and rings
+Status is applied by your equipped weapon and ring element; both channels now
+coexist, so a fire weapon and a frost ring can alternate and react on the same
+target. Weapons and rings
 from **Rare** upward can roll an element, weighted by biome (lava leans fire,
 ice leans frost), and carry a prefix — *Blazing*, *Frostbound*, *Stormforged* —
 merged into the existing generated names. Elemental gear adds 18% damage and a
 +7 gear-score bonus, and the tooltip names the element explicitly.
 Each status has its own rendering signature: frost crusts the base with shards,
 fire licks upward with flame tongues, storm crackles in flickering arcs.
+
+**Reactions** turn the two channels into a build decision:
+
+| Pair | Reaction | Effect |
+| --- | --- | --- |
+| Fire + Frost | **Shatter** | burst damage, clears burn and chill, +0.3 s stun |
+| Frost + Storm | **Conduction** | chains up to 3 nearby foes at 32% damage |
+| Fire + Storm | **Plasma** | burst plus a 2.4 s burn that spreads in a short arc |
+
+A dual-attuned hero also carries a 24% elemental damage multiplier instead of
+the single-channel 18%.
 
 ### The Warden
 The Heartstone Warden is a three-phase fight, and every move telegraphs:
@@ -192,6 +213,61 @@ hit. Charge hits knock the player back with a proper decaying impulse.
   attacks. *Unbound* keeps the standard rules. A saved run keeps its chosen
   contract even if you change the next-run selection.
 
+### Run identity, Heat and the Director
+- **Shareable run codes.** Every fresh run gets a `DR-XXXX-XXX` seed shown on the
+  start screen. Type a friend's code (or your own) to replay the same ten floors;
+  **Daily Descent** uses a UTC date seed, so everyone gets the same dungeon that
+  day without a server.
+- **Heat (0–3).** A player-chosen risk dial: more champions, richer loot, no
+  potion drops at Heat 2, and a darker torch at Heat 3. Heat is part of the run
+  identity alongside the seed and contract.
+- **Adaptive Director.** The Director watches the previous floor's damage taken,
+  kill rate and potion use, then shifts *composition* (more rushers and casters
+  when you are comfortable, more readable chaff when you are struggling) without
+  touching raw stats. Nothing is announced; the floor answers you.
+- **Ghost race.** Each seed records a breadcrumb every second. Your best attempt
+  replays as a translucent silhouette walking the same route at the same elapsed
+  time, and the start screen names the ghost's depth and time.
+- **Run chronicle.** Death and victory compose a short factual epilogue (seed,
+  Heat, floor, kills, relics, hunt, killing blow). Read it, copy it, or download
+  it as Markdown; the last twenty are kept in local meta memory.
+
+### Exploration that pays
+- **Six room stations.** Library lectern (inscribe a crit/mana bonus), kitchen
+  cauldron (two potions → permanent vigour + heal), workshop anvil (gold item
+  upgrade, with a chance to crack it), crypt sarcophagus (rare item, wakes the
+  room), treasury strongbox (gold wager), and sunken-garden planter (potion +
+  heal). One station per matching room, once per floor.
+- **Corpse runs.** The dungeon remembers your last death: a later run on the
+  same floor finds the remains, returns the best carried item (or half its value
+  in gold if the pack is full), and adds a line of story.
+- **Ember commands.** `C` cycles heel → fetch → sniff → guard. Fetch brings back
+  a nearby drop or key, sniff marks chests, stations and the vault for ~22 s on a
+  28 s cooldown, and guard holds a lane. At bond 40 she can revive you once per
+  floor; the normal revive is still there, just slower.
+- **Hunt board.** Every floor from 2 has a named champion ("Marrowhand, the
+  Guttering") drawn from the elite traits and a biome prefix. The Quartermaster
+  posts the bounty; killing it pays Ember Shards and a cosmetic title that
+  persists across slots.
+- **Relic draft.** At floor 5, floor 10 and every third endless floor after the
+  Warden, choose one of three run-only relics from a twelve-relic pool
+  (Glass Edge, Golden Coil, Swift Root, Blood Ledger, Second Wind, Attuned Core,
+  Iron Hide, Lucky Coin, Mana Well, Thorn Coat, Warden Heart, Scavenger).
+
+### Photo mode, clips and offline install
+- **Photo mode** freezes the run, hides the HUD, adds letterboxing, and supports
+  drag-to-pan and wheel zoom. `Y` exports the framed PNG with the floor and seed
+  stamped on it.
+- **Five-second clips** record the next five seconds of the live canvas through
+  `MediaRecorder` and download a WebM, with no external tooling.
+- **Installable PWA.** A manifest, two procedural SVG icons and a cache-first
+  service worker make the game installable and playable offline over http/https.
+  The service worker is skipped on `file://`, and no account or server is used.
+- **Accessibility.** A polite screen-reader live region announces chests,
+  levels, vault unlocks, hunts and danger; colour-blind mode adds shape codes to
+  rarity beams and item names; key bindings, gamepad, focus traps, reduced
+  motion, high contrast and large UI are all settings-page options.
+
 ### Saving
 A Minecraft-style autosave keeps **three independent run slots** — *Hall of
 Ashes*, *Cinder Vault* and *Reliquary* — listed in **Profile & Backup**:
@@ -205,9 +281,19 @@ Ashes*, *Cinder Vault* and *Reliquary* — listed in **Profile & Backup**:
   **Load** and **Delete** button, and a failed load keeps the slot intact (a
   copy is parked under `dungeonRogue.save.unreadable`) instead of wiping it.
 - Death clears only the slot the run was using.
-- Stores the **floor seed**, so the dungeon rebuilds identically. Player level,
-  XP, HP, mana, gold, potions, keys, every talent rank, all six equipped items,
-  the whole satchel, shop reputation and the current affixes all persist.
+- Stores the **floor seed**, so the dungeon rebuilds identically — layout,
+  props, monster placements, bounties and the merchant's stock are all derived
+  from that same seed. Player level, XP, HP, mana, gold, potions, keys, every
+  talent rank, all six equipped items, the whole satchel, shop reputation and
+  the current affixes all persist.
+- **The floor's live state persists too**: opened chests stay open, smashed
+  crates stay smashed, slain monsters do not respawn, wounded monsters keep
+  their health, loot lying on the ground is still there, an unlocked vault
+  stays unlocked, and the merchant keeps the stock, prices and rerolls you
+  actually spent. A reload resumes the fight rather than resetting the floor.
+- Loading restores the hero to a verified standing spot (never flush inside
+  masonry), keeps chapters you have already read from replaying, and clears any
+  pause/inventory panel so the resumed run is immediately playable.
 - Loading is defensive: ratings, ranks, item fields and slot names are all
   clamped and validated, and invalid run data is rejected rather than crashing
   the game. A failed or blocked write reports itself instead of failing silently.
@@ -291,7 +377,7 @@ because it is the honest thing to do).
   plus a metal ring), EQ'd, given a short stone-room tail, loudness-matched and
   encoded to 64 kbps mono MP3.
 - **Embedded, not linked.** The clips are base64-inlined and decoded with
-  `decodeAudioData` on first use, so the game is still one file, works from
+  `decodeAudioData` on first use, so the page is still self-contained, works from
   `file://` and never makes a network request. 364 KB of MP3 in the page;
   roughly half a megabyte of PCM once every effect has been played.
 - **No two hits are identical.** Playback pitch and level are jittered per
@@ -337,7 +423,7 @@ runs it before deploying.
 
 ```sh
 npm install          # puppeteer-core + a Chromium binary
-npm test             # all six suites
+npm test             # all eleven suites
 npm run test:browser # or run one at a time
 ```
 
@@ -347,6 +433,8 @@ npm run test:browser # or run one at a time
 | `tests/save.mjs` | Save recovery. Truncated JSON, non-objects, wrong versions, missing players, blocked storage, quota failures. A corrupt slot never overwrites a good one, is never deleted, and always produces a message the player can act on. |
 | `tests/mobile.mjs` | Four phone viewports (iPhone SE / 14 Pro, Pixel 7, small Android) with touch and coarse pointer: joystick drag moves the hero, ability taps fire, safe-area insets are respected, rotation keeps the controls on screen, and a desktop window never grows the touch UI. |
 | `tests/gameplay.mjs` | Seeded floors rebuild identically, `descend()` reaches the next floor, hp/mana stay inside their bounds, gold never goes negative, gear swaps never destroy items, xp and skill points only move forward. |
+| `tests/features.mjs` | Run codes, Heat, six stations, relic draft, named hunts, corpse recovery, ghost recording, chronicles, key rebinding, the screen-reader log, the PWA shell and deterministic simulation. |
+| `tests/replay.mjs` | Replays four seeds from an identical input timeline twice and requires byte-identical positions, enemy state and RNG stream. |
 | `tests/audio.mjs` | Audio stays silent-but-safe before a gesture, plays after one, mute and volume survive a reload, a backgrounded tab resumes, and a dead audio device never throws or stops the game. |
 | `tests/perf.mjs` | Frame-time profile for quiet, crowded, effect-heavy and boss scenes on desktop and phone viewports, plus a relative check that the cached vignette beats rebuilding its gradients. |
 
@@ -367,24 +455,35 @@ Local saves are still device/browser-specific.
 
 ## Layout
 
-`index.html` is the whole game — markup, CSS and ~11,000 lines of
-vanilla ES2020 JavaScript, organised into clearly commented sections:
+`index.html` is the page shell, styles and HUD markup. The game itself is four
+classic scripts (not modules, so `file://` and the existing global test hooks
+keep working):
 
-1. Page shell and CSS
-2. Utility maths and seeded RNG (`withSeededRng`)
-3. Procedural sprite and tile baking
-4. Item tables, affixes, rarity, elemental rolls
-5. Dungeon generation (BSP, biome themes, 11 room personalities, connectivity, vaults)
-6. Themed prop factory and 31 furniture kinds
-7. Entities: elemental status, enemies, elite traits, boss moveset
-8. Player, talents, derived stat pipeline
-9. Particle and floating-text effects (incl. arc bolts)
-10. Save system and meta progression
-11. Game state, floor building, shop haggling
-12. Combat resolution, combo meter, bounties, milestones, endless affixes
-13. Enemy AI, boss phases, elite summoning
-14. World and prop rendering
-15. Fog of war, vignette, threat indicators, boss telegraphs
-16. HUD, minimap, portraits, ability icons, affix chips
-17. Menus, inventory, shop, talents panel
-18. Input handling, update loop, bootstrap
+| File | What lives there |
+| --- | --- |
+| `src/game-core.js` | Everything below, roughly 14,400 lines of vanilla ES2020 |
+| `src/audio/creature-voices.js` | Per-species voice synthesis used by the bestiary |
+| `src/render/dungeon-detail.js` | Stonemasonry, flagstones and prop detail passes |
+| `src/pwa.js` | Service-worker registration and the install prompt (http/https only) |
+
+`src/game-core.js` is organised into clearly commented sections:
+
+1. Utility maths, colour helpers and seeded RNG (`withSeededRng`)
+2. Procedural sprite and tile baking
+3. Item tables, affixes, rarity, elemental rolls
+4. Dungeon generation (BSP, biome themes, 11 room personalities, connectivity, vaults)
+5. Themed prop factory and 31 furniture kinds
+6. Entities: elemental status, enemies, elite traits, boss moveset
+7. Player, talents, derived stat pipeline
+8. Particle and floating-text effects (incl. arc bolts)
+9. Save system and meta progression
+10. Game state, floor building, shop haggling
+11. Combat resolution, combo meter, bounties, milestones, endless affixes
+12. Enemy AI, boss phases, elite summoning
+13. World and prop rendering
+14. Fog of war, vignette, threat indicators, boss telegraphs
+15. HUD, minimap, portraits, ability icons, affix chips
+16. Menus, inventory, shop, talents panel
+17. Input handling, key rebinding, gamepad, update loop, bootstrap
+18. Run identity (seed codes, daily, ghost), Director, relics, hunts, chronicles
+19. PWA, photo mode and clip recording
